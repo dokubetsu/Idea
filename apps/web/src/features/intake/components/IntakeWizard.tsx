@@ -257,7 +257,7 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-brand-blue-light/60">
               Choose the category that best matches your situation. This helps us ask the right questions.
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               {CATEGORIES.map((c) => (
                 <button key={c.id} type="button" onClick={() => onCategorySelect(c.id)}
                   className="flex flex-col gap-2 rounded-xl border border-brand-gold/12 bg-base-100 p-4 text-left transition-all hover:border-brand-gold/35 hover:bg-brand-gold/5 hover:-translate-y-0.5 hover:shadow-sm">
@@ -298,7 +298,7 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
             </Field>
 
             <Field label="How urgent is this?">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {(["exploring", "need_help_soon", "court_date_coming"] as const).map(v => (
                   <label key={v}
                     className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3 transition-all ${
@@ -323,7 +323,7 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
             </Field>
 
             <Field label="Has any FIR or court case been filed about this?">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 {(["no", "yes"] as const).map(v => (
                   <label key={v}
                     className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
@@ -366,7 +366,7 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
             {CATEGORY_FIELDS[category].map((field) => (
               <Field key={field.key} label={field.label}>
                 {field.type === "yesno" ? (
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     {["yes", "no"].map(v => (
                       <label key={v}
                         className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
