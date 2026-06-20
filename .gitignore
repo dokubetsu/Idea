@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+/apps/web/node_modules/
+/apps/api/venv/
+venv/
+ENV/
+env/
+.venv/
+
+# Next.js build output
+.next/
+/apps/web/.next/
+out/
+build/
+tsconfig.tsbuildinfo
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables (EXCEPT examples)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/apps/api/.env
+/apps/web/.env
+
+# IDE / Editor configuration
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
