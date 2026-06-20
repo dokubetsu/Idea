@@ -25,28 +25,28 @@ export function useIntakeSession(id: string | null) {
   });
 }
 
-export function useUpdateFacts(sessionId: string) {
+export function useUpdateFacts() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (facts: IntakeSession["extracted_facts"]["facts"]) =>
+    mutationFn: ({ sessionId, facts }: { sessionId: string; facts: IntakeSession["extracted_facts"]["facts"] }) =>
       apiClient.patch<IntakeSession>(`/intake/${sessionId}/facts`, { facts }),
-    onSuccess: (data) => qc.setQueryData(intakeKeys.session(sessionId), data),
+    onSuccess: (data, variables) => qc.setQueryData(intakeKeys.session(variables.sessionId), data),
   });
 }
 
-export function useRunAssessment(sessionId: string) {
+export function useRunAssessment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post<IntakeSession>(`/intake/${sessionId}/assess`, {}),
-    onSuccess: (data) => qc.setQueryData(intakeKeys.session(sessionId), data),
+    mutationFn: (sessionId: string) => apiClient.post<IntakeSession>(`/intake/${sessionId}/assess`, {}),
+    onSuccess: (data, sessionId) => qc.setQueryData(intakeKeys.session(sessionId), data),
   });
 }
 
-export function useCommitIntake(sessionId: string) {
+export function useCommitIntake() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body?: { confirmed_facts: any[] }) =>
-      apiClient.post<{ matter_id: string; status: string }>(`/intake/${sessionId}/commit`, body || {}),
+    mutationFn: ({ sessionId, confirmed_facts }: { sessionId: string; confirmed_facts: any[] }) =>
+      apiClient.post<{ matter_id: string; status: string }>(`/intake/${sessionId}/commit`, { confirmed_facts }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["matters"] });
     },

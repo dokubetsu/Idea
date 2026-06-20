@@ -145,9 +145,9 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
   const [matterId, setMid]    = useState<string | null>(null);
 
   const startIntake   = useStartIntake();
-  const updateFacts   = useUpdateFacts(session?.id ?? "");
-  const runAssessment = useRunAssessment(session?.id ?? "");
-  const commitIntake  = useCommitIntake(session?.id ?? "");
+  const updateFacts   = useUpdateFacts();
+  const runAssessment = useRunAssessment();
+  const commitIntake  = useCommitIntake();
 
   const coreForm = useForm<CoreForm>({ resolver: zodResolver(coreSchema) });
   const descForm = useForm<DescribeForm>({ resolver: zodResolver(describeSchema) });
@@ -195,16 +195,18 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
       ...(s.extracted_facts.facts ?? []).filter(f => !structuredFacts.some(sf => sf.key === f.key)),
     ];
 
-    const updated = await updateFacts.mutateAsync(merged);
+    const updated = await updateFacts.mutateAsync({ sessionId: s.id, facts: merged });
     setSess(updated);
-    const assessed = await runAssessment.mutateAsync();
+    const assessed = await runAssessment.mutateAsync(s.id);
     setSess(assessed);
     setStep("assessment");
   }
 
   async function onCommit() {
+    if (!session) return;
     const result = await commitIntake.mutateAsync({
-      confirmed_facts: session?.extracted_facts.facts ?? [],
+      sessionId: session.id,
+      confirmed_facts: session.extracted_facts.facts ?? [],
     });
     setMid(result.matter_id);
     setStep("done");
