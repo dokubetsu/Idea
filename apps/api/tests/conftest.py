@@ -45,6 +45,10 @@ class MockSupabaseTable:
         self.queries.append(("limit", l))
         return self
 
+    def order(self, column, *args, **kwargs):
+        self.queries.append(("order", column, args, kwargs))
+        return self
+
     def execute(self):
         if self.last_inserted is not None:
             res = MockSupabaseResponse(self.last_inserted)
