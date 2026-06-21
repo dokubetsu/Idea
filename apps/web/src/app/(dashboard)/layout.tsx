@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Sidebar role={role} userName={fullName} />
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center justify-between border-b border-brand-gold/12 bg-base-100/95 backdrop-blur px-4 py-3 lg:hidden">
+        <header className="relative z-40 flex items-center justify-between border-b border-brand-gold/12 bg-base-100/95 backdrop-blur px-4 py-3 lg:hidden">
           <span className="font-serif text-2xl font-bold">Le<span className="font-sans font-medium text-brand-gold">Ad</span></span>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-brand-gold/20 bg-brand-gold/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-gold">{role}</span>

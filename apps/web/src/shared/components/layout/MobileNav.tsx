@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Scale, LogOut } from "lucide-react";
@@ -9,16 +10,25 @@ import { NAV, ROLE_COLOR, ROLE_LABEL } from "@/shared/lib/navigation";
 
 export function MobileNav({ role, userName }: { role: UserRole; userName: string }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   async function signOut() {
@@ -36,8 +46,8 @@ export function MobileNav({ role, userName }: { role: UserRole; userName: string
         <Menu className="h-5 w-5" />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
+      {open && mounted && createPortal(
+        <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-brand-blue-dark/50 backdrop-blur-sm transition-opacity duration-300"
@@ -105,7 +115,8 @@ export function MobileNav({ role, userName }: { role: UserRole; userName: string
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
