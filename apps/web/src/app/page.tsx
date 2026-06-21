@@ -336,7 +336,7 @@ export default function RootPage() {
             {/* Input Terminal */}
             <CardLayout title="Petitioner Statement Input" icon={Cpu}>
               <div className="space-y-4">
-                <div className="bg-[#020509] border border-white/5 rounded-xl p-4 min-h-[160px] font-mono text-xs text-white/80 leading-relaxed relative overflow-hidden">
+                <div className="bg-[#020509] border border-white/5 rounded-xl p-4 min-h-[160px] font-mono text-xs text-white/80 leading-relaxed relative overflow-hidden break-words whitespace-pre-wrap">
                   <div className="absolute top-2 right-2 flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[9px] uppercase tracking-wider text-emerald-500/80">Active</span>
@@ -429,14 +429,14 @@ export default function RootPage() {
                 {simStep === "lawyer" && (
                   <div className="space-y-2 pt-3 border-t border-brand-gold/15">
                     <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold block">Step 4: Secure Counsel Match</span>
-                    <div className="flex items-center gap-3 bg-[#020509] border border-brand-gold/20 rounded-xl p-3">
-                      <div className="h-8 w-8 rounded-full bg-brand-gold/15 flex items-center justify-center text-brand-gold border border-brand-gold/30">
+                    <div className="flex items-center gap-3 bg-[#020509] border border-brand-gold/20 rounded-xl p-3 w-full overflow-hidden">
+                      <div className="h-8 w-8 shrink-0 rounded-full bg-brand-gold/15 flex items-center justify-center text-brand-gold border border-brand-gold/30">
                         <UserCheck className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-white">{simulatorPreset.lawyer.name}</p>
-                          <span className="text-[9px] font-bold text-brand-teal uppercase bg-brand-teal/10 px-2 py-0.5 rounded-full">{simulatorPreset.lawyer.match}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-white truncate">{simulatorPreset.lawyer.name}</p>
+                          <span className="text-[9px] shrink-0 font-bold text-brand-teal uppercase bg-brand-teal/10 px-2 py-0.5 rounded-full">{simulatorPreset.lawyer.match}</span>
                         </div>
                         <p className="text-[10px] text-white/50 truncate mt-0.5">{simulatorPreset.lawyer.specialization} · {simulatorPreset.lawyer.exp}</p>
                       </div>
@@ -535,7 +535,7 @@ export default function RootPage() {
           </div>
 
           {/* Mobile Stacked Pipeline */}
-          <div className="flex md:hidden flex-col gap-8 relative py-4 pl-4">
+          <div className="flex md:hidden flex-col gap-8 relative py-4 pl-4 w-full">
             {/* Vertical Line */}
             <div className="absolute left-[40px] top-8 bottom-8 w-[2px] border-l border-dashed border-brand-gold/30 z-0" />
             
@@ -620,13 +620,13 @@ export default function RootPage() {
           </div>
 
           {/* Registry Diagram Block */}
-          <div className="max-w-3xl mx-auto bg-[#020509] border border-white/5 rounded-2xl p-5 sm:p-8 space-y-8 relative overflow-hidden">
-            <div className="flex justify-between items-center relative z-10">
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-white uppercase tracking-wider">AI Request Pipeline</p>
-                <p className="text-[10px] text-white/45">Context Builder resolving models</p>
+          <div className="max-w-3xl mx-auto bg-[#020509] border border-white/5 rounded-2xl p-5 sm:p-8 space-y-8 relative overflow-hidden w-full">
+            <div className="flex justify-between items-center relative z-10 gap-4">
+              <div className="space-y-1 flex-1 min-w-0">
+                <p className="text-xs font-bold text-white uppercase tracking-wider truncate">AI Request Pipeline</p>
+                <p className="text-[10px] text-white/45 truncate">Context Builder resolving models</p>
               </div>
-              <span className="rounded-full border border-brand-gold/25 bg-brand-gold/10 px-3 py-0.5 text-[9px] font-bold text-brand-gold">ACTIVE PIPELINE</span>
+              <span className="rounded-full border border-brand-gold/25 bg-brand-gold/10 px-3 py-0.5 text-[9px] font-bold text-brand-gold shrink-0">ACTIVE PIPELINE</span>
             </div>
 
             <div className="grid gap-6 md:grid-cols-4 items-center relative z-10">
@@ -809,10 +809,10 @@ export default function RootPage() {
 
 function CardLayout({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#050b14]/65 backdrop-blur-md p-6 space-y-4">
+    <div className="rounded-2xl border border-white/10 bg-[#050b14]/65 backdrop-blur-md p-4 sm:p-6 space-y-4 w-full overflow-hidden">
       <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-        <Icon className="h-4.5 w-4.5 text-brand-gold" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-white/80">{title}</h3>
+        <Icon className="h-4.5 w-4.5 text-brand-gold shrink-0" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-white/80 truncate">{title}</h3>
       </div>
       {children}
     </div>
@@ -839,7 +839,7 @@ function PipelineNode({ label, desc, icon: Icon, active = false }: { label: stri
 
 function PipelineNodeVertical({ label, desc, icon: Icon, active = false }: { label: string; desc: string; icon: React.ElementType; active?: boolean }) {
   return (
-    <div className="flex items-center gap-5 relative z-10 group">
+    <div className="flex items-center gap-4 sm:gap-5 relative z-10 group w-full">
       <div className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center border transition-all duration-300 ${
         active 
           ? "bg-brand-gold border-brand-gold text-[#050b14] shadow-md shadow-brand-gold/15" 
@@ -847,9 +847,9 @@ function PipelineNodeVertical({ label, desc, icon: Icon, active = false }: { lab
       }`}>
         <Icon className="h-5 w-5" />
       </div>
-      <div className="text-left">
-        <p className={`text-sm font-bold ${active ? "text-white" : "text-white/45"}`}>{label}</p>
-        <p className="text-[11px] text-white/40 mt-0.5 max-w-[220px] leading-snug">{desc}</p>
+      <div className="text-left flex-1 min-w-0">
+        <p className={`text-sm font-bold truncate ${active ? "text-white" : "text-white/45"}`}>{label}</p>
+        <p className="text-[11px] text-white/40 mt-0.5 leading-snug break-words">{desc}</p>
       </div>
     </div>
   );
