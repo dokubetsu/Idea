@@ -30,8 +30,14 @@ def get_recipient_info(db, user_id: str) -> dict:
         if auth_user and auth_user.user:
             recipient["email"] = auth_user.user.email
     except Exception as e:
-        log.warning("Could not fetch email from auth admin for user %s: %s", user_id, e)
-        recipient["email"] = f"{user_id}@nyay.ai"
+        # Do NOT fabricate a placeholder address — it would create a delivery row
+        # that bounces silently forever with no visible failure signal.
+        # Log clearly and leave email unset so the email channel is skipped.
+        log.error(
+            "Could not fetch email from auth.admin for user %s — email channel will be skipped: %s",
+            user_id,
+            e,
+        )
 
     return recipient
 

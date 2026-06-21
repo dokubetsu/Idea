@@ -82,12 +82,17 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
         raise Forbidden("This consultation is not assigned to you")
         
     try:
+        # When an admin confirms a consultation that already has a lawyer assigned,
+        # we must pass the *existing* lawyer_id — not the admin's own UUID.
+        # Passing the admin's UUID would silently reassign the consultation to them.
+        effective_lawyer_id = row["lawyer_id"] if row.get("lawyer_id") else str(user.id)
+
         # Call the secure RPC which will do the FOR UPDATE lock and idempotent inserts
         res = db.rpc("confirm_consultation", {
             "p_consultation_id": consultation_id,
-            "p_lawyer_id": str(user.id)
+            "p_lawyer_id": effective_lawyer_id
         }).execute()
-        
+
         if res.data:
             return ConfirmConsultationOut(**res.data[0])
         raise HTTPException(status_code=500, detail="Failed to confirm consultation")
@@ -96,6 +101,7 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
         if "must be pending" in msg:
             raise HTTPException(status_code=400, detail="Consultation is no longer pending")
         raise e
+
 
 @router.patch("/{consultation_id}/cancel", response_model=ConsultationOut)
 async def cancel_consultation(consultation_id: str, user: Auth):

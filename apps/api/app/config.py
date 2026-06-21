@@ -38,12 +38,17 @@ class Settings(BaseSettings):
     # ── Notification channels ─────────────────────────────
     # Resend (email). Leave blank to use console mock.
     RESEND_API_KEY: str = ""
-    RESEND_FROM_ADDRESS: str = "Nyay <noreply@nyay.ai>"
+    RESEND_FROM_ADDRESS: str = "LeAd <noreply@lead.ai>"
 
     # Twilio (SMS). Leave blank to use console mock.
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""  # E.164 format, e.g. +14155238886
+
+    # ── Cron security ─────────────────────────────────────
+    # Required — no default. Set this in your environment.
+    # Never hardcode a fallback here; the absence of this value at startup is intentional.
+    CRON_SECRET: str
 
     APP_ENV: str = "development"
     API_VERSION: str = "v1"

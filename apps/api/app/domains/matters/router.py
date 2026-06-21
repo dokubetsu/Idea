@@ -364,14 +364,30 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
     from fastapi import HTTPException
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    
-    # Enforce Session Guard for Consultations
+
+    # Enforce Session Guard for Consultations.
+    # Gate = sessions_used (completed) + scheduled-but-not-yet-completed meetings.
+    # This prevents a user from booking unlimited meetings while existing ones are
+    # still in 'scheduled' state (since sessions_used only increments on completion).
     consultation = db.table("consultations").select("id, sessions_used, sessions_total").eq("matter_id", matter_id).execute().data
     if consultation:
         c = consultation[0]
-        if c["sessions_used"] >= c["sessions_total"]:
-            raise HTTPException(status_code=403, detail="Session limit reached for this consultation. Upgrade to book more meetings.")
-            
+        # Count already-scheduled (not yet completed) meetings for this matter
+        scheduled_count_res = (
+            db.table("meetings")
+            .select("id", count="exact")
+            .eq("matter_id", matter_id)
+            .eq("status", "scheduled")
+            .execute()
+        )
+        scheduled_count = scheduled_count_res.count or 0
+        effective_used = c["sessions_used"] + scheduled_count
+        if effective_used >= c["sessions_total"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Session limit reached for this consultation. Upgrade to book more meetings."
+            )
+
     # Create Meeting
     r = db.table("meetings").insert({
         "matter_id": matter_id,
@@ -381,7 +397,7 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
         "meeting_link": body.meeting_link,
         "status": "scheduled"
     }).execute().data[0]
-    
+
     await emit(EventType.MEETING_SCHEDULED, actor_id=user.id, matter_id=matter_id, payload={"meeting_id": r["id"]})
     return r
 
@@ -389,25 +405,24 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
 async def update_meeting(matter_id: str, meeting_id: str, body: MeetingUpdate, user: Auth):
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    
+
     # Check existing meeting status to prevent double-counting sessions_used
     existing = db.table("meetings").select("status").eq("id", meeting_id).eq("matter_id", matter_id).single().execute().data
     if not existing:
         raise NotFound("Meeting")
-        
+
     data = body.model_dump(exclude_none=True)
     if "scheduled_at" in data and data["scheduled_at"]:
         data["scheduled_at"] = data["scheduled_at"].isoformat()
-        
+
     r = db.table("meetings").update(data).eq("id", meeting_id).eq("matter_id", matter_id).execute()
-    
-    # If transitioning to completed, increment sessions_used on consultation
+
+    # If transitioning to completed, atomically increment sessions_used via RPC.
+    # Using an RPC avoids the read-then-write race where two concurrent completions
+    # both read the same sessions_used value and one increment gets lost.
     if body.status == "completed" and existing["status"] != "completed":
-        consultation = db.table("consultations").select("id, sessions_used").eq("matter_id", matter_id).execute().data
-        if consultation:
-            c = consultation[0]
-            db.table("consultations").update({"sessions_used": c["sessions_used"] + 1}).eq("id", c["id"]).execute()
+        db.rpc("increment_sessions_used", {"p_matter_id": matter_id}).execute()
         await emit(EventType.MEETING_COMPLETED, actor_id=user.id, matter_id=matter_id, payload={"meeting_id": meeting_id})
-    
+
     return r.data[0]
 

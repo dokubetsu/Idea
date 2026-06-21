@@ -79,7 +79,7 @@ class SMSChannel(BaseNotificationChannel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _build_sms_text(subject: str, body: str) -> str:
     """Build a concise SMS message (≤ 160 chars) from subject + body."""
-    prefix = f"[Nyay] {subject}: "
+    prefix = f"[LeAd] {subject}: "
     budget = 160 - len(prefix)
     first_sentence = body.split(".")[0].strip() if body else ""
     truncated = first_sentence[:budget] if len(first_sentence) > budget else first_sentence

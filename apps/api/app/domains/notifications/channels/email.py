@@ -79,7 +79,7 @@ class EmailChannel(BaseNotificationChannel):
 
 # ── Minimal text-to-HTML fallback ─────────────────────────────────────────────
 def _text_to_html(body: str, subject: str) -> str:
-    """Wraps plain-text body in the branded Nyay email layout."""
+    """Wraps plain-text body in the branded LeAd email layout."""
     lines = "".join(f"<p style='margin:0 0 12px'>{line}</p>" for line in body.split("\n") if line.strip())
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -95,7 +95,7 @@ def _text_to_html(body: str, subject: str) -> str:
         <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#112236,#0D1B2A);padding:28px 32px;border-bottom:1px solid rgba(201,168,76,0.2);">
-            <span style="font-size:22px;font-weight:700;color:#C9A84C;letter-spacing:0.5px;">⚖ Nyay</span>
+            <span style="font-size:22px;font-weight:700;color:#C9A84C;letter-spacing:0.5px;">⚖ LeAd</span>
           </td>
         </tr>
         <!-- Body -->
@@ -109,7 +109,7 @@ def _text_to_html(body: str, subject: str) -> str:
         <tr>
           <td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
             <p style="margin:0;font-size:11px;color:#6B7280;">
-              © Nyay Legal Platform &nbsp;·&nbsp;
+              © LeAd Legal Platform &nbsp;·&nbsp;
               <a href="http://localhost:3001/user/notifications" style="color:#C9A84C;text-decoration:none;">Manage notification preferences</a>
             </p>
           </td>

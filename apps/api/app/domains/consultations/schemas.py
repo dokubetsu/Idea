@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 ConsultationPackage = Literal['free', 'starter', 'full']
 ConsultationStatus = Literal['pending', 'confirmed', 'completed', 'cancelled', 'declined']
@@ -11,6 +11,22 @@ class ConsultationCreate(BaseModel):
     lawyer_id: str | None = None
     package: ConsultationPackage = 'free'
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def lawyer_required_for_paid_packages(self) -> "ConsultationCreate":
+        """
+        Paid packages (starter, full) must have an explicit lawyer_id.
+        Free packages auto-assign a lawyer when none is provided.
+        Without this check, a paid booking without lawyer_id would silently create an
+        invalid row (violating the 'lawyer_id nullable only when package=free' invariant).
+        """
+        if self.package in ("starter", "full") and not self.lawyer_id:
+            raise ValueError(
+                f"A lawyer_id is required when booking a '{self.package}' package. "
+                "Please select a lawyer before proceeding."
+            )
+        return self
+
 
 class ConsultationOut(BaseModel):
     id: str

@@ -15,9 +15,6 @@ async def handle_domain_event(event_type: str | EventType, actor_id: str | None,
         except ValueError:
             pass
 
-    print(f"[DEBUG SUBSCRIBER] event_type: {event_type}, type: {type(event_type)}")
-    print(f"[DEBUG SUBSCRIBER] matches HEARING_SCHEDULED: {event_type == EventType.HEARING_SCHEDULED}")
-    print(f"[DEBUG SUBSCRIBER] HEARING_SCHEDULED enum: {EventType.HEARING_SCHEDULED}, value: {EventType.HEARING_SCHEDULED.value}")
 
     db = database.get_db()
     try:
