@@ -190,7 +190,7 @@ export default function RootPage() {
   }, []);
 
   return (
-    <div className="dark-canvas min-h-screen relative font-sans selection:bg-brand-gold/30 selection:text-white">
+    <div className="dark-canvas min-h-screen relative font-sans selection:bg-brand-gold/30 selection:text-white overflow-x-hidden">
       {/* Background Grids & Orbs */}
       <div className="absolute inset-0 legal-grid opacity-70 pointer-events-none z-0" />
       <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] orb-gold rounded-full pointer-events-none z-0" />
@@ -255,7 +255,7 @@ export default function RootPage() {
       </header>
 
       {/* ─── Section 1: Hero Section ─────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-6 pt-24 z-20">
+      <section className="relative min-h-screen flex flex-col justify-center items-center text-center px-4 sm:px-6 pt-32 lg:pt-24 z-20">
         <div className="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
           {/* Tagline Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-brand-gold/20 bg-brand-gold/5 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-gold">
@@ -264,7 +264,7 @@ export default function RootPage() {
           </div>
 
           {/* Hero Headline */}
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl font-black tracking-tight leading-[1.05] text-white">
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] text-white">
             Justice, <br />
             <span className="gold-text">reimagined</span> <br />
             for the AI era.
@@ -300,7 +300,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 2: Try LeAd Simulator (AI Demo) ─────────────────── */}
-      <section id="demo" className="py-24 px-6 relative z-20 reveal-hidden">
+      <section id="demo" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Interactive Sandbox</p>
@@ -418,7 +418,7 @@ export default function RootPage() {
                       {simStep === "draft" ? <SpinnerSmall /> : <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />}
                     </div>
                     {simStep !== "draft" && (
-                      <div className="bg-[#fdfbf7] text-[#1a1a1a] rounded-lg p-3 max-h-[100px] overflow-y-auto font-serif text-[9px] leading-relaxed border-l-2 border-red-700/30">
+                      <div className="bg-[#fdfbf7] text-[#1a1a1a] rounded-lg p-3 max-h-[120px] overflow-y-auto font-serif text-[9px] leading-relaxed border-l-2 border-red-700/30 whitespace-pre-wrap">
                         {simulatorPreset.draft}
                       </div>
                     )}
@@ -450,7 +450,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 3: Cinematic Problem-Solution ───────────────────── */}
-      <section className="py-24 px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
+      <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Old Paradigm vs. Next Gen</p>
@@ -459,7 +459,7 @@ export default function RootPage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Old World Card */}
-            <div className="relative overflow-hidden rounded-2xl border border-red-500/10 bg-red-950/5 p-8 space-y-5 transition-all duration-300 hover:border-red-500/20 group">
+            <div className="relative overflow-hidden rounded-2xl border border-red-500/10 bg-red-950/5 p-6 sm:p-8 space-y-5 transition-all duration-300 hover:border-red-500/20 group">
               <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
                 <AlertTriangle className="h-5 w-5" />
               </div>
@@ -481,7 +481,7 @@ export default function RootPage() {
             </div>
 
             {/* Modern Card */}
-            <div className="relative overflow-hidden rounded-2xl border border-brand-gold/15 bg-brand-gold/4 p-8 space-y-5 transition-all duration-300 hover:border-brand-gold/30 group">
+            <div className="relative overflow-hidden rounded-2xl border border-brand-gold/15 bg-brand-gold/4 p-6 sm:p-8 space-y-5 transition-all duration-300 hover:border-brand-gold/30 group">
               <div className="h-10 w-10 rounded-xl bg-brand-gold/15 flex items-center justify-center text-brand-gold border border-brand-gold/30">
                 <Sparkles className="h-5 w-5" />
               </div>
@@ -506,7 +506,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 4: AI Pipeline Network Graph ─────────────────────── */}
-      <section id="pipeline" className="py-24 px-6 relative z-20 reveal-hidden">
+      <section id="pipeline" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Processing Flow</p>
@@ -550,7 +550,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 5: 3D Mouse Tilt Dashboard Mockup ────────────────── */}
-      <section className="py-24 px-6 relative z-20 reveal-hidden">
+      <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Next-Gen Interface</p>
@@ -565,7 +565,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 6: Capabilities Bento Grid ──────────────────────── */}
-      <section id="features" className="py-24 px-6 relative z-20 reveal-hidden">
+      <section id="features" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Platform Features</p>
@@ -609,7 +609,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 7: AI Registry Router ───────────────────────────── */}
-      <section id="registry" className="py-24 px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
+      <section id="registry" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Vendor Agnostic</p>
@@ -671,7 +671,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 8: Metrics Counter ──────────────────────────────── */}
-      <section id="stats" className="py-24 px-6 relative z-20 reveal-hidden">
+      <section id="stats" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-3 text-center">
           <MetricWidget value={15} suffix="k+" label="Advocate Hours Saved" />
           <MetricWidget value={98} suffix="%" label="Assessment Accuracy" />
@@ -680,7 +680,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 9: Testimonials Placeholder (Sleek Beta Strip) ──── */}
-      <section className="py-24 px-6 relative z-20 reveal-hidden max-w-4xl mx-auto text-center space-y-6">
+      <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden max-w-4xl mx-auto text-center space-y-6">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Beta Access Program</p>
         <blockquote className="font-serif text-2xl md:text-3xl font-medium text-white/85 leading-relaxed">
           "LeAd's AI extracted facts and mapped dates correctly. The Vakalatnama populated instantly with my RERA claims."
@@ -689,7 +689,7 @@ export default function RootPage() {
       </section>
 
       {/* ─── Section 10: Immersive CTA ───────────────────────────────── */}
-      <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 relative z-20 reveal-hidden">
+      <section className="min-h-screen flex flex-col justify-center items-center text-center px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-4xl mx-auto space-y-8">
           <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-tight text-white leading-tight">
             Justice shouldn't depend <br />
