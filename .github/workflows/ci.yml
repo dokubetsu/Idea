@@ -30,6 +30,10 @@ jobs:
       run: |
         export PYTHONPATH=apps/api
         pytest apps/api
+      env:
+        # CRON_SECRET is required (no default) to prevent hardcoded fallbacks in source.
+        # A dummy value is fine for CI — real value lives in Render's environment config.
+        CRON_SECRET: ci-test-secret
 
   frontend-build:
     runs-on: ubuntu-latest
