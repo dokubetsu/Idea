@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { 
-  Scale, ArrowRight, Shield, Clock, Sparkles, Cpu, FileText, 
+  Scale, ArrowRight, Clock, Sparkles, Cpu, FileText, 
   CheckCircle2, Activity, UserCheck, ChevronRight, AlertTriangle, 
-  Layers, Network, Database, Copy, Landmark, Flame, TrendingUp, HelpCircle
+  Database, Landmark, TrendingUp,
+  Menu, X
 } from "lucide-react";
 
 // ─── Interfaces & Presets ──────────────────────────────────────────
@@ -82,8 +84,27 @@ const PRESETS: PresetDemo[] = [
 ];
 
 export default function RootPage() {
-  // ─── Navbar States ───────────────────────────────────────────────
+  // ─── Navbar & Menu States ────────────────────────────────────────
   const [scrollState, setScrollState] = useState<"top" | "pill" | "compact">("top");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -165,6 +186,7 @@ export default function RootPage() {
   useEffect(() => {
     // Initial trigger
     triggerSimulation("cheque");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -206,7 +228,7 @@ export default function RootPage() {
             <a href="#stats" className="hover:text-white transition-colors">Metrics</a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
               className="text-[13px] font-bold text-white/70 hover:text-white px-4 py-2 transition-all"
@@ -220,6 +242,15 @@ export default function RootPage() {
               Start Free Journey
             </Link>
           </div>
+
+          {/* Hamburger Menu Toggle */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex md:hidden h-10 w-10 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/8 text-brand-gold hover:bg-brand-gold/15 transition-all"
+            aria-label="Open mobile navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
@@ -233,7 +264,7 @@ export default function RootPage() {
           </div>
 
           {/* Hero Headline */}
-          <h1 className="font-serif text-6xl md:text-8xl font-black tracking-tight leading-[1.05] text-white">
+          <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl font-black tracking-tight leading-[1.05] text-white">
             Justice, <br />
             <span className="gold-text">reimagined</span> <br />
             for the AI era.
@@ -343,7 +374,7 @@ export default function RootPage() {
                       )}
                     </div>
                     {simStep !== "analyze" && (
-                      <div className="grid gap-2 grid-cols-2">
+                      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
                         {simulatorPreset.facts.map((fact) => (
                           <div key={fact.key} className="bg-[#020509] border border-white/5 rounded-lg p-2.5">
                             <p className="text-[9px] uppercase tracking-wider text-white/45">{fact.label}</p>
@@ -366,7 +397,7 @@ export default function RootPage() {
                     {simStep !== "timeline" && (
                       <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
                         {simulatorPreset.timeline.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center bg-[#020509] border border-white/5 rounded-lg p-2 text-xs">
+                          <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center items-start gap-1.5 bg-[#020509] border border-white/5 rounded-lg p-2 text-xs">
                             <span className="text-white/60">{item.label}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                               item.tone === "green" ? "bg-emerald-500/10 text-emerald-400" :
@@ -485,8 +516,8 @@ export default function RootPage() {
             </p>
           </div>
 
-          {/* SVG Pipeline */}
-          <div className="w-full overflow-x-auto custom-scrollbar py-6">
+          {/* Desktop SVG Pipeline */}
+          <div className="hidden md:block w-full overflow-x-auto custom-scrollbar py-6">
             <div className="min-w-[800px] flex justify-between items-center relative py-6 px-10">
               {/* Connecting SVG Path Line */}
               <svg className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full h-8 z-0 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
@@ -501,6 +532,19 @@ export default function RootPage() {
               <PipelineNode label="Assessment" desc="Risk probability metrics" icon={TrendingUp} />
               <PipelineNode label="Lawyer" desc="Matched secure CRM" icon={UserCheck} />
             </div>
+          </div>
+
+          {/* Mobile Stacked Pipeline */}
+          <div className="flex md:hidden flex-col gap-8 relative py-4 pl-4">
+            {/* Vertical Line */}
+            <div className="absolute left-[40px] top-8 bottom-8 w-[2px] border-l border-dashed border-brand-gold/30 z-0" />
+            
+            <PipelineNodeVertical label="Conversation" desc="Voice or plain text" icon={Cpu} active />
+            <PipelineNodeVertical label="Facts" desc="Extracted coordinates" icon={Database} active />
+            <PipelineNodeVertical label="Validation" desc="Check limits & leaps" icon={Scale} active />
+            <PipelineNodeVertical label="Workflow" desc="Build Form M / notices" icon={FileText} />
+            <PipelineNodeVertical label="Assessment" desc="Risk probability metrics" icon={TrendingUp} />
+            <PipelineNodeVertical label="Lawyer" desc="Matched secure CRM" icon={UserCheck} />
           </div>
         </div>
       </section>
@@ -529,7 +573,7 @@ export default function RootPage() {
           </div>
 
           {/* Bento Grid */}
-          <div className="grid gap-6 md:grid-cols-6 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-6 lg:grid-cols-3">
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-1"
               title="Conversational AI Intake"
@@ -576,7 +620,7 @@ export default function RootPage() {
           </div>
 
           {/* Registry Diagram Block */}
-          <div className="max-w-3xl mx-auto bg-[#020509] border border-white/5 rounded-2xl p-8 space-y-8 relative overflow-hidden">
+          <div className="max-w-3xl mx-auto bg-[#020509] border border-white/5 rounded-2xl p-5 sm:p-8 space-y-8 relative overflow-hidden">
             <div className="flex justify-between items-center relative z-10">
               <div className="space-y-1">
                 <p className="text-xs font-bold text-white uppercase tracking-wider">AI Request Pipeline</p>
@@ -667,6 +711,96 @@ export default function RootPage() {
       <footer className="py-12 border-t border-white/5 text-center text-xs text-white/30 font-mono relative z-20">
         <p>© 2026 LeAd · Privacy Policy · Terms of Service · Indian Legal Tech OS</p>
       </footer>
+
+      {isMobileMenuOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#050b14]/70 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Content */}
+          <div className="relative flex w-full max-w-xs flex-1 flex-col bg-[#050b14]/95 border-r border-white/5 p-6 text-white shadow-2xl transition-transform duration-300">
+            {/* Close Button */}
+            <div className="absolute right-4 top-4">
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/50 hover:bg-white/5 hover:text-white"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Logo */}
+            <div className="flex items-center gap-3 border-b border-white/8 pb-5 pt-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/15 border border-brand-gold/25">
+                <Scale className="h-4 w-4 text-brand-gold" />
+              </div>
+              <span className="font-serif text-2xl font-bold tracking-tight">LeAd</span>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="flex-1 space-y-2 overflow-y-auto py-8">
+              <a
+                href="#demo"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-semibold tracking-wide uppercase text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                Demo
+              </a>
+              <a
+                href="#pipeline"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-semibold tracking-wide uppercase text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                Pipeline
+              </a>
+              <a
+                href="#features"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-semibold tracking-wide uppercase text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                Capabilities
+              </a>
+              <a
+                href="#registry"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-semibold tracking-wide uppercase text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                AI Registry
+              </a>
+              <a
+                href="#stats"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-semibold tracking-wide uppercase text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                Metrics
+              </a>
+            </nav>
+
+            {/* CTAs */}
+            <div className="border-t border-white/8 pt-6 space-y-3">
+              <Link
+                href="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex w-full items-center justify-center rounded-xl border border-white/10 py-3 text-xs font-bold uppercase tracking-wider text-white/70 hover:bg-white/5 hover:text-white transition-all"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="shimmer-btn flex w-full items-center justify-center rounded-xl bg-brand-gold py-3 text-xs font-bold uppercase tracking-wider text-[#050b14] hover:bg-brand-gold-light transition-all"
+              >
+                Start Free Journey
+              </Link>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -698,6 +832,24 @@ function PipelineNode({ label, desc, icon: Icon, active = false }: { label: stri
       <div>
         <p className={`text-xs font-bold ${active ? "text-white" : "text-white/45"}`}>{label}</p>
         <p className="text-[9px] text-white/30 mt-0.5 max-w-[110px] leading-tight">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function PipelineNodeVertical({ label, desc, icon: Icon, active = false }: { label: string; desc: string; icon: React.ElementType; active?: boolean }) {
+  return (
+    <div className="flex items-center gap-5 relative z-10 group">
+      <div className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center border transition-all duration-300 ${
+        active 
+          ? "bg-brand-gold border-brand-gold text-[#050b14] shadow-md shadow-brand-gold/15" 
+          : "bg-[#020509] border-white/10 text-white/40 group-hover:border-white/20"
+      }`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="text-left">
+        <p className={`text-sm font-bold ${active ? "text-white" : "text-white/45"}`}>{label}</p>
+        <p className="text-[11px] text-white/40 mt-0.5 max-w-[220px] leading-snug">{desc}</p>
       </div>
     </div>
   );
