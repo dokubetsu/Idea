@@ -2,10 +2,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Scale, ChevronRight, Clock } from "lucide-react";
+import { Plus, Scale, ChevronRight, Clock, ChevronLeft } from "lucide-react";
 import { useMatters } from "@/features/matters/hooks/useMatters";
 import { IntakeWizard } from "@/features/intake/components/IntakeWizard";
 import type { Matter } from "@/entities/types";
+import { Button } from "@/shared/components/ui";
 
 const STATUS_LABEL: Record<string, string> = {
   intake: "Setting up",
@@ -48,21 +49,56 @@ type FilterTab = "all" | "active" | "waiting" | "resolved";
 
 export default function UserCasesPage() {
   const router = useRouter();
-  const { data: matters = [], isLoading } = useMatters();
   const [showWizard, setWizard] = useState(false);
   const [tab, setTab] = useState<FilterTab>("all");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [history, setHistory] = useState<string[]>([]);
+  const limit = 10;
+
+  const { data: matters = [], isLoading } = useMatters({
+    limit: String(limit),
+    ...(cursor ? { cursor } : {}),
+  });
 
   const filtered = matters.filter((m) => {
     if (tab === "all") return true;
     if (tab === "active") return ["active", "assessment", "matching", "intake"].includes(m.status);
-    if (tab === "waiting") return (m as Matter & { case_health?: string }).case_health === "waiting_on_client";
+    if (tab === "waiting") return m.matter_health === "waiting_on_client";
     if (tab === "resolved") return ["resolved", "archived"].includes(m.status);
     return true;
   });
 
   const waitingCount = matters.filter(
-    (m) => (m as Matter & { case_health?: string }).case_health === "waiting_on_client"
+    (m) => m.matter_health === "waiting_on_client"
   ).length;
+
+  const handleNext = () => {
+    if (matters.length > 0) {
+      const lastItem = matters[matters.length - 1];
+      setHistory((prev) => [...prev, cursor ?? "first"]);
+      setCursor(lastItem.created_at);
+    }
+  };
+
+  const handleBack = () => {
+    const newHistory = [...history];
+    const prevCursor = newHistory.pop();
+    setHistory(newHistory);
+    if (prevCursor === "first" || prevCursor === undefined) {
+      setCursor(undefined);
+    } else {
+      setCursor(prevCursor);
+    }
+  };
+
+  const handleTabChange = (t: FilterTab) => {
+    setTab(t);
+    setCursor(undefined);
+    setHistory([]);
+  };
+
+  const hasNext = matters.length === limit;
+  const hasPrev = history.length > 0;
 
   return (
     <>
@@ -90,7 +126,7 @@ export default function UserCasesPage() {
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => handleTabChange(t)}
               className={`relative rounded-xl px-3.5 py-1.5 text-[11px] font-semibold transition-all capitalize ${
                 tab === t
                   ? "bg-brand-gold text-brand-blue-dark"
@@ -135,8 +171,37 @@ export default function UserCasesPage() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-brand-gold/8 rounded-xl border border-brand-gold/12 bg-base-100 overflow-hidden">
-            {filtered.map((m) => <CaseRow key={m.id} matter={m as Matter & { case_health?: string }} />)}
+          <div className="space-y-4">
+            <div className="divide-y divide-brand-gold/8 rounded-xl border border-brand-gold/12 bg-base-100 overflow-hidden">
+              {filtered.map((m) => <CaseRow key={m.id} matter={m} />)}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-brand-blue-light/50">
+                Showing page {history.length + 1}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleBack}
+                  disabled={!hasPrev}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Back
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={!hasNext}
+                  className="flex items-center gap-1"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -155,8 +220,8 @@ export default function UserCasesPage() {
   );
 }
 
-function CaseRow({ matter: m }: { matter: Matter & { case_health?: string } }) {
-  const health = HEALTH_CONFIG[m.case_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
+function CaseRow({ matter: m }: { matter: Matter }) {
+  const health = HEALTH_CONFIG[m.matter_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
   const statusLabel = STATUS_LABEL[m.status] ?? m.status;
   const dot = STATUS_DOT[m.status] ?? "bg-base-300";
   const catLabel = CATEGORY_LABEL[m.category] ?? m.category.replace("_", " ");

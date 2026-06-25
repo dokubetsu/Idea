@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Cormorant_Garamond, DM_Mono } from "next/font/google";
 import "@/app/globals.css";
 import { QueryProvider } from "@/shared/components/QueryProvider";
+import { ToastProvider } from "@/shared/components/ui";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -37,6 +38,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 function Providers({ children }: { children: React.ReactNode }) {
   // TanStack Query provider — client component wrapper
-  return <QueryProvider>{children}</QueryProvider>;
+  return (
+    <QueryProvider>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </QueryProvider>
+  );
 }
 

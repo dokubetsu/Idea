@@ -58,7 +58,7 @@ def create_notification(
         "type":    type_name,
         "data":    data,
         "action":  action,
-        "status":  "UNREAD",
+        "status":  "unread",
     }
     if idempotency_key:
         notif_data["idempotency_key"] = idempotency_key
@@ -98,7 +98,7 @@ def create_notification(
 
     # 4. Insert delivery records (one per enabled channel)
     deliveries = [
-        {"notification_id": notif_id, "channel": ch, "status": "PENDING"}
+        {"notification_id": notif_id, "channel": ch, "status": "pending"}
         for ch in channels
     ]
     if deliveries:
@@ -130,7 +130,7 @@ def get_notifications(
 def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
     resp = (
         db.table("notifications")
-        .update({"status": "READ"})
+        .update({"status": "read"})
         .eq("id", notification_id)
         .eq("user_id", user_id)
         .execute()
@@ -144,9 +144,9 @@ def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
 def mark_all_as_read(db, user_id: str) -> List[Dict[str, Any]]:
     resp = (
         db.table("notifications")
-        .update({"status": "READ"})
+        .update({"status": "read"})
         .eq("user_id", user_id)
-        .eq("status", "UNREAD")
+        .eq("status", "unread")
         .execute()
     )
     return resp.data or []

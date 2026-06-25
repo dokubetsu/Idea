@@ -13,11 +13,11 @@ log = logging.getLogger(__name__)
 
 # Default channels per notification type (used when no preference row exists)
 DEFAULT_CHANNELS: Dict[str, List[DeliveryChannel]] = {
-    "matter_assigned":    ["IN_APP", "EMAIL", "SMS"],
-    "hearing_scheduled":  ["IN_APP", "EMAIL", "SMS"],
-    "milestone_completed": ["IN_APP", "EMAIL"],
-    "comment_added":      ["IN_APP", "EMAIL"],
-    "generic":            ["IN_APP", "EMAIL"],
+    "matter_assigned":    ["in_app", "email", "sms"],
+    "hearing_scheduled":  ["in_app", "email", "sms"],
+    "milestone_completed": ["in_app", "email"],
+    "comment_added":      ["in_app", "email"],
+    "generic":            ["in_app", "email"],
 }
 
 
@@ -71,7 +71,7 @@ def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryCha
       - If no row exists                → use the default (keep it).
     - IN_APP is always included (cannot be opted out of).
     """
-    defaults = list(DEFAULT_CHANNELS.get(type_name, ["IN_APP", "EMAIL"]))
+    defaults = list(DEFAULT_CHANNELS.get(type_name, ["in_app", "email"]))
 
     # Fetch only rows for this user + type to keep the query tight
     resp = (
@@ -85,7 +85,7 @@ def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryCha
 
     effective: List[DeliveryChannel] = []
     for ch in defaults:
-        if ch == "IN_APP":
+        if ch == "in_app":
             effective.append(ch)  # always on
         elif prefs.get(ch, True):  # default True when no row
             effective.append(ch)

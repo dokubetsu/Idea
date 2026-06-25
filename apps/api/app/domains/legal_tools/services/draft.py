@@ -168,13 +168,18 @@ class DocumentDraftService:
 
         # 4. Process variables for templates
         today = date.today()
-        client_name = client_profile.get("full_name") or "[Client Name]"
-        client_city = client_profile.get("city") or "[City]"
-        client_state = client_profile.get("state") or "[State]"
+        client_name = _escape(client_profile.get("full_name") or "[Client Name]")
+        client_city = _escape(client_profile.get("city") or "[City]")
+        client_state = _escape(client_profile.get("state") or "[State]")
         client_address = f"{client_city}, {client_state}"
 
-        opponent_name = facts_dict.get("opponent_name") or facts_dict.get("builder_name") or "[Opponent Name]"
-        opponent_address = facts_dict.get("property_location") or "[Opponent Address]"
+        opponent_name = _escape(facts_dict.get("opponent_name") or facts_dict.get("builder_name") or "[Opponent Name]")
+        opponent_address = _escape(facts_dict.get("property_location") or "[Opponent Address]")
+        
+        lawyer_name = _escape(lawyer_name)
+        bar_council = _escape(bar_council)
+        lawyer_address = _escape(lawyer_address)
+        matter_title = _escape(matter.get("title") or "")
 
         # Generate Vakalatnama
         if document_type == "vakalatnama":
@@ -182,7 +187,7 @@ class DocumentDraftService:
                 client_name=client_name,
                 opponent_name=opponent_name,
                 category=matter["category"].replace("_", " ").title(),
-                matter_title=matter["title"],
+                matter_title=matter_title,
                 matter_id=matter_id,
                 lawyer_name=lawyer_name,
                 bar_council_number=bar_council,

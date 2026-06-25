@@ -21,7 +21,7 @@ export function NotificationBell() {
   // Fetch unread notifications
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["notifications", "unread"],
-    queryFn: () => getNotifications("UNREAD", 5),
+    queryFn: () => getNotifications("unread", 5),
     refetchInterval: false, // Disables active polling since we use SSE!
   });
 
@@ -109,7 +109,7 @@ export function NotificationBell() {
 
   const handleNotificationClick = async (notif: Notification) => {
     setOpen(false);
-    if (notif.status === "UNREAD") {
+    if (notif.status === "unread") {
       await markReadMutation.mutateAsync(notif.id);
     }
     if (notif.action?.url) {

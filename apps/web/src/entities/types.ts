@@ -2,6 +2,7 @@
 
 export type UserRole    = "user" | "lawyer" | "admin";
 export type MatterStatus = "draft"|"intake"|"assessment"|"matching"|"active"|"resolved"|"archived";
+export type MatterHealthStatus = "waiting_on_client"|"waiting_on_lawyer"|"waiting_on_court"|"in_progress";
 export type MatterCategory = "consumer"|"cheque_bounce"|"property"|"family"|"labour"|"criminal"|"cyber"|"rera"|"other";
 export type MatterPriority = "low"|"medium"|"high"|"urgent";
 export type ConsultationPackage = "free" | "starter" | "full";
@@ -71,6 +72,7 @@ export interface Matter {
   category: MatterCategory;
   status: MatterStatus;
   priority: MatterPriority;
+  matter_health: MatterHealthStatus;
   court_name?: string;
   case_number?: string;
   next_hearing_at?: string;
@@ -162,12 +164,12 @@ export interface Notification {
     label: string;
     url: string;
   };
-  status: "UNREAD" | "READ" | "DISMISSED";
+  status: "unread" | "read" | "dismissed";
   created_at: string;
   idempotency_key?: string | null;
 }
 
-export type NotificationChannel = "EMAIL" | "SMS" | "IN_APP";
+export type NotificationChannel = "email" | "sms" | "in_app";
 export type NotificationType =
   | "matter_assigned"
   | "hearing_scheduled"
@@ -205,4 +207,33 @@ export interface Consultation {
   updated_at: string;
   user_name?: string;
   lawyer_name?: string;
+}
+
+export interface PendingLawyer {
+  id: string;
+  bar_council_id?: string;
+  enrollment_state?: string;
+  experience_years?: number;
+  specializations?: string[];
+  profiles: {
+    full_name: string;
+    city: string;
+    state: string;
+    phone: string;
+    created_at: string;
+  };
+}
+
+export interface AdminMatter {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+  created_at: string;
+  up?: {
+    full_name: string;
+  };
+  lp?: {
+    full_name: string;
+  };
 }

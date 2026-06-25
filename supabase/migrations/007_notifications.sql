@@ -4,40 +4,40 @@
 
 -- 1. Create enum types if not exists
 DO $$ BEGIN
-  CREATE TYPE public.notification_status AS ENUM ('UNREAD', 'READ', 'DISMISSED');
+  CREATE TYPE public.notification_status AS ENUM ('unread', 'read', 'dismissed');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE public.delivery_channel AS ENUM ('EMAIL', 'SMS', 'IN_APP');
+  CREATE TYPE public.delivery_channel AS ENUM ('email', 'sms', 'in_app');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE public.delivery_status AS ENUM ('PENDING', 'SENT', 'FAILED');
+  CREATE TYPE public.delivery_status AS ENUM ('pending', 'sent', 'failed');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
 -- 2. Create notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (
-  id          UUID                       PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID                       PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID                       NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   type        TEXT                       NOT NULL,
   data        JSONB                      NOT NULL DEFAULT '{}'::jsonb,
   action      JSONB,                     -- complex action object: { "label": "View Matter", "url": "/user/matters/<id>" }
-  status      public.notification_status NOT NULL DEFAULT 'UNREAD',
+  status      public.notification_status NOT NULL DEFAULT 'unread',
   created_at  TIMESTAMPTZ                NOT NULL DEFAULT NOW()
 );
 
 -- 3. Create notification_deliveries table
 CREATE TABLE IF NOT EXISTS public.notification_deliveries (
-  id              UUID                    PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID                    PRIMARY KEY DEFAULT gen_random_uuid(),
   notification_id UUID                    NOT NULL REFERENCES public.notifications(id) ON DELETE CASCADE,
   channel         public.delivery_channel NOT NULL,
-  status          public.delivery_status  NOT NULL DEFAULT 'PENDING',
+  status          public.delivery_status  NOT NULL DEFAULT 'pending',
   error_msg       TEXT,
   delivered_at    TIMESTAMPTZ,
   created_at      TIMESTAMPTZ             NOT NULL DEFAULT NOW(),

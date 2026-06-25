@@ -36,7 +36,7 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
         
         # 4. Assert notification row created
         assert notif_id is not None
-        assert notif["status"] == "UNREAD"
+        assert notif["status"] == "unread"
         
         # 5. Check if SSE broadcaster received the event (since trigger_deliveries broadcasts it)
         # Wait a small moment for async task to process
@@ -61,7 +61,7 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
         # Mark read
         read_res = await client.patch(f"/api/v1/notifications/{notif_id}/read")
         assert read_res.status_code == 200
-        assert read_res.json()["status"] == "READ"
+        assert read_res.json()["status"] == "read"
         
     finally:
         # Clean up queue subscription and DB rows

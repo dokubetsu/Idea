@@ -6,7 +6,7 @@ import {
 } from "@/entities/types";
 
 export async function getNotifications(
-  status?: "UNREAD" | "READ" | "DISMISSED",
+  status?: "unread" | "read" | "dismissed",
   limit = 20,
   offset = 0
 ): Promise<Notification[]> {

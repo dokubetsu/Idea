@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Literal, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
-NotificationStatus = Literal['UNREAD', 'READ', 'DISMISSED']
-DeliveryChannel = Literal['EMAIL', 'SMS', 'IN_APP']
-DeliveryStatus = Literal['PENDING', 'SENT', 'FAILED']
+NotificationStatus = Literal['unread', 'read', 'dismissed']
+DeliveryChannel = Literal['email', 'sms', 'in_app']
+DeliveryStatus = Literal['pending', 'sent', 'failed']
 
 class ActionModel(BaseModel):
     label: str

@@ -25,11 +25,12 @@ async def list_matters(
     user: Auth,
     status: str | None = Query(default=None),
     category: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    per_page: int = Query(default=20, ge=1, le=100),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    page: int | None = Query(default=None, ge=1),
+    per_page: int | None = Query(default=None, ge=1, le=100),
 ):
     db  = get_db()
-    off = (page - 1) * per_page
     q   = db.table("matters").select(SELECT)
 
     if user.role == UserRole.USER:
@@ -43,7 +44,15 @@ async def list_matters(
     if category:
         q = q.eq("category", category)
 
-    rows = q.order("created_at", desc=True).range(off, off + per_page - 1).execute().data or []
+    if cursor:
+        q = q.lt("created_at", cursor)
+        rows = q.order("created_at", desc=True).limit(limit).execute().data or []
+    else:
+        p = page or 1
+        pp = per_page or limit
+        off = (p - 1) * pp
+        rows = q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
+
     return [MatterOut(**enrich(r)) for r in rows]
 
 

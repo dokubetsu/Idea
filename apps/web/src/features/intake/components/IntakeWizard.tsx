@@ -1,18 +1,24 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  AlertTriangle, ArrowLeft, ArrowRight, BookOpen,
-  CheckCircle, Clock, DollarSign, FileText, Gavel,
-  Scale, Sparkles, X, Zap, ChevronRight
-} from "lucide-react";
+import { Scale, X } from "lucide-react";
 import {
   useStartIntake, useUpdateFacts, useRunAssessment, useCommitIntake,
 } from "@/features/intake/hooks/useIntake";
 import type { IntakeSession, Assessment, FactType } from "@/entities/types";
+
+// ── Import Decomposed Step Components ─────────────────────────────
+import { DomainStep } from "./steps/DomainStep";
+import { SubtypeStep } from "./steps/SubtypeStep";
+import { CoreFactsStep } from "./steps/CoreFactsStep";
+import { CategoryFactsStep } from "./steps/CategoryFactsStep";
+import { DescribeStep } from "./steps/DescribeStep";
+import { AssessmentStep } from "./steps/AssessmentStep";
+import { ConfirmationStep } from "./steps/ConfirmationStep";
 
 // ── Step order ────────────────────────────────────────────────────
 type Step = "domain" | "subtype" | "core_facts" | "category_facts" | "describe" | "facts" | "assessment" | "confirm" | "done";
@@ -87,20 +93,8 @@ export type CategoryId =
   | "delayed_possession" | "project_cancellation" | "structural_defects" | "amenities_misrepresentation"
   | "accident_injury" | "accident_death" | "mv_insurance_rejection" | "hit_and_run" | "license_rc_dispute";
 
-// ── Core facts schema (always collected) ─────────────────────────
-const coreSchema = z.object({
-  incident_date:      z.string().min(1, "Required"),
-  incident_location:  z.string().min(2, "Required"),
-  opponent_name:      z.string().min(2, "Required"),
-  urgency_level:      z.enum(["exploring", "need_help_soon", "court_date_coming"]),
-  preferred_language: z.enum(["Hindi", "English", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali"]),
-  prior_legal_action: z.enum(["yes", "no"]),
-  prior_legal_detail: z.string().optional(),
-});
-type CoreForm = z.infer<typeof coreSchema>;
-
 // ── Sub-type specific fields ──────────────────────────────────────
-type FieldDef = {
+export type FieldDef = {
   key: string; label: string;
   type: "text" | "number" | "date" | "yesno" | "select";
   placeholder?: string; options?: string[];
@@ -301,12 +295,24 @@ export const SUBTYPE_FIELDS: Record<CategoryId, FieldDef[]> = {
   ],
 };
 
+// ── Core facts schema (always collected) ─────────────────────────
+export const coreSchema = z.object({
+  incident_date:      z.string().min(1, "Required"),
+  incident_location:  z.string().min(2, "Required"),
+  opponent_name:      z.string().min(2, "Required"),
+  urgency_level:      z.enum(["exploring", "need_help_soon", "court_date_coming"]),
+  preferred_language: z.enum(["Hindi", "English", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali"]),
+  prior_legal_action: z.enum(["yes", "no"]),
+  prior_legal_detail: z.string().optional(),
+});
+export type CoreForm = z.infer<typeof coreSchema>;
+
 // ── Description schema ────────────────────────────────────────────
-const describeSchema = z.object({
+export const describeSchema = z.object({
   title:       z.string().min(5, "Min 5 characters").max(200),
   description: z.string().min(10, "Add any extra details that weren't covered above"),
 });
-type DescribeForm = z.infer<typeof describeSchema>;
+export type DescribeForm = z.infer<typeof describeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────
 function toFact(key: string, value: any, label: string, type = "text") {
@@ -314,8 +320,58 @@ function toFact(key: string, value: any, label: string, type = "text") {
   return { key, value, type: mappedType, label, confidence: 1.0, source: "user" };
 }
 
-function urgencyLabel(v: string) {
+export function urgencyLabel(v: string) {
   return { exploring: "Just exploring options", need_help_soon: "I need help soon", court_date_coming: "Court date coming up" }[v] ?? v;
+}
+
+export function getSubtypeLabel(id: string | null): string {
+  if (!id) return "Case";
+  for (const d of DOMAINS) {
+    const found = d.subtypes.find(s => s.id === id);
+    if (found) return found.label;
+  }
+  return id;
+}
+
+function buildStructuredFacts(
+  core: CoreForm,
+  catFacts: Record<string, string>,
+  category: CategoryId
+): ReturnType<typeof toFact>[] {
+  const facts: ReturnType<typeof toFact>[] = [];
+
+  const coreLabels: Record<keyof CoreForm, string> = {
+    incident_date:      "When did this happen?",
+    incident_location:  "Where did this happen?",
+    opponent_name:      "Other party",
+    urgency_level:      "How urgent is this?",
+    preferred_language: "Preferred language",
+    prior_legal_action: "Has any FIR or case been filed?",
+    prior_legal_detail: "Prior legal action details",
+  };
+
+  for (const [key, val] of Object.entries(core)) {
+    if (!val) continue;
+    const label = coreLabels[key as keyof CoreForm] ?? key;
+    const displayVal = key === "urgency_level" ? urgencyLabel(val) : val;
+    const vtype = key === "incident_date" ? "date" : "string";
+    facts.push(toFact(key, displayVal, label, vtype));
+  }
+
+  // Category-specific fields
+  const subFields = SUBTYPE_FIELDS[category] ?? [];
+  for (const [key, val] of Object.entries(catFacts)) {
+    if (!val) continue;
+    const fieldDef = subFields.find(f => f.key === key);
+    const label = fieldDef?.label ?? key;
+    const vtype = fieldDef?.type === "number" ? "number" : fieldDef?.type === "date" ? "date" : "string";
+    facts.push(toFact(key, val, label, vtype));
+  }
+
+  // Tag the category
+  facts.push(toFact("category", category, "Case category", "string"));
+
+  return facts;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -457,8 +513,6 @@ export function IntakeWizard({
 
   const a = session?.assessment_result as Assessment | undefined;
 
-  const currentDomainObj = DOMAINS.find(d => d.id === selectedDomain);
-
   return (
     <div className="overflow-hidden rounded-2xl border border-brand-gold/15 bg-white shadow-2xl transition-all duration-300">
       {/* Progress bar */}
@@ -496,462 +550,69 @@ export function IntakeWizard({
       </div>
 
       <div className="custom-scrollbar max-h-[75vh] overflow-y-auto">
-
-        {/* ── Step 1: Domain ────────────────────────────────── */}
         {step === "domain" && (
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-brand-blue-light/60">
-              Choose the legal domain that your case falls under. Selecting Legal Notice will open the drafting tool.
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-              {DOMAINS.map((d) => (
-                <button key={d.id} type="button" onClick={() => onDomainSelect(d.id)}
-                  className="flex flex-col gap-2 rounded-xl border border-brand-gold/12 bg-base-100 p-4 text-left transition-all hover:border-brand-gold/35 hover:bg-brand-gold/5 hover:-translate-y-0.5 hover:shadow-sm group">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl">{d.icon}</span>
-                    <ChevronRight className="h-4 w-4 text-brand-blue-light/20 group-hover:text-brand-gold transition-colors" />
-                  </div>
-                  <p className="font-semibold text-[13px] text-brand-blue-dark">{d.label}</p>
-                  <p className="text-[11px] text-brand-blue-light/50 leading-4">{d.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+          <DomainStep onDomainSelect={onDomainSelect} />
         )}
 
-        {/* ── Step 1.5: Sub-type ────────────────────────────── */}
-        {step === "subtype" && currentDomainObj && (
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-brand-blue-light/60">
-              Select the specific sub-type that best matches your situation.
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {currentDomainObj.subtypes.map((sub) => (
-                <button key={sub.id} type="button" onClick={() => onSubtypeSelect(sub.id as CategoryId)}
-                  className="flex flex-col gap-1 rounded-xl border border-brand-gold/12 bg-base-100 p-4 text-left transition-all hover:border-brand-gold/35 hover:bg-brand-gold/5 hover:-translate-y-0.5 hover:shadow-sm">
-                  <p className="font-semibold text-[13px] text-brand-blue-dark">{sub.label}</p>
-                  <p className="text-[11px] text-brand-blue-light/50 leading-4">{sub.desc}</p>
-                </button>
-              ))}
-            </div>
-            <div className="flex pt-2">
-              <button type="button" onClick={() => setStep("domain")}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/15 px-4 py-2 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back to Domains
-              </button>
-            </div>
-          </div>
+        {step === "subtype" && selectedDomain && (
+          <SubtypeStep
+            selectedDomain={selectedDomain}
+            onSubtypeSelect={onSubtypeSelect}
+            onBack={() => setStep("domain")}
+          />
         )}
 
-        {/* ── Step 2: Core Facts ────────────────────────────── */}
         {step === "core_facts" && (
-          <form onSubmit={coreForm.handleSubmit(onCoreFactsSubmit)} className="space-y-5 p-6">
-            <p className="text-xs text-brand-blue-light/50">
-              These few questions apply to every case. No legal jargon — just tell us what happened.
-            </p>
-
-            <Field label="When did this happen?">
-              <input type="date" {...coreForm.register("incident_date")}
-                className="form-input" />
-              <Err msg={coreForm.formState.errors.incident_date?.message} />
-            </Field>
-
-            <Field label="Where did this happen? (city and state)">
-              <input type="text" placeholder="e.g. Bangalore, Karnataka"
-                {...coreForm.register("incident_location")}
-                className="form-input" />
-              <Err msg={coreForm.formState.errors.incident_location?.message} />
-            </Field>
-
-            <Field label="Who is on the other side? (person or company name)">
-              <input type="text" placeholder="e.g. Rakesh Sharma or HDFC Bank"
-                {...coreForm.register("opponent_name")}
-                className="form-input" />
-              <Err msg={coreForm.formState.errors.opponent_name?.message} />
-            </Field>
-
-            <Field label="How urgent is this?">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {(["exploring", "need_help_soon", "court_date_coming"] as const).map(v => (
-                  <label key={v}
-                    className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3 transition-all ${
-                      coreForm.watch("urgency_level") === v
-                        ? "border-brand-gold bg-brand-gold/8 text-brand-blue-dark"
-                        : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
-                    }`}>
-                    <input type="radio" value={v} {...coreForm.register("urgency_level")} className="sr-only" />
-                    <span className="text-[11px] font-semibold leading-4">{urgencyLabel(v)}</span>
-                  </label>
-                ))}
-              </div>
-              <Err msg={coreForm.formState.errors.urgency_level?.message} />
-            </Field>
-
-            <Field label="Preferred language for communication">
-              <select {...coreForm.register("preferred_language")} className="form-input">
-                {["English", "Hindi", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali"].map(l => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Has any FIR or court case been filed about this?">
-              <div className="flex flex-col sm:flex-row gap-3">
-                {(["no", "yes"] as const).map(v => (
-                  <label key={v}
-                    className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
-                      coreForm.watch("prior_legal_action") === v
-                        ? "border-brand-gold bg-brand-gold/8 font-semibold text-brand-blue-dark"
-                        : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
-                    }`}>
-                    <input type="radio" value={v} {...coreForm.register("prior_legal_action")} className="sr-only" />
-                    {v === "yes" ? "Yes" : "No"}
-                  </label>
-                ))}
-              </div>
-              {coreForm.watch("prior_legal_action") === "yes" && (
-                <input type="text" placeholder="Brief details (e.g. FIR at Bandra PS, Case No. 123/2025)"
-                  {...coreForm.register("prior_legal_detail")}
-                  className="form-input mt-2" />
-              )}
-            </Field>
-
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setStep("subtype")}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/15 px-4 py-2 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              <button type="submit"
-                className="shimmer-btn flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-brand-blue-dark transition-all hover:bg-brand-gold-light">
-                <ArrowRight className="h-4 w-4" /> Continue
-              </button>
-            </div>
-          </form>
+          <CoreFactsStep
+            form={coreForm}
+            onSubmit={onCoreFactsSubmit}
+            onBack={() => setStep("subtype")}
+          />
         )}
 
-        {/* ── Step 3: Category-specific Facts ──────────────── */}
         {step === "category_facts" && category && (
-          <div className="space-y-5 p-6">
-            <p className="text-xs text-brand-blue-light/50">
-              These details are specific to your type of case. Fill in what you know — skip anything that doesn't apply.
-            </p>
-
-            {(SUBTYPE_FIELDS[category] ?? []).map((field) => (
-              <Field key={field.key} label={field.label}>
-                {field.type === "yesno" ? (
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    {["yes", "no"].map(v => (
-                      <label key={v}
-                        className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
-                          catFacts[field.key] === v
-                            ? "border-brand-gold bg-brand-gold/8 font-semibold text-brand-blue-dark"
-                            : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
-                        }`}>
-                        <input type="radio" name={field.key} value={v}
-                          checked={catFacts[field.key] === v}
-                          onChange={() => setCatFacts(p => ({ ...p, [field.key]: v }))}
-                          className="sr-only" />
-                        {v === "yes" ? "Yes" : "No"}
-                      </label>
-                    ))}
-                  </div>
-                ) : field.type === "select" ? (
-                  <select value={catFacts[field.key] ?? ""}
-                    onChange={e => setCatFacts(p => ({ ...p, [field.key]: e.target.value }))}
-                    className="form-input">
-                    <option value="">— Select —</option>
-                    {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : (
-                  <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                    placeholder={field.placeholder}
-                    value={catFacts[field.key] ?? ""}
-                    onChange={e => setCatFacts(p => ({ ...p, [field.key]: e.target.value }))}
-                    className="form-input" />
-                )}
-              </Field>
-            ))}
-
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setStep("core_facts")}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/15 px-4 py-2 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              <button type="button" onClick={onCategoryFactsNext}
-                className="shimmer-btn flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-brand-blue-dark transition-all hover:bg-brand-gold-light">
-                <ArrowRight className="h-4 w-4" /> Continue
-              </button>
-            </div>
-          </div>
+          <CategoryFactsStep
+            category={category}
+            catFacts={catFacts}
+            setCatFacts={setCatFacts}
+            onNext={onCategoryFactsNext}
+            onBack={() => setStep("core_facts")}
+          />
         )}
 
-        {/* ── Step 4: Description (supplementary) ──────────── */}
-        {step === "describe" && (
-          <form onSubmit={descForm.handleSubmit(onDescribe)} className="space-y-5 p-6">
-            <Field label="Give your case a short title">
-              <input {...descForm.register("title")}
-                placeholder={`e.g. ${getSubtypeLabel(category)} — ${coreFacts?.opponent_name ?? "party name"}`}
-                className="form-input" />
-              <Err msg={descForm.formState.errors.title?.message} />
-            </Field>
-
-            <Field label="Anything else you'd like us to know? (optional)">
-              <textarea {...descForm.register("description")} rows={5}
-                placeholder="Add any extra context, timeline, or details that weren't covered in the form above..."
-                className="form-input resize-none" />
-              <p className="mt-1 text-[10px] text-brand-blue-light/40">
-                This is optional — the structured details you've already entered are enough for a good assessment.
-              </p>
-            </Field>
-
-            <div className="rounded-xl border border-brand-gold/12 bg-brand-gold/5 p-4 text-xs leading-6 text-brand-blue-light/60">
-              <Sparkles className="mr-1.5 inline h-3.5 w-3.5 text-brand-gold" />
-              AI will now review everything you've entered and generate your legal assessment.
-            </div>
-
-            {phaseError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-2">
-                <p className="text-sm text-red-600">{phaseError.message}</p>
-                {phaseError.phase === "assess" && pendingSession && (
-                  <button type="button" onClick={retryAssessment} disabled={runAssessment.isPending}
-                    className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50">
-                    {runAssessment.isPending ? <><Loader /> Retrying…</> : <><Sparkles className="h-3 w-3" /> Retry assessment</>}
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setStep("category_facts")}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/15 px-4 py-2 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              <button type="submit" disabled={isLoading}
-                className="shimmer-btn flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-blue-dark px-5 py-2.5 text-sm font-semibold text-brand-gold transition-all hover:bg-brand-blue-light disabled:opacity-50">
-                {isLoading ? <><Loader /> Reviewing your case…</> : <><Sparkles className="h-4 w-4" /> Get my assessment</>}
-              </button>
-            </div>
-          </form>
+        {step === "describe" && category && (
+          <DescribeStep
+            form={descForm}
+            category={category}
+            opponentName={coreFacts?.opponent_name}
+            onSubmit={onDescribe}
+            onBack={() => setStep("category_facts")}
+            isLoading={isLoading}
+            phaseError={phaseError}
+            retryAssessment={retryAssessment}
+            runAssessmentPending={runAssessment.isPending}
+          />
         )}
 
-        {/* ── Step 5: Assessment results ────────────────────── */}
         {step === "assessment" && a && (
-          <div className="space-y-4 p-6">
-            <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="Risk" value={(a.risk_level ?? "—").toUpperCase()}
-                color={a.risk_level === "urgent" ? "text-red-500" : a.risk_level === "high" ? "text-brand-gold" : a.risk_level === "low" ? "text-brand-teal" : "text-brand-accent"} />
-              <MetricCard label="Chance of success" value={`${a.success_probability}%`}
-                color={a.success_probability >= 70 ? "text-brand-teal" : a.success_probability >= 50 ? "text-brand-gold" : "text-red-500"} />
-              <MetricCard label="Complexity" value={a.complexity ?? "—"} color="text-brand-blue-dark" />
-            </div>
-
-            <p className="rounded-xl border border-brand-teal/15 bg-brand-teal/5 px-4 py-3 text-sm leading-7 text-brand-blue-dark/80">{a.success_rationale}</p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <InfoBox icon={Clock} label="Estimated timeline">
-                <p className="font-serif text-xl font-bold">{a.timeline_min_months}–{a.timeline_max_months} months</p>
-              </InfoBox>
-              <InfoBox icon={DollarSign} label="Estimated cost (₹)">
-                <p className="font-serif text-xl font-bold">₹{(a.budget_min_inr ?? 0).toLocaleString("en-IN")}+</p>
-                <p className="text-xs text-brand-blue-light/50">up to ₹{(a.budget_max_inr ?? 0).toLocaleString("en-IN")}</p>
-              </InfoBox>
-            </div>
-
-            <InfoBox icon={BookOpen} label="Key laws involved">
-              <div className="flex flex-wrap gap-1.5">{(a.key_statutes ?? []).map(s => <StatuteBadge key={s} text={s} />)}</div>
-            </InfoBox>
-            <InfoBox icon={Gavel} label="Where to file">
-              <p className="text-sm font-semibold">{a.recommended_forum}</p>
-            </InfoBox>
-            <InfoBox icon={Zap} label="What to do next">
-              <ol className="space-y-2">
-                {(a.immediate_actions ?? []).map((action, i) => (
-                  <li key={action} className="flex gap-3 text-sm leading-6">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-gold text-[10px] font-bold text-brand-blue-dark mt-0.5">{i + 1}</span>
-                    {action}
-                  </li>
-                ))}
-              </ol>
-            </InfoBox>
-            <InfoBox icon={FileText} label="Documents to gather">
-              <ul className="space-y-1.5">
-                {(a.evidence_needed ?? []).map(e => (
-                  <li key={e} className="flex items-start gap-2.5 text-sm leading-5">
-                    <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-teal" />{e}
-                  </li>
-                ))}
-              </ul>
-            </InfoBox>
-
-            {a.limitation_risk && (
-              <div className="flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-50 p-4">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-1">Time limit warning</p>
-                  <p className="text-sm leading-6 text-red-700">{a.limitation_risk}</p>
-                </div>
-              </div>
-            )}
-
-            <p className="text-[11px] text-brand-blue-light/40 italic">via {a.provider} · review by a qualified lawyer required before filing</p>
-
-            <button type="button" onClick={() => setStep("confirm")}
-              className="shimmer-btn w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-3 text-sm font-semibold text-brand-blue-dark transition-all hover:bg-brand-gold-light">
-              <CheckCircle className="h-4 w-4" /> Create my case file
-            </button>
-          </div>
+          <AssessmentStep
+            assessment={a}
+            onNext={() => setStep("confirm")}
+          />
         )}
 
-        {/* ── Step 6: Confirm ───────────────────────────────── */}
-        {step === "confirm" && (
-          <div className="space-y-5 p-6">
-            <p className="text-sm text-brand-blue-light/65">
-              Your case file will be created with all the details you've entered and the AI assessment.
-              A lawyer will be matched to your case shortly.
-            </p>
-            {commitIntake.error && (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">Something went wrong — please try again.</p>
-            )}
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setStep("assessment")}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/15 px-4 py-2.5 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              <button type="button" onClick={onCommit} disabled={commitIntake.isPending}
-                className="shimmer-btn flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-blue-dark px-5 py-2.5 text-sm font-semibold text-brand-gold transition-all hover:bg-brand-blue-light disabled:opacity-50">
-                {commitIntake.isPending ? <><Loader /> Creating…</> : <><CheckCircle className="h-4 w-4" /> Confirm and create case</>}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 7: Done ──────────────────────────────────── */}
-        {step === "done" && (
-          <div className="flex flex-col items-center gap-5 py-16 text-center px-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-teal/10 border border-brand-teal/25">
-              <CheckCircle className="h-8 w-8 text-brand-teal" />
-            </div>
-            <div>
-              <h3 className="font-serif text-2xl font-bold">Your case is created</h3>
-              <p className="mt-2 text-sm text-brand-blue-light/55">
-                Your details and assessment are saved. We'll find the right lawyer for you shortly.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose}
-                className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm font-medium text-brand-blue-light/60 hover:bg-base-200 transition-colors">
-                Close
-              </button>
-              {matterId && (
-                <button type="button" onClick={() => { onClose(); router.push(`/user/matters/${matterId}`); }}
-                  className="shimmer-btn rounded-xl bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-blue-dark hover:bg-brand-gold-light transition-all">
-                  View my case
-                </button>
-              )}
-            </div>
-          </div>
+        {(step === "confirm" || step === "done") && (
+          <ConfirmationStep
+            step={step}
+            onCommit={onCommit}
+            onBack={() => setStep("assessment")}
+            onClose={onClose}
+            isPending={commitIntake.isPending}
+            error={commitIntake.error}
+            matterId={matterId}
+          />
         )}
       </div>
     </div>
-  );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────
-function getSubtypeLabel(id: string | null): string {
-  if (!id) return "Case";
-  for (const d of DOMAINS) {
-    const found = d.subtypes.find(s => s.id === id);
-    if (found) return found.label;
-  }
-  return id;
-}
-
-function buildStructuredFacts(
-  core: CoreForm,
-  catFacts: Record<string, string>,
-  category: CategoryId
-): ReturnType<typeof toFact>[] {
-  const facts: ReturnType<typeof toFact>[] = [];
-
-  const coreLabels: Record<keyof CoreForm, string> = {
-    incident_date:      "When did this happen?",
-    incident_location:  "Where did this happen?",
-    opponent_name:      "Other party",
-    urgency_level:      "How urgent is this?",
-    preferred_language: "Preferred language",
-    prior_legal_action: "Has any FIR or case been filed?",
-    prior_legal_detail: "Prior legal action details",
-  };
-
-  for (const [key, val] of Object.entries(core)) {
-    if (!val) continue;
-    const label = coreLabels[key as keyof CoreForm] ?? key;
-    const displayVal = key === "urgency_level" ? urgencyLabel(val) : val;
-    const vtype = key === "incident_date" ? "date" : "string";
-    facts.push(toFact(key, displayVal, label, vtype));
-  }
-
-  // Category-specific fields
-  const subFields = SUBTYPE_FIELDS[category] ?? [];
-  for (const [key, val] of Object.entries(catFacts)) {
-    if (!val) continue;
-    const fieldDef = subFields.find(f => f.key === key);
-    const label = fieldDef?.label ?? key;
-    const vtype = fieldDef?.type === "number" ? "number" : fieldDef?.type === "date" ? "date" : "string";
-    facts.push(toFact(key, val, label, vtype));
-  }
-
-  // Tag the category
-  facts.push(toFact("category", category, "Case category", "string"));
-
-  return facts;
-}
-
-// ── Sub-components ────────────────────────────────────────────────
-function Loader() {
-  return <span className="h-4 w-4 rounded-full border-2 border-current/30 border-t-current animate-spin" />;
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Err({ msg }: { msg?: string }) {
-  return msg ? <p className="mt-1 text-xs text-red-500">{msg}</p> : null;
-}
-
-function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="rounded-xl border border-brand-gold/12 bg-base-100 p-4 text-center">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brand-blue-light/40">{label}</p>
-      <p className={`mt-2 font-serif text-2xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
-}
-
-function InfoBox({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-brand-gold/12 bg-base-100 p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-brand-gold" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/45">{label}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function StatuteBadge({ text }: { text: string }) {
-  return (
-    <span className="rounded-full border border-brand-accent/25 bg-brand-accent/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-accent">
-      {text}
-    </span>
   );
 }

@@ -110,7 +110,7 @@ def _text_to_html(body: str, subject: str) -> str:
           <td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
             <p style="margin:0;font-size:11px;color:#6B7280;">
               © LeAd Legal Platform &nbsp;·&nbsp;
-              <a href="http://localhost:3001/user/notifications" style="color:#C9A84C;text-decoration:none;">Manage notification preferences</a>
+              <a href="{settings.APP_URL}/user/notifications" style="color:#C9A84C;text-decoration:none;">Manage notification preferences</a>
             </p>
           </td>
         </tr>

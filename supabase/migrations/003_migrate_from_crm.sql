@@ -153,7 +153,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{
 
 -- ── Step 9: Create new tables ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS intake_sessions (
-  id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   matter_id         UUID        REFERENCES matters(id),
   step              TEXT        NOT NULL DEFAULT 'describe',
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS intake_sessions (
 );
 
 CREATE TABLE IF NOT EXISTS facts (
-  id           UUID             PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id    UUID             NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   key          TEXT             NOT NULL,
   value        TEXT             NOT NULL,
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS facts (
 );
 
 CREATE TABLE IF NOT EXISTS events (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id   UUID        REFERENCES matters(id) ON DELETE RESTRICT,
   actor_id    UUID        REFERENCES profiles(id) ON DELETE SET NULL,
   event_type  TEXT        NOT NULL,

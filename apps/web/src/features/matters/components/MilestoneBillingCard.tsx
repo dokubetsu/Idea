@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { CreditCard, CheckCircle2, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
 import { useMatter, useUpdateMilestone } from "../hooks/useMatters";
-import { Button, Badge, Card } from "@/shared/components/ui";
+import { Button, Badge, Card, useToast } from "@/shared/components/ui";
 
 export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
   const updateMilestone = useUpdateMilestone(matterId);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const toast = useToast();
 
   const milestones = matter?.milestones || [];
   const billableMilestones = milestones.filter(m => m.amount_inr && m.amount_inr > 0);
@@ -31,9 +32,9 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
           payment_id: paymentId,
           payment_idempotency_key: idempotencyKey
         });
-        alert("Payment successful! Invoice generated.");
+        toast.success("Payment successful! Invoice generated.");
       } catch (e: any) {
-        alert("Payment failed: " + e.message);
+        toast.error("Payment failed: " + e.message);
       } finally {
         setProcessingId(null);
       }
@@ -46,6 +47,12 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
 
   return (
     <Card className="overflow-hidden border-brand-gold/20 shadow-md">
+      {/* Demo Warning Banner */}
+      <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2 flex items-center gap-2 text-amber-500 text-xs font-semibold">
+        <AlertCircle className="h-4 w-4" />
+        <span>DEMO MODE — NOT REAL PAYMENTS</span>
+      </div>
+
       <div className="flex items-center justify-between border-b border-brand-gold/8 bg-brand-gold/5 px-5 py-4">
         <div>
           <h3 className="font-serif text-xl font-bold flex items-center gap-2 text-brand-blue-dark">

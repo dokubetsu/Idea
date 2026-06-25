@@ -61,5 +61,6 @@ def require_roles(*roles: UserRole):
 Auth        = Annotated[CurrentUser, Depends(get_current_user)]
 AdminAuth   = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]
 LawyerAuth  = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER))]
-UserAuth    = Annotated[CurrentUser, Depends(require_roles(UserRole.USER))]
+UserAuth    = Annotated[CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))]
+PetitionerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.USER))]
 LawyerOrAdmin = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER, UserRole.ADMIN))]

@@ -11,7 +11,7 @@ export const matterKeys = {
   events:  (id: string) => ["matters", id, "events"] as const,
 };
 
-export function useMatters(filters?: { status?: string; category?: string }) {
+export function useMatters(filters?: { status?: string; category?: string; cursor?: string; limit?: string }) {
   const qs = filters ? "?" + new URLSearchParams(filters as Record<string,string>).toString() : "";
   return useQuery({
     queryKey: matterKeys.list(filters),

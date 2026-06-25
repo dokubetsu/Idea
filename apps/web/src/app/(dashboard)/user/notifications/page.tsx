@@ -47,9 +47,9 @@ const NOTIFICATION_TYPES: {
 ];
 
 const CHANNELS: { channel: NotificationChannel; label: string; icon: React.ReactNode; alwaysOn?: boolean }[] = [
-  { channel: "IN_APP", label: "In-App", icon: <Bell className="h-4 w-4" />, alwaysOn: true },
-  { channel: "EMAIL", label: "Email", icon: <Mail className="h-4 w-4" /> },
-  { channel: "SMS", label: "SMS", icon: <MessageSquare className="h-4 w-4" /> },
+  { channel: "in_app", label: "In-App", icon: <Bell className="h-4 w-4" />, alwaysOn: true },
+  { channel: "email", label: "Email", icon: <Mail className="h-4 w-4" /> },
+  { channel: "sms", label: "SMS", icon: <MessageSquare className="h-4 w-4" /> },
 ];
 
 // ── Helper: build a key → enabled lookup from preference list ─────────────────

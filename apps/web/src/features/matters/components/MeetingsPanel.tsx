@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { Video, Calendar, Plus, Loader2 } from "lucide-react";
 import { useMatter, useCreateMeeting, useUpdateMeeting } from "../hooks/useMatters";
-import { Button, Input, Badge, Card, Select } from "@/shared/components/ui";
+import { Button, Input, Badge, Card, Select, useToast } from "@/shared/components/ui";
 
 export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
   const createMeeting = useCreateMeeting(matterId);
   const updateMeeting = useUpdateMeeting(matterId);
+  const toast = useToast();
   
   const [showForm, setShowForm] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
@@ -29,8 +30,9 @@ export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawy
       setScheduledAt("");
       setMeetingLink("");
       setNotes("");
+      toast.success("Meeting scheduled successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to schedule meeting");
+      toast.error(err.message || "Failed to schedule meeting");
     }
   };
 

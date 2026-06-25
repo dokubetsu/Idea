@@ -98,7 +98,7 @@ export default function UserMatterDetailPage() {
 
   // Filter scheduled hearings (court hearings — not in-platform meetings)
   const scheduledHearings = matter.hearings?.filter(h => h.status === "scheduled") || [];
-  const health = HEALTH_CONFIG[(matter as typeof matter & { case_health?: string }).case_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
+  const health = HEALTH_CONFIG[matter.matter_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
   const statusLabel = STATUS_LABEL[matter.status] ?? matter.status.replace("_", " ");
 
   return (

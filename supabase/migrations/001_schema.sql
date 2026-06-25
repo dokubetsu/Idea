@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS lawyer_profiles (
 -- ── intake_sessions ───────────────────────────────────────────────
 -- Ephemeral pre-matter state. Committed = turned into a matter.
 CREATE TABLE IF NOT EXISTS intake_sessions (
-  id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   matter_id         UUID,       -- null until committed
   step              TEXT        NOT NULL DEFAULT 'describe',
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS intake_sessions (
 -- ── matters ──────────────────────────────────────────────────────
 -- Legal matter — the core entity. Started from intake.
 CREATE TABLE IF NOT EXISTS matters (
-  id               UUID           PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          UUID           NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   lawyer_id        UUID                    REFERENCES profiles(id) ON DELETE SET NULL,
   intake_session_id UUID                   UNIQUE REFERENCES intake_sessions(id),
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS matters (
 -- Structured, durable facts per matter.
 -- AI can change. Facts remain.
 CREATE TABLE IF NOT EXISTS facts (
-  id           UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id    UUID         NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   key          TEXT         NOT NULL,   -- e.g. "cheque_amount", "opponent_name"
   value        TEXT         NOT NULL,
@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS facts (
 -- Immutable audit log. Drives analytics + notifications.
 -- NEVER delete from this table.
 CREATE TABLE IF NOT EXISTS events (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id   UUID        REFERENCES matters(id) ON DELETE RESTRICT,
   actor_id    UUID        REFERENCES profiles(id) ON DELETE SET NULL,
   event_type  TEXT        NOT NULL,   -- e.g. "matter.created", "fact.verified"
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 -- ── matter_assignments ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS matter_assignments (
-  id           UUID              PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id    UUID              NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   lawyer_id    UUID              NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   assigned_by  UUID              NOT NULL REFERENCES profiles(id),
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS matter_assignments (
 
 -- ── matter_updates ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS matter_updates (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id   UUID        NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   author_id   UUID        NOT NULL REFERENCES profiles(id),
   content     TEXT        NOT NULL,
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS matter_updates (
 
 -- ── documents ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS documents (
-  id             UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id      UUID        NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   uploaded_by    UUID        NOT NULL REFERENCES profiles(id),
   name           TEXT        NOT NULL,
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
 -- ── lawyer_requests ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS lawyer_requests (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID        NOT NULL REFERENCES profiles(id),
   lawyer_id   UUID        NOT NULL REFERENCES profiles(id),
   matter_id   UUID                 REFERENCES matters(id),

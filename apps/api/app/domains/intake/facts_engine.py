@@ -146,38 +146,6 @@ FACT_SCHEMAS: dict[str, dict[str, str]] = {
 }
 
 
-# ── Extraction prompt ─────────────────────────────────────────────
-
-_EXTRACT_SYSTEM = """
-You are a legal intake specialist for Indian law.
-Extract structured facts from the user's description.
-Return ONLY valid JSON — no markdown, no explanation.
-
-JSON structure:
-{
-  "detected_category": "consumer|cheque_bounce|property|family|labour|criminal|cyber|rera|other",
-  "facts": [
-    {
-      "key": "<snake_case_key>",
-      "value": "<extracted value as string>",
-      "value_type": "string|number|date|boolean",
-      "label": "<human readable label>",
-      "confidence": <0.0-1.0>
-    }
-  ]
-}
-
-Rules:
-- Extract ONLY what is explicitly stated. Never invent facts.
-- For numbers (amounts, years), use value_type "number".
-- For dates, use ISO 8601 format and value_type "date".
-- For yes/no facts, use "true"/"false" and value_type "boolean".
-- confidence < 0.7 means the value was implied, not stated.
-- Always include: opponent_name, amount_involved, issue_date if present.
-- Indian currency amounts: strip ₹ symbol, store as numeric string.
-""".strip()
-
-
 # ── Keyword-based extraction (offline fallback) ───────────────────
 
 import re as _re

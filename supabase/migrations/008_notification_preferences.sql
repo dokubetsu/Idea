@@ -7,13 +7,13 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     type       TEXT        NOT NULL,   -- 'matter_assigned' | 'hearing_scheduled' | 'milestone_completed' | 'comment_added'
-    channel    TEXT        NOT NULL,   -- 'EMAIL' | 'SMS' | 'IN_APP'
+    channel    TEXT        NOT NULL,   -- 'email' | 'sms' | 'in_app'
     enabled    BOOLEAN     NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT uq_pref_user_type_channel UNIQUE (user_id, type, channel),
-    CONSTRAINT chk_pref_channel CHECK (channel IN ('EMAIL', 'SMS', 'IN_APP')),
+    CONSTRAINT chk_pref_channel CHECK (channel IN ('email', 'sms', 'in_app')),
     CONSTRAINT chk_pref_type   CHECK (type IN ('matter_assigned', 'hearing_scheduled', 'milestone_completed', 'comment_added', 'generic'))
 );
 

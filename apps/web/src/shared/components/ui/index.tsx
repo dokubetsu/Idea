@@ -65,11 +65,13 @@ export function Input({ label, error, className, ...props }: React.InputHTMLAttr
   );
 }
 
-export function Textarea({ label, className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }) {
+export function Textarea({ label, error, className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">{label}</span>}
-      <textarea rows={4} className={cn("w-full rounded-xl border border-brand-gold/15 bg-base-100 px-3.5 py-3 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:border-brand-gold focus:bg-white focus:shadow-sm resize-none", className)} {...props} />
+      {label && <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/55">{label}</span>}
+      <textarea rows={4} className={cn("w-full rounded-xl border px-3.5 py-3 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:bg-white focus:shadow-sm resize-none",
+        error ? "border-red-400 bg-red-50" : "border-brand-gold/15 bg-base-100 focus:border-brand-gold", className)} {...props} />
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </label>
   );
 }
@@ -153,3 +155,4 @@ export function Divider({ className }: { className?: string }) {
 }
 
 export * from "./QuickStartGuide";
+export * from "./Toast";

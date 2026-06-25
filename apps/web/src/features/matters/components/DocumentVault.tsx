@@ -2,9 +2,11 @@
 import { useState, useRef } from "react";
 import { FileText, Upload, Download, Loader2, File as FileIcon, X } from "lucide-react";
 import { useMatterDocuments, useUploadDocument, useGetDownloadUrl } from "../hooks/useDocuments";
+import { useToast } from "@/shared/components/ui";
 
 export function DocumentVault({ matterId }: { matterId: string }) {
   const { data: documents = [], isLoading } = useMatterDocuments(matterId);
+  const toast = useToast();
   const uploadDoc = useUploadDocument();
   const getDownloadUrl = useGetDownloadUrl();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -18,15 +20,16 @@ export function DocumentVault({ matterId }: { matterId: string }) {
     
     // Check file size (max 10MB to match bucket config)
     if (file.size > 10 * 1024 * 1024) {
-      alert("File is too large. Maximum size is 10MB.");
+      toast.error("File is too large. Maximum size is 10MB.");
       return;
     }
     
     setUploading(true);
     try {
       await uploadDoc.mutateAsync({ matterId, file });
+      toast.success("Document uploaded successfully.");
     } catch (err: any) {
-      alert(`Upload failed: ${err.message}`);
+      toast.error(`Upload failed: ${err.message}`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -45,7 +48,7 @@ export function DocumentVault({ matterId }: { matterId: string }) {
       a.click();
       document.body.removeChild(a);
     } catch (err) {
-      alert("Failed to download file.");
+      toast.error("Failed to download file.");
     } finally {
       setDownloadingId(null);
     }

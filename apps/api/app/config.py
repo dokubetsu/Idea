@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         return init_settings, dotenv_settings, env_settings, file_secret_settings
 
     SUPABASE_URL: str = "http://placeholder.supabase.co"
+    APP_URL: str = "http://localhost:3001"
     SUPABASE_SERVICE_ROLE_KEY: str | None = "placeholder-key"
     SUPABASE_SECRET_KEY: str | None = None
     SUPABASE_ANON_KEY: str | None = "placeholder-key"

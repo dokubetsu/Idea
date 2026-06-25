@@ -106,14 +106,15 @@ DECLARE
   v_matter_id  UUID;
   v_status     consultation_status;
   v_user_id    UUID;
+  v_consultation_lawyer_id UUID;
 BEGIN
   -- 1. Acquire row lock immediately.
   --    FOR UPDATE prevents two concurrent PATCH /confirm calls from both reading
   --    matter_id IS NULL and both proceeding to INSERT — the exact race condition
   --    in the original draft. One call blocks until the other commits.
   --    Also verifies the consultation exists in the same query.
-  SELECT c.matter_id, c.status, c.user_id
-    INTO v_matter_id, v_status, v_user_id
+  SELECT c.matter_id, c.status, c.user_id, c.lawyer_id
+    INTO v_matter_id, v_status, v_user_id, v_consultation_lawyer_id
     FROM consultations c
     WHERE c.id = p_consultation_id
     FOR UPDATE;
@@ -121,6 +122,12 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Consultation % not found', p_consultation_id
       USING ERRCODE = 'P0002';
+  END IF;
+
+  -- Add lawyer ownership check
+  IF v_consultation_lawyer_id IS NOT NULL AND v_consultation_lawyer_id != p_lawyer_id THEN
+    RAISE EXCEPTION 'Lawyer % is not authorized to confirm this consultation', p_lawyer_id
+      USING ERRCODE = 'P0004';
   END IF;
 
   -- 2. Idempotency: already confirmed → return existing matter, do nothing.

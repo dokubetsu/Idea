@@ -5,9 +5,9 @@ from app.domains.notifications.channels.sms import SMSChannel
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
 
 _CHANNELS = {
-    "IN_APP": InAppChannel(),
-    "EMAIL": EmailChannel(),
-    "SMS": SMSChannel(),
+    "in_app": InAppChannel(),
+    "email": EmailChannel(),
+    "sms": SMSChannel(),
 }
 
 def get_channel(channel_name: str) -> BaseNotificationChannel:

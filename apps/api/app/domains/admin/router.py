@@ -59,32 +59,50 @@ async def suspend_lawyer(lawyer_id: str, user: AdminAuth):
 async def list_users(
     user: AdminAuth,
     role: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    per_page: int = Query(default=50, le=100),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    page: int | None = Query(default=None, ge=1),
+    per_page: int | None = Query(default=None, ge=1, le=100),
 ):
     db  = get_db()
-    off = (page - 1) * per_page
-    q   = db.table("profiles").select("*").order("created_at", desc=True)
+    q   = db.table("profiles").select("*")
     if role:
         q = q.eq("role", role)
-    return q.range(off, off + per_page - 1).execute().data or []
+
+    if cursor:
+        q = q.lt("created_at", cursor)
+        return q.order("created_at", desc=True).limit(limit).execute().data or []
+    else:
+        p = page or 1
+        pp = per_page or limit
+        off = (p - 1) * pp
+        return q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
 
 
 @router.get("/matters")
 async def list_all_matters(
     user: AdminAuth,
     status: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    per_page: int = Query(default=50, le=100),
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    page: int | None = Query(default=None, ge=1),
+    per_page: int | None = Query(default=None, ge=1, le=100),
 ):
     db  = get_db()
-    off = (page - 1) * per_page
     q   = db.table("matters").select(
         "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"
-    ).order("created_at", desc=True)
+    )
     if status:
         q = q.eq("status", status)
-    return q.range(off, off + per_page - 1).execute().data or []
+
+    if cursor:
+        q = q.lt("created_at", cursor)
+        return q.order("created_at", desc=True).limit(limit).execute().data or []
+    else:
+        p = page or 1
+        pp = per_page or limit
+        off = (p - 1) * pp
+        return q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
 
 
 @router.get("/events")

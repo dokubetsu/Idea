@@ -1,21 +1,39 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { AlertTriangle, BookOpen, Briefcase, Database, Users } from "lucide-react";
-import { createClient } from "@/shared/lib/supabase/server";
-export const metadata = { title: "Admin Dashboard" };
-async function fetchStats(token: string) {
-  try {
-    const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/stats`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    return r.ok ? r.json() : null;
-  } catch { return null; }
-}
-export default async function AdminDashboard() {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/user/dashboard");
-  const { data: { session } } = await sb.auth.getSession();
-  const stats = session ? await fetchStats(session.access_token) : null;
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/shared/lib/supabase/client";
+import { apiClient } from "@/shared/lib/api/client";
+import { Spinner } from "@/shared/components/ui";
+import { AdminStats } from "@/entities/types";
+
+export default function AdminDashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setLoadingUser(false);
+    });
+  }, []);
+
+  const { data: stats, isLoading: loadingStats } = useQuery<AdminStats>({
+    queryKey: ["admin", "stats"],
+    queryFn: () => apiClient.get<AdminStats>("/admin/stats"),
+    enabled: !!user,
+  });
+
+  if (loadingUser || loadingStats) {
+    return (
+      <div className="flex justify-center items-center py-32">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
   const cards = [
     { label: "Users",          value: stats?.total_users ?? "—",           icon: Users,         color: "text-brand-accent",  bg: "border-brand-accent/20 bg-brand-accent/8" },
     { label: "Lawyers",        value: stats?.total_lawyers ?? "—",          icon: Briefcase,     color: "text-brand-teal",    bg: "border-brand-teal/20 bg-brand-teal/8" },
@@ -24,6 +42,7 @@ export default async function AdminDashboard() {
     { label: "Pending verify", value: stats?.pending_verifications ?? "—",  icon: AlertTriangle, color: "text-red-500",       bg: "border-red-500/20 bg-red-500/8" },
     { label: "Open matters",   value: stats?.open_matters ?? "—",           icon: BookOpen,      color: "text-brand-accent",  bg: "border-brand-accent/20 bg-brand-accent/8" },
   ];
+
   return (
     <div className="animate-fade-in-up max-w-5xl space-y-9">
       <div>
@@ -41,7 +60,7 @@ export default async function AdminDashboard() {
           </div>
         ))}
       </div>
-      {(stats?.pending_verifications ?? 0) > 0 && (
+      {stats && stats.pending_verifications > 0 && (
         <div className="flex items-start gap-4 rounded-xl border border-red-400/20 bg-red-50 p-5">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
           <div>

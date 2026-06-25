@@ -12,7 +12,7 @@ ALTER TABLE public.matter_updates ADD COLUMN IF NOT EXISTS parent_id UUID REFERE
 
 -- 3. Create hearings table
 CREATE TABLE IF NOT EXISTS public.hearings (
-  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id    UUID        NOT NULL REFERENCES public.matters(id) ON DELETE CASCADE,
   hearing_date TIMESTAMPTZ NOT NULL,
   courtroom    TEXT,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.hearings (
 
 -- 4. Create milestones table
 CREATE TABLE IF NOT EXISTS public.matter_milestones (
-  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id    UUID        NOT NULL REFERENCES public.matters(id) ON DELETE CASCADE,
   title        TEXT        NOT NULL,
   description  TEXT,

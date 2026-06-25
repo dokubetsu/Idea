@@ -29,7 +29,7 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
             db.table("notification_deliveries")
             .select("*")
             .eq("notification_id", notification_id)
-            .eq("status", "PENDING")
+            .eq("status", "pending")
             .execute()
         )
         deliveries = deliv_resp.data or []
@@ -63,7 +63,7 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
                 channel.send(notification, recipient, subject, body)
 
                 db.table("notification_deliveries").update({
-                    "status":       "SENT",
+                    "status":       "sent",
                     "delivered_at": datetime.now(timezone.utc).isoformat(),
                 }).eq("id", deliv["id"]).execute()
 
@@ -73,7 +73,7 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
                     notification_id, channel_name, e,
                 )
                 db.table("notification_deliveries").update({
-                    "status":    "FAILED",
+                    "status":    "failed",
                     "error_msg": str(e),
                 }).eq("id", deliv["id"]).execute()
 

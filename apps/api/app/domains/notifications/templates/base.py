@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from app.config import settings
 
 
 class BaseNotificationTemplate:
@@ -22,7 +23,7 @@ class BaseNotificationTemplate:
         action    = self.data.get("action") or {}
         action_url   = action.get("url", "") if isinstance(action, dict) else ""
         action_label = action.get("label", "View Case") if isinstance(action, dict) else "View Case"
-        base_url  = "http://localhost:3001"  # overridden by env in prod
+        base_url  = settings.APP_URL
         full_url  = f"{base_url}{action_url}" if action_url else base_url
 
         cta_block = (
