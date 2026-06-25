@@ -136,14 +136,17 @@ def mock_db(request, monkeypatch):
     client = MockSupabaseClient()
     for path in (
         "app.shared.database.get_db",
+        "app.shared.database.get_service_role_db",
         "app.domains.identity.router.get_db",
+        "app.domains.identity.router.get_service_role_db",
         "app.domains.intake.router.get_db",
         "app.domains.matters.router.get_db",
         "app.domains.matching.router.get_db",
         "app.domains.admin.router.get_db",
         "app.shared.dependencies.get_db",
         "app.domains.legal_tools.router.get_db",
-        "app.domains.legal_tools.services.draft.get_db"
+        "app.domains.legal_tools.services.draft.get_db",
+        "app.domains.system.router.get_service_role_db"
     ):
         try:
             monkeypatch.setattr(path, lambda: client)

@@ -29,7 +29,7 @@ function LoginForm() {
     const { data: result, error } = await sb.auth.signInWithPassword(data);
     if (error || !result.user) { setApiErr(error?.message ?? "Sign in failed"); return; }
 
-    const role  = result.user.user_metadata?.role ?? "user";
+    const role = (result.user.app_metadata?.role as string) ?? (result.user.user_metadata?.role as string) ?? "user";
     const token = result.session?.access_token;
 
     // Create profile if it doesn't exist yet (handles email-confirmation flow

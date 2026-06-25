@@ -13,7 +13,7 @@ export default async function AdminDashboard() {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
-  if ((user.app_metadata?.role ?? user.user_metadata?.role) !== "admin") redirect("/user/dashboard");
+  if (user.app_metadata?.role !== "admin") redirect("/user/dashboard");
   const { data: { session } } = await sb.auth.getSession();
   const stats = session ? await fetchStats(session.access_token) : null;
   const cards = [

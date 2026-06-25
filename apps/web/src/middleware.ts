@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const role = (user.app_metadata?.role as string) ?? (user.user_metadata?.role as string) ?? "user";
+  const role = (user.app_metadata?.role as string) ?? "user";
 
   const home = ROLE_HOME[role] ?? "/user/dashboard";
 

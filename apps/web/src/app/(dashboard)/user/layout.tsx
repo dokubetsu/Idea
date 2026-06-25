@@ -6,7 +6,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
   
-  const role = user.app_metadata?.role ?? user.user_metadata?.role ?? "user";
+  const role = user.app_metadata?.role ?? "user";
   if (role !== "user") {
     if (role === "admin") redirect("/admin/dashboard");
     if (role === "lawyer") redirect("/lawyer/dashboard");

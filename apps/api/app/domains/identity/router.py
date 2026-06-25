@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated, Literal
 from pydantic import BaseModel, Field
-from app.shared.database import get_db
+from app.shared.database import get_db, get_service_role_db
 from app.shared.dependencies import Auth
 from app.config import settings
 
@@ -46,7 +46,7 @@ async def register_profile(
     payload = _decode_signup_jwt(creds.credentials)
 
     user_id = payload.get("sub")
-    db      = get_db()
+    db      = get_service_role_db()
 
     existing = db.table("profiles").select("id,role").eq("id", user_id).execute()
     if existing.data:

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header
-from app.shared.database import get_db
+from app.shared.database import get_service_role_db
 from app.config import settings
 from datetime import datetime, timezone, timedelta
 import logging
@@ -30,7 +30,7 @@ async def process_hearing_reminders(
     Must be called with the header:  X-Cron-Secret: <CRON_SECRET>
     """
     verify_cron_secret(x_cron_secret)
-    db = get_db()
+    db = get_service_role_db()
 
     # Calculate target time window (next 24 hours)
     now = datetime.now(timezone.utc)
@@ -102,7 +102,7 @@ async def process_weekly_summaries(
     Must be called with the header:  X-Cron-Secret: <CRON_SECRET>
     """
     verify_cron_secret(x_cron_secret)
-    db = get_db()
+    db = get_service_role_db()
 
     # 1. Fetch active matters
     matters_res = db.table("matters").select("id, title, user_id").eq("status", "active").execute()
@@ -200,7 +200,7 @@ async def cleanup_intake_sessions(
     Deletes uncommitted intake sessions whose `expires_at` has passed.
     """
     verify_cron_secret(x_cron_secret)
-    db = get_db()
+    db = get_service_role_db()
 
     now = datetime.now(timezone.utc).isoformat()
     result = (

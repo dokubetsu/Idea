@@ -10,7 +10,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
 
-  const role     = (user.app_metadata?.role ?? user.user_metadata?.role ?? "user") as UserRole;
+  const role     = (user.app_metadata?.role ?? "user") as UserRole;
 
   const fullName = user.user_metadata?.full_name ?? user.email ?? "User";
 

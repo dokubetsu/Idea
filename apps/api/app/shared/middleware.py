@@ -24,6 +24,23 @@ class RequestTracingMiddleware:
         req_id = req_id_bytes.decode("utf-8") if req_id_bytes else str(uuid.uuid4())
         request_id_var.set(req_id)
 
+        # Check for Authorization header
+        auth_bytes = headers.get(b"authorization", b"")
+        auth_str = auth_bytes.decode("utf-8") if auth_bytes else ""
+        token = None
+        if auth_str.lower().startswith("bearer "):
+            token = auth_str[7:].strip()
+
+        from app.shared.database import create_client, set_request_db, clear_request_db
+        from app.config import settings
+
+        # Create request-scoped client (using anon key to respect RLS)
+        user_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+        if token:
+            user_client.postgrest.auth(token)
+
+        ctx_token = set_request_db(user_client)
+
         start_time = time.time()
         path = scope.get("path", "")
         method = scope.get("method", "WS")
@@ -55,4 +72,6 @@ class RequestTracingMiddleware:
                 req_id, method, path, str(e), duration, exc_info=True
             )
             raise
+        finally:
+            clear_request_db(ctx_token)
 

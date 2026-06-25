@@ -6,7 +6,7 @@ export default async function LawyerLayout({ children }: { children: React.React
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
   
-  const role = user.app_metadata?.role ?? user.user_metadata?.role;
+  const role = user.app_metadata?.role;
   if (role !== "lawyer") {
     if (role === "admin") redirect("/admin/dashboard");
     redirect("/user/dashboard");

@@ -6,7 +6,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
   
-  const role = user.app_metadata?.role ?? user.user_metadata?.role;
+  const role = user.app_metadata?.role;
   if (role !== "admin") {
     redirect("/user/dashboard");
   }
