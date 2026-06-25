@@ -395,38 +395,21 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
     db = get_db()
     get_matter_or_403(db, matter_id, user)
 
-    # Enforce Session Guard for Consultations.
-    # Gate = sessions_used (completed) + scheduled-but-not-yet-completed meetings.
-    # This prevents a user from booking unlimited meetings while existing ones are
-    # still in 'scheduled' state (since sessions_used only increments on completion).
-    consultation = db.table("consultations").select("id, sessions_used, sessions_total").eq("matter_id", matter_id).execute().data
-    if consultation:
-        c = consultation[0]
-        # Count already-scheduled (not yet completed) meetings for this matter
-        scheduled_count_res = (
-            db.table("meetings")
-            .select("id", count="exact")
-            .eq("matter_id", matter_id)
-            .eq("status", "scheduled")
-            .execute()
-        )
-        scheduled_count = scheduled_count_res.count or 0
-        effective_used = c["sessions_used"] + scheduled_count
-        if effective_used >= c["sessions_total"]:
+    try:
+        r = db.rpc("schedule_meeting", {
+            "p_matter_id": matter_id,
+            "p_scheduled_at": body.scheduled_at.isoformat(),
+            "p_duration_minutes": body.duration_minutes,
+            "p_notes": body.notes,
+            "p_meeting_link": body.meeting_link
+        }).execute().data
+    except Exception as e:
+        if "Session limit reached" in str(e):
             raise HTTPException(
                 status_code=403,
                 detail="Session limit reached for this consultation. Upgrade to book more meetings."
             )
-
-    # Create Meeting
-    r = db.table("meetings").insert({
-        "matter_id": matter_id,
-        "scheduled_at": body.scheduled_at.isoformat(),
-        "duration_minutes": body.duration_minutes,
-        "notes": body.notes,
-        "meeting_link": body.meeting_link,
-        "status": "scheduled"
-    }).execute().data[0]
+        raise e
 
     await emit(EventType.MEETING_SCHEDULED, actor_id=user.id, matter_id=matter_id, payload={"meeting_id": r["id"]})
     return r

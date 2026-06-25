@@ -20,20 +20,9 @@ def get_consultation_or_404(consultation_id: str) -> dict:
     return enrich_consultation(row)
 
 def assign_free_lawyer(category: str) -> str | None:
-    """Finds the first available lawyer opted into free consultations"""
+    """Finds the first available lawyer opted into free consultations using SKIP LOCKED to prevent concurrent assignments"""
     db = get_db()
-    # Ideally, we would match by category/specialization, but for v1 simplification
-    # we just find the first available lawyer offering free consultations.
-    # We query lawyer_profiles joined with profiles for is_active.
-    # Note: Postgrest doesn't easily do complex joins with filters on both sides in one go,
-    # so we use a simpler query.
-    res = db.table("lawyer_profiles") \
-        .select("id") \
-        .eq("is_available", True) \
-        .eq("offers_free_consultation", True) \
-        .limit(1) \
-        .execute()
-    
-    if res.data and len(res.data) > 0:
-        return res.data[0]["id"]
+    res = db.rpc("assign_free_lawyer_rpc").execute()
+    if res.data:
+        return res.data
     return None

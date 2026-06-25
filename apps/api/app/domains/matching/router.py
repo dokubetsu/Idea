@@ -87,28 +87,21 @@ async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
         if latest_matter:
             matter_id = latest_matter[0]["id"]
             
-    # Prevent duplicate requests if matter_id is None (Postgres UNIQUE constraint ignores NULLs)
-    if not matter_id:
-        existing = db.table("lawyer_requests").select("id").eq("user_id", user.id).eq("lawyer_id", lawyer_id).is_("matter_id", "null").execute().data
-        if existing:
-            return {"ok": True, "message": "Request already sent"}
+    res = db.rpc("contact_lawyer_rpc", {
+        "p_user_id": user.id,
+        "p_lawyer_id": lawyer_id,
+        "p_matter_id": matter_id,
+        "p_message": body.message
+    }).execute()
 
-    row = {"user_id": user.id, "lawyer_id": lawyer_id,
-           "message": body.message, "matter_id": matter_id}
-    try:
-        db.table("lawyer_requests").insert(row).execute()
-    except Exception as exc:
-        err_msg = str(exc)
-        if "23505" in err_msg or "duplicate key" in err_msg.lower():
-            return {"ok": True, "message": "Request already sent"}
-        import logging
-        logging.getLogger(__name__).error("Failed to contact lawyer: %s", exc, exc_info=True)
-        raise
+    result = res.data
+    
+    if not result.get("already_exists", False):
+        await emit(EventType.LAWYER_REQUESTED, actor_id=user.id,
+                   matter_id=matter_id,
+                   payload={"lawyer_id": lawyer_id})
 
-    await emit(EventType.LAWYER_REQUESTED, actor_id=user.id,
-               matter_id=matter_id,
-               payload={"lawyer_id": lawyer_id})
-    return {"ok": True, "message": "Request sent to lawyer"}
+    return {"ok": result["ok"], "message": result["message"]}
 
 
 @router.get("/requests/incoming")

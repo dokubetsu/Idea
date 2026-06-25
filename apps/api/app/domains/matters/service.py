@@ -44,22 +44,23 @@ def get_matter_or_403(db, matter_id: str, user: CurrentUser) -> dict:
 
 
 def transition_status(db, matter_id: str, new_status: str, actor_id: str) -> None:
-    r = db.table("matters").select("status").eq("id", matter_id).single().execute()
-    if not r.data:
-        raise NotFound("Matter")
-    current = r.data["status"]
-    allowed = VALID_TRANSITIONS.get(current, [])
-    if new_status not in allowed:
-        from app.shared.exceptions import BadRequest
-        raise BadRequest(f"Cannot transition {current} → {new_status}. Allowed: {allowed}")
+    try:
+        res = db.rpc("transition_matter_status", {
+            "p_matter_id": matter_id,
+            "p_new_status": new_status,
+            "p_actor_id": actor_id
+        }).execute()
+        
+        if not res.data or len(res.data) == 0:
+            raise NotFound("Matter")
+        old_status = res.data[0]["old_status"]
+    except Exception as e:
+        if "Invalid status transition" in str(e):
+            from app.shared.exceptions import BadRequest
+            raise BadRequest(str(e))
+        if "Matter not found" in str(e):
+            raise NotFound("Matter")
+        raise e
 
-    from datetime import datetime, timezone
-    extra: dict = {}
-    if new_status == "resolved":
-        extra["resolved_at"] = datetime.now(timezone.utc).isoformat()
-    if new_status == "archived":
-        extra["archived_at"] = datetime.now(timezone.utc).isoformat()
-
-    db.table("matters").update({"status": new_status, **extra}).eq("id", matter_id).execute()
     sync_emit(EventType.MATTER_STATUS_CHANGED, actor_id=actor_id, matter_id=matter_id,
-              payload={"from": current, "to": new_status})
+              payload={"from": old_status, "to": new_status})

@@ -125,6 +125,110 @@ class MockSupabaseClient:
     def rpc(self, name: str, params: dict):
         if name == "commit_intake":
             return MockRpcBuilder([{"matter_id": "mock-matter-id", "already_committed": False}])
+        if name == "register_profile":
+            # Add to mock profiles table
+            uid = params.get("p_user_id")
+            profiles_table = self.table("profiles")
+            found = None
+            for p in profiles_table.data:
+                if p.get("id") == uid:
+                    found = p
+                    break
+            if not found:
+                found = {
+                    "id": uid,
+                    "role": "user",
+                    "full_name": params.get("p_full_name"),
+                    "phone": params.get("p_phone"),
+                    "city": params.get("p_city"),
+                    "state": params.get("p_state")
+                }
+                profiles_table.data.append(found)
+                
+                # If role is lawyer, add to lawyer_profiles
+                if params.get("p_role") == "lawyer":
+                    self.table("lawyer_profiles").data.append({"id": uid, "is_verified": False, "is_available": True})
+            return MockRpcBuilder(found)
+            
+        if name == "schedule_meeting":
+            matter_id = params.get("p_matter_id")
+            # Enforce limits in mock DB
+            consultation_data = self.table("consultations").data
+            c = None
+            for row in consultation_data:
+                if row.get("matter_id") == matter_id:
+                    c = row
+                    break
+            if c:
+                scheduled_count = sum(1 for m in self.table("meetings").data if m.get("matter_id") == matter_id and m.get("status") == "scheduled")
+                if (c.get("sessions_used", 0) + scheduled_count) >= c.get("sessions_total", 1):
+                    raise Exception("Session limit reached")
+            
+            # Insert meeting
+            meeting = {
+                "id": "mock-meeting-id",
+                "matter_id": matter_id,
+                "scheduled_at": params.get("p_scheduled_at"),
+                "duration_minutes": params.get("p_duration_minutes"),
+                "notes": params.get("p_notes"),
+                "meeting_link": params.get("p_meeting_link"),
+                "status": "scheduled"
+            }
+            self.table("meetings").data.append(meeting)
+            return MockRpcBuilder(meeting)
+
+        if name == "transition_matter_status":
+            matter_id = params.get("p_matter_id")
+            matters_table = self.table("matters")
+            current_status = "intake"
+            found = False
+            for row in matters_table.data:
+                if row.get("id") == matter_id:
+                    found = True
+                    current_status = row.get("status", "intake")
+                    row["status"] = params.get("p_new_status")
+                    break
+            if not found:
+                raise Exception("Matter not found")
+            return MockRpcBuilder([{"old_status": current_status, "success": True}])
+
+        if name == "assign_free_lawyer_rpc":
+            lawyers = self.table("lawyer_profiles").data
+            for lp in lawyers:
+                if lp.get("is_available") and lp.get("offers_free_consultation"):
+                    return MockRpcBuilder(lp["id"])
+            return MockRpcBuilder("mock-lawyer-id")
+
+        if name == "contact_lawyer_rpc":
+            user_id = params.get("p_user_id")
+            lawyer_id = params.get("p_lawyer_id")
+            matter_id = params.get("p_matter_id")
+            requests_table = self.table("lawyer_requests")
+            
+            exists = False
+            for r in requests_table.data:
+                if r.get("user_id") == user_id and r.get("lawyer_id") == lawyer_id:
+                    if matter_id and r.get("matter_id") == matter_id:
+                        exists = True
+                        break
+                    elif not matter_id and not r.get("matter_id"):
+                        exists = True
+                        break
+            
+            if exists:
+                return MockRpcBuilder({"ok": True, "message": "Request already sent", "already_exists": True})
+            
+            new_req = {
+                "id": "mock-request-id",
+                "user_id": user_id,
+                "lawyer_id": lawyer_id,
+                "matter_id": matter_id,
+                "message": params.get("p_message"),
+                "status": "pending"
+            }
+            requests_table.data.append(new_req)
+            return MockRpcBuilder({"ok": True, "message": "Request sent to lawyer", "already_exists": False})
+
         return MockRpcBuilder([])
 
 class MockAuth:

@@ -48,14 +48,16 @@ async def register_profile(
     user_id = payload.get("sub")
     db      = get_service_role_db()
 
-    existing = db.table("profiles").select("id,role").eq("id", user_id).execute()
-    if existing.data:
-        return existing.data[0]
+    res = db.rpc("register_profile", {
+        "p_user_id": user_id,
+        "p_full_name": body.full_name,
+        "p_phone": body.phone,
+        "p_city": body.city,
+        "p_state": body.state,
+        "p_role": body.role
+    }).execute()
 
-    profile = db.table("profiles").insert({
-        "id": user_id, "role": "user", "full_name": body.full_name,
-        "phone": body.phone, "city": body.city, "state": body.state,
-    }).execute().data[0]
+    profile = res.data
 
     # Sync role to Supabase auth app_metadata (for client JWT security)
     try:
@@ -66,9 +68,6 @@ async def register_profile(
         )
     except Exception as e:
         log.warning("Failed to sync role to app_metadata: %s", e)
-
-    if body.role == "lawyer":
-        db.table("lawyer_profiles").insert({"id": user_id}).execute()
 
     # Link any pending matters created by a lawyer using this email
     user_email = payload.get("email")

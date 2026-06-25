@@ -108,8 +108,7 @@ async def test_provider_registry_and_fallbacks():
     assert await provider.health() is True
 
     # Resolve an unhealthy provider (which doesn't have credentials configured in tests)
-    # It should automatically fall back to mock (or another healthy registered provider)
-    fallback_provider = await ai_registry.resolve("gemini")
-    # In test environment settings.GEMINI_API_KEY has some mock values from conftest.py, 
-    # but let's assert that whatever is resolved implements BaseAiProvider
-    assert isinstance(fallback_provider, BaseAiProvider)
+    # It should raise RuntimeError since mock is opt-in only, not in the fallback chain
+    with pytest.raises(RuntimeError) as exc_info:
+        await ai_registry.resolve("gemini")
+    assert "All configured AI providers are unhealthy or unavailable" in str(exc_info.value)
