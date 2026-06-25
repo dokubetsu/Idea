@@ -143,6 +143,30 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
     assessment = session.get("assessment_result") or {}
 
     category = assessment.get("category") or facts_data.get("detected_category", "other")
+    db_category = {
+        "cheque_bounce": "cheque_bounce",
+        "bank_fraud": "cyber",
+        "tax_dispute": "other",
+        "money_recovery": "other",
+        "other_finance": "other",
+        
+        "product_defect": "consumer",
+        "service_deficiency": "consumer",
+        "ecommerce_dispute": "consumer",
+        "insurance_rejection": "consumer",
+        "medical_negligence": "other",
+        
+        "delayed_possession": "rera",
+        "project_cancellation": "rera",
+        "structural_defects": "rera",
+        "amenities_misrepresentation": "rera",
+        
+        "accident_injury": "other",
+        "accident_death": "other",
+        "mv_insurance_rejection": "other",
+        "hit_and_run": "other",
+        "license_rc_dispute": "other",
+    }.get(category, category)
     priority = _risk_to_priority(assessment.get("risk_level", "medium"))
 
     fact_rows = []
@@ -173,7 +197,7 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
             "p_user_id": user.id,
             "p_title": facts_data.get("title", "Untitled matter"),
             "p_summary": assessment.get("success_rationale", facts_data.get("title", "")),
-            "p_category": category,
+            "p_category": db_category,
             "p_status": "intake" if not assessment else "assessment",
             "p_priority": priority,
             "p_facts": fact_rows,

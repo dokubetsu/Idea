@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Users } from "lucide-react";
+import { BookOpen, Users, FileText } from "lucide-react";
 import { createClient } from "@/shared/lib/supabase/server";
 import { QuickStartGuide } from "@/shared/components/ui";
 export const metadata = { title: "Lawyer Dashboard" };
@@ -18,7 +18,7 @@ export default async function LawyerDashboard() {
         <h1 className="mt-1 font-serif text-5xl font-bold">Welcome, {name}.</h1>
         <p className="mt-2 text-sm text-brand-blue-light/55">Manage assigned matters and client requests.</p>
       </div>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-3">
         <Link href="/lawyer/matters" className="group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
           <BookOpen className="h-6 w-6 text-brand-gold" />
           <div>
@@ -33,7 +33,15 @@ export default async function LawyerDashboard() {
             <p className="mt-1 text-sm text-brand-blue-light/55">Accept or decline incoming contact requests.</p>
           </div>
         </Link>
+        <Link href="/lawyer/legal-notice" className="group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
+          <FileText className="h-6 w-6 text-brand-gold" />
+          <div>
+            <p className="font-serif text-xl font-bold">Draft Legal Notice</p>
+            <p className="mt-1 text-sm text-brand-blue-light/55">Draft a formal legal notice on behalf of your clients.</p>
+          </div>
+        </Link>
       </div>
+
       <div className="rounded-xl border border-brand-gold/12 bg-base-100 p-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-3">Your value as a lawyer on this platform</p>
         <p className="text-sm leading-7 text-brand-blue-light/65">

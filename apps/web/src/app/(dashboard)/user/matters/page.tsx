@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Scale, ChevronRight, Clock } from "lucide-react";
 import { useMatters } from "@/features/matters/hooks/useMatters";
 import { IntakeWizard } from "@/features/intake/components/IntakeWizard";
@@ -46,6 +47,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 type FilterTab = "all" | "active" | "waiting" | "resolved";
 
 export default function UserCasesPage() {
+  const router = useRouter();
   const { data: matters = [], isLoading } = useMatters();
   const [showWizard, setWizard] = useState(false);
   const [tab, setTab] = useState<FilterTab>("all");
@@ -142,7 +144,10 @@ export default function UserCasesPage() {
       {showWizard && (
         <div className="fixed inset-0 z-50 flex justify-center items-start overflow-y-auto bg-black/40 p-4 backdrop-blur-sm md:py-12">
           <div className="my-auto w-full max-w-2xl">
-            <IntakeWizard onClose={() => setWizard(false)} />
+            <IntakeWizard
+              onClose={() => setWizard(false)}
+              onOpenLegalNotice={() => router.push("/user/legal-notice")}
+            />
           </div>
         </div>
       )}

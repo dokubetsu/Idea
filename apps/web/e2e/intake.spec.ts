@@ -27,11 +27,15 @@ test.describe("Petitioner Intake Wizard — E2E", () => {
 
     // 3. Open the intake wizard
     await page.click('button:has-text("Start New Case"), a:has-text("Start New Case")');
-    await expect(page.locator('h2:has-text("What\'s your case about?")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h2:has-text("Choose a legal domain")')).toBeVisible({ timeout: 5000 });
 
-    // ── Step 1: Pick domain/category ───────────────────────────────
-    // Click the "Consumer" category tile (works for demo without needing finance/motor)
+    // ── Step 1: Pick domain ───────────────────────────────
+    // Click the "Consumer" domain tile
     await page.click('button:has-text("Consumer")');
+
+    // ── Step 1.5: Pick subtype ────────────────────────────
+    await expect(page.locator('h2:has-text("Select the type of dispute")')).toBeVisible({ timeout: 5000 });
+    await page.click('button:has-text("Product Defect")');
 
     // ── Step 2: Core facts ─────────────────────────────────────────
     await expect(page.locator('h2:has-text("A few quick details")')).toBeVisible({ timeout: 5000 });

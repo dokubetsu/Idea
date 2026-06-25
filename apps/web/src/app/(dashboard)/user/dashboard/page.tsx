@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronRight, Plus, Users, FileText } from "lucide-react";
 import { createClient } from "@/shared/lib/supabase/server";
 import { QuickStartGuide } from "@/shared/components/ui";
 export const metadata = { title: "Dashboard" };
@@ -56,10 +56,11 @@ export default async function UserDashboard() {
         <p className="mt-2 text-sm text-brand-blue-light/55">What would you like to do today?</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { href: "/user/matters", icon: Plus, label: "Tell us about your case", desc: "Describe what happened and get a free AI assessment" },
           { href: "/user/lawyers", icon: Users, label: "Find a legal advisor", desc: "Browse verified lawyers by city and area of law" },
+          { href: "/user/legal-notice", icon: FileText, label: "Draft Legal Notice", desc: "Draft a formal legal notice to demand payments or resolve disputes" },
           { href: "/user/matters", icon: BookOpen, label: "My cases", desc: "Track your case progress, hearings, and messages" },
         ].map(({ href, icon: Icon, label, desc }, i) => (
           <Link key={label} href={href}
@@ -74,6 +75,7 @@ export default async function UserDashboard() {
           </Link>
         ))}
       </div>
+
 
       {/* Recent Cases Widget */}
       {recentCases.length > 0 && (
