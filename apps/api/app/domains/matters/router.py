@@ -358,7 +358,7 @@ async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpd
     
     if user.role == "user":
         # Users can only update payment fields
-        allowed_keys = {"is_paid", "payment_id"}
+        allowed_keys = {"is_paid", "payment_id", "payment_idempotency_key"}
         data = {k: v for k, v in data.items() if k in allowed_keys}
         if not data:
             raise HTTPException(status_code=403, detail="Users can only update payment status of milestones.")
@@ -366,12 +366,26 @@ async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpd
     if "completed_at" in data and data["completed_at"]:
         data["completed_at"] = data["completed_at"].isoformat()
         
-    r = db.table("matter_milestones").update(data).eq("id", milestone_id).eq("matter_id", matter_id).execute()
-    if not r.data:
-        raise NotFound("Milestone")
+    try:
+        r = db.table("matter_milestones").update(data).eq("id", milestone_id).eq("matter_id", matter_id).execute()
+        if not r.data:
+            raise NotFound("Milestone")
+        milestone = r.data[0]
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate" in msg or "already exists" in msg or "unique" in msg:
+            pkey = data.get("payment_idempotency_key")
+            if pkey:
+                existing = db.table("matter_milestones").select("*").eq("payment_idempotency_key", pkey).execute()
+                if existing.data:
+                    if existing.data[0]["id"] == milestone_id:
+                        return existing.data[0]
+                    else:
+                        raise HTTPException(status_code=400, detail="Idempotency key already used for another milestone")
+        raise e
         
     await emit(EventType.MILESTONE_UPDATED, actor_id=user.id, matter_id=matter_id, payload={"milestone_id": milestone_id})
-    return r.data[0]
+    return milestone
 
 # -- Meetings -------------------------------------------------------
 

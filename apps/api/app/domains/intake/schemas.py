@@ -61,6 +61,7 @@ class ExtractedFactsPayload(BaseModel):
     completeness_score: float | None = None
     missing_keys: list[str] = Field(default_factory=list)
     facts: list[ExtractedFact] = Field(default_factory=list)
+    schema_version: int = 2
 
 class IntakeSessionOut(BaseModel):
     id: str

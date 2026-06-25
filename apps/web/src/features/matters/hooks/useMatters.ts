@@ -141,6 +141,7 @@ export function useUpdateMilestone(matterId: string) {
       amount_inr?: number;
       is_paid?: boolean;
       payment_id?: string;
+      payment_idempotency_key?: string | null;
       completed_at?: string | null;
     }) => apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, body),
     onSuccess: () => {

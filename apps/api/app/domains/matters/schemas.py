@@ -48,6 +48,7 @@ class MilestoneOut(BaseModel):
     amount_inr: float | None = None
     is_paid: bool = False
     payment_id: str | None = None
+    payment_idempotency_key: str | None = None
     completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
@@ -69,6 +70,7 @@ class MilestoneUpdate(BaseModel):
     amount_inr: float | None = None
     is_paid: bool | None = None
     payment_id: str | None = None
+    payment_idempotency_key: str | None = None
     completed_at: datetime | None = None
 
 

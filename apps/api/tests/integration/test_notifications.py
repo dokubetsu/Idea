@@ -73,3 +73,65 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
                 db.table("profiles").delete().eq("id", mock_user.id).execute()
             except Exception:
                 pass
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_notification_idempotency(mock_user):
+    db = get_db()
+    
+    # 1. Upsert mock_user profile in the DB so FK constraint passes
+    profile_data = {
+        "id": mock_user.id,
+        "full_name": mock_user.full_name,
+        "role": "user",
+        "is_active": True
+    }
+    db.table("profiles").upsert(profile_data).execute()
+    
+    idemp_key = f"idemp_test_notif_{mock_user.id}"
+    notif_id1 = None
+    notif_id2 = None
+    
+    try:
+        # Create first notification
+        notif1 = create_notification(
+            db=db,
+            user_id=mock_user.id,
+            type_name="hearing_scheduled",
+            data={"matter_id": "test-matter-id", "message": "Test hearing alert 1"},
+            action={"label": "View", "url": "/test"},
+            idempotency_key=idemp_key
+        )
+        notif_id1 = notif1["id"]
+        assert notif_id1 is not None
+        
+        # Create second notification with same idempotency key
+        notif2 = create_notification(
+            db=db,
+            user_id=mock_user.id,
+            type_name="hearing_scheduled",
+            data={"matter_id": "test-matter-id", "message": "Test hearing alert 2"},
+            action={"label": "View", "url": "/test"},
+            idempotency_key=idemp_key
+        )
+        notif_id2 = notif2["id"]
+        
+        # They must be the same notification!
+        assert notif_id1 == notif_id2
+        
+        # Assert database contains exactly one row with this key
+        res = db.table("notifications").select("*").eq("idempotency_key", idemp_key).execute()
+        assert len(res.data) == 1
+        
+    finally:
+        if notif_id1:
+            try:
+                db.table("notification_deliveries").delete().eq("notification_id", notif_id1).execute()
+                db.table("notifications").delete().eq("id", notif_id1).execute()
+            except Exception:
+                pass
+        try:
+            db.table("profiles").delete().eq("id", mock_user.id).execute()
+        except Exception:
+            pass

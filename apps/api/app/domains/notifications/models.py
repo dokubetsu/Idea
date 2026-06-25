@@ -16,6 +16,7 @@ class NotificationCreate(BaseModel):
     type: str
     data: Dict[str, Any] = Field(default_factory=dict)
     action: Optional[ActionModel] = None
+    idempotency_key: Optional[str] = None
 
 class NotificationOut(BaseModel):
     id: str
@@ -25,6 +26,7 @@ class NotificationOut(BaseModel):
     action: Optional[ActionModel] = None
     status: NotificationStatus
     created_at: datetime
+    idempotency_key: Optional[str] = None
 
 class NotificationDeliveryOut(BaseModel):
     id: str

@@ -38,12 +38,14 @@ async def start_intake(request: Request, body: StartIntakeRequest, user: Auth):
         "user_id":          user.id,
         "step":             "facts_review",
         "raw_description":  body.description,
+        "schema_version":   2,
         "extracted_facts": {
             "title":              body.title,
             "detected_category":  result.detected_category,
             "completeness_score": result.completeness_score,
             "missing_keys":       result.missing_keys,
             "facts": [f.model_dump() for f in result.facts],
+            "schema_version":     2,
         },
         "provider_used": result.provider,
     }).execute().data[0]
@@ -213,13 +215,71 @@ async def get_session(session_id: str, user: Auth):
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+def migrate_extracted_facts(ef: dict, row: dict) -> dict:
+    import re
+    if not isinstance(ef, dict):
+        ef = {}
+    version = ef.get("schema_version", 0)
+    if version >= 2:
+        return ef
+
+    # If it is version 0 (or completely unstructured flat dict) or version 1
+    # Version 1 would have "facts" key, but version 0 (flat dict) does not
+    if "facts" not in ef:
+        # Migrate flat key-value to structured facts list
+        facts_list = []
+        for k, v in ef.items():
+            if k in ("title", "detected_category", "completeness_score", "missing_keys", "schema_version"):
+                continue
+            # Guess the type of the value
+            val_type = "text"
+            if isinstance(v, bool):
+                val_type = "boolean"
+            elif isinstance(v, (int, float)):
+                val_type = "number"
+            elif isinstance(v, list):
+                val_type = "array"
+            # simple date regex guess
+            elif isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+                val_type = "date"
+
+            facts_list.append({
+                "key": k,
+                "value": v,
+                "value_type": val_type,
+                "label": k.replace("_", " ").title(),
+                "confidence": 1.0,
+                "source": "user"
+            })
+        
+        migrated = {
+            "title": ef.get("title") or row.get("raw_description", "Migrated Case")[:50] or "Migrated Case",
+            "detected_category": ef.get("detected_category") or "other",
+            "completeness_score": ef.get("completeness_score") or 1.0,
+            "missing_keys": ef.get("missing_keys") or row.get("missing_keys") or [],
+            "facts": facts_list,
+            "schema_version": 2
+        }
+        return migrated
+    
+    # If it is version 1 (has "facts" but lacks schema_version), we just add schema_version: 2
+    if "schema_version" not in ef:
+        ef = dict(ef)
+        ef["schema_version"] = 2
+        
+    return ef
+
+
 def _get_session(db, session_id: str, user_id: str) -> dict:
     r = db.table("intake_sessions").select("*").eq("id", session_id).single().execute()
     if not r.data:
         raise NotFound("Intake session")
     if r.data["user_id"] != user_id:
         raise Forbidden()
-    return r.data
+    
+    row = r.data
+    row["extracted_facts"] = migrate_extracted_facts(row.get("extracted_facts", {}), row)
+    return row
 
 
 def _session_out(row: dict) -> IntakeSessionOut:

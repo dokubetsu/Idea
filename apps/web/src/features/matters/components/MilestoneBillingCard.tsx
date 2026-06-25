@@ -19,12 +19,17 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
   const handlePay = async (milestoneId: string) => {
     // Mock payment gateway flow
     setProcessingId(milestoneId);
+    const randomSuffix = Math.random().toString(36).substr(2, 9);
+    const paymentId = "pay_" + randomSuffix;
+    const idempotencyKey = `pay_key_${milestoneId}_${randomSuffix}`;
+    
     setTimeout(async () => {
       try {
         await updateMilestone.mutateAsync({
           milestoneId,
           is_paid: true,
-          payment_id: "pay_" + Math.random().toString(36).substr(2, 9)
+          payment_id: paymentId,
+          payment_idempotency_key: idempotencyKey
         });
         alert("Payment successful! Invoice generated.");
       } catch (e: any) {

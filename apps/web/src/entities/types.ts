@@ -44,6 +44,7 @@ export interface Milestone {
   amount_inr?: number;
   is_paid?: boolean;
   payment_id?: string;
+  payment_idempotency_key?: string | null;
   completed_at?: string;
   created_at: string;
   updated_at: string;
@@ -126,6 +127,7 @@ export interface IntakeSession {
     completeness_score?: number;
     missing_keys?: string[];
     facts?: Array<{ key: string; value: FactValue; type: FactType; label: string; confidence?: number; source?: string }>;
+    schema_version?: number;
   };
   assessment_result?: Assessment;
   completeness_score?: number;
@@ -162,6 +164,7 @@ export interface Notification {
   };
   status: "UNREAD" | "READ" | "DISMISSED";
   created_at: string;
+  idempotency_key?: string | null;
 }
 
 export type NotificationChannel = "EMAIL" | "SMS" | "IN_APP";

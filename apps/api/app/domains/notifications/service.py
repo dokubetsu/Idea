@@ -48,6 +48,7 @@ def create_notification(
     type_name: str,
     data: Dict[str, Any],
     action: Optional[Dict[str, Any]] = None,
+    idempotency_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     # 1. Insert notification record
     notif_data = {
@@ -57,12 +58,23 @@ def create_notification(
         "action":  action,
         "status":  "UNREAD",
     }
+    if idempotency_key:
+        notif_data["idempotency_key"] = idempotency_key
 
-    resp = db.table("notifications").insert(notif_data).execute()
-    if not resp.data:
-        raise RuntimeError("Failed to create notification")
+    try:
+        resp = db.table("notifications").insert(notif_data).execute()
+        if not resp.data:
+            raise RuntimeError("Failed to create notification")
+        notification = resp.data[0]
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate" in msg or "already exists" in msg or "unique" in msg:
+            if idempotency_key:
+                existing = db.table("notifications").select("*").eq("idempotency_key", idempotency_key).execute()
+                if existing.data:
+                    return existing.data[0]
+        raise e
 
-    notification = resp.data[0]
     notif_id     = notification["id"]
 
     # 2. Resolve channels using user preferences (falls back to defaults)
