@@ -22,7 +22,10 @@ ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins have full access"
 ON storage.objects FOR ALL
 TO authenticated
-USING (auth_role() = 'admin');
+USING (
+  bucket_id = 'matter_documents' AND
+  auth_role() = 'admin'
+);
 
 -- To define matter-based access, we need a helper function since we can't easily JOIN inside standard storage policies
 -- without slowing down queries. We will extract the matter_id from the first part of the storage object path.
