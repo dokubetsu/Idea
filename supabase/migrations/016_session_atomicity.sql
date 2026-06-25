@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION increment_sessions_used(p_matter_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_sessions_used integer;
