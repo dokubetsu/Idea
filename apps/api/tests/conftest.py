@@ -46,10 +46,12 @@ class MockSupabaseTable:
         self.last_inserted = None
 
     def select(self, *args, **kwargs):
+        self.queries.clear()
         self.queries.append(("select", args, kwargs))
         return self
 
     def insert(self, data, *args, **kwargs):
+        self.queries.clear()
         self.queries.append(("insert", data, args, kwargs))
         if isinstance(data, list):
             self.data.extend(data)
@@ -60,8 +62,13 @@ class MockSupabaseTable:
         return self
 
     def update(self, data, *args, **kwargs):
+        self.queries.clear()
         self.queries.append(("update", data, args, kwargs))
-        self.last_inserted = [data]
+        updated_rows = []
+        for row in self.data:
+            updated_rows.append({**row, **data})
+        self.data = updated_rows
+        self.last_inserted = updated_rows
         return self
 
     def eq(self, column, value):
@@ -81,11 +88,18 @@ class MockSupabaseTable:
         return self
 
     def execute(self):
+        is_single = any(q[0] == "single" for q in self.queries)
         if self.last_inserted is not None:
-            res = MockSupabaseResponse(self.last_inserted)
+            data = self.last_inserted
             self.last_inserted = None
-            return res
-        return MockSupabaseResponse(self.data)
+        else:
+            data = self.data
+            
+        if is_single:
+            ret = data[0] if data else None
+        else:
+            ret = data
+        return MockSupabaseResponse(ret)
 
 class MockSupabaseResponse:
     def __init__(self, data, count=None):
@@ -146,7 +160,8 @@ def mock_db(request, monkeypatch):
         "app.shared.dependencies.get_db",
         "app.domains.legal_tools.router.get_db",
         "app.domains.legal_tools.services.draft.get_db",
-        "app.domains.system.router.get_service_role_db"
+        "app.domains.system.router.get_service_role_db",
+        "app.domains.consultations.router.get_db"
     ):
         try:
             monkeypatch.setattr(path, lambda: client)

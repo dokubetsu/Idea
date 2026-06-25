@@ -120,14 +120,15 @@ async def cancel_consultation(consultation_id: str, user: Auth):
         raise Forbidden("Only users can cancel consultations via this endpoint")
         
     db = get_db()
-    # Ensure RLS policy "user_cancel_own" works
-    # We'll just patch the status to cancelled. If they don't own it or it's not pending,
-    # RLS will prevent the update, returning an empty array or we handle it gracefully.
-    res = db.table("consultations").update({"status": "cancelled"}).eq("id", consultation_id).eq("user_id", str(user.id)).eq("status", "pending").select(SELECT_CONSULTATIONS).execute()
-    
-    if not res.data:
-        raise HTTPException(status_code=400, detail="Cannot cancel consultation. It may not be pending or you do not own it.")
+    row = db.table("consultations").select("user_id, status").eq("id", consultation_id).single().execute().data
+    if not row:
+        raise NotFound("Consultation not found")
+    if row["user_id"] != str(user.id):
+        raise Forbidden("This consultation is not yours to cancel")
+    if row["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Can only cancel pending consultations")
         
+    res = db.table("consultations").update({"status": "cancelled"}).eq("id", consultation_id).select(SELECT_CONSULTATIONS).execute()
     return enrich_consultation(res.data[0])
 
 @router.patch("/{consultation_id}/decline", response_model=ConsultationOut)
@@ -136,7 +137,7 @@ async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
     row = db.table("consultations").select("lawyer_id, status").eq("id", consultation_id).single().execute().data
     if not row:
         raise NotFound("Consultation not found")
-    if row.get("lawyer_id") is not None and row["lawyer_id"] != str(user.id) and user.role != UserRole.ADMIN:
+    if (row.get("lawyer_id") is None or row["lawyer_id"] != str(user.id)) and user.role != UserRole.ADMIN:
         raise Forbidden("This consultation is not assigned to you")
     if row.get("status") != "pending":
         raise HTTPException(status_code=400, detail="Can only decline pending consultations")
@@ -150,7 +151,7 @@ async def patch_consultation(consultation_id: str, body: ConsultationPatch, user
     row = db.table("consultations").select("lawyer_id").eq("id", consultation_id).single().execute().data
     if not row:
         raise NotFound("Consultation not found")
-    if row.get("lawyer_id") is not None and row["lawyer_id"] != str(user.id) and user.role != UserRole.ADMIN:
+    if (row.get("lawyer_id") is None or row["lawyer_id"] != str(user.id)) and user.role != UserRole.ADMIN:
         raise Forbidden("This consultation is not assigned to you")
         
     updates = body.model_dump(exclude_unset=True)

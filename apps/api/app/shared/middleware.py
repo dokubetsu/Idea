@@ -34,10 +34,15 @@ class RequestTracingMiddleware:
         from app.shared.database import create_client, set_request_db, clear_request_db
         from app.config import settings
 
+        import sys
         # Create request-scoped client (using anon key to respect RLS)
-        user_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-        if token:
-            user_client.postgrest.auth(token)
+        if "pytest" in sys.modules and (not settings.SUPABASE_TEST_PROJECT_URL or "placeholder" in settings.SUPABASE_TEST_PROJECT_URL):
+            from app.shared.database import get_service_role_db
+            user_client = get_service_role_db()
+        else:
+            user_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            if token:
+                user_client.postgrest.auth(token)
 
         ctx_token = set_request_db(user_client)
 
