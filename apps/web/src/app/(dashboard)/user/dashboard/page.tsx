@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Plus, Users, FileText } from "lucide-react";
+import { BookOpen, ChevronRight, Plus, Users, FileText, Scale } from "lucide-react";
 import { createClient } from "@/shared/lib/supabase/server";
 import { QuickStartGuide } from "@/shared/components/ui";
 export const metadata = { title: "Dashboard" };
@@ -29,6 +29,13 @@ export default async function UserDashboard() {
   if (!user) redirect("/login");
   const name = (user.user_metadata?.full_name ?? "there").split(" ")[0];
 
+  // Check if they have an unverified lawyer profile (meaning they applied to be a lawyer but are not verified yet)
+  const { data: lawyerProfile } = await sb
+    .from("lawyer_profiles")
+    .select("is_verified")
+    .eq("id", user.id)
+    .maybeSingle();
+
   // Fetch up to 3 most recent active cases for the widget
   const { data: recentCasesRaw } = await sb
     .from("matters")
@@ -55,6 +62,23 @@ export default async function UserDashboard() {
         <h1 className="mt-1 font-serif text-5xl font-bold">Hello, {name}.</h1>
         <p className="mt-2 text-sm text-brand-blue-light/55">What would you like to do today?</p>
       </div>
+
+      {lawyerProfile && !lawyerProfile.is_verified && (
+        <div className="rounded-xl border border-brand-gold/30 bg-brand-gold/8 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gold/15 text-brand-gold">
+              <Scale className="h-4 w-4 animate-scale-tilt" />
+            </div>
+            <div>
+              <p className="font-serif text-base font-bold text-brand-blue-dark">Advocate Application Pending Verification</p>
+              <p className="mt-1 text-xs leading-5 text-brand-blue-light/70">
+                Your request to register as a lawyer is currently undergoing review by our administrators.
+                You can browse and use the platform as a petitioner in the meantime.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

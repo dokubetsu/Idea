@@ -53,7 +53,7 @@ async def register_profile(
         return existing.data[0]
 
     profile = db.table("profiles").insert({
-        "id": user_id, "role": body.role, "full_name": body.full_name,
+        "id": user_id, "role": "user", "full_name": body.full_name,
         "phone": body.phone, "city": body.city, "state": body.state,
     }).execute().data[0]
 
@@ -62,7 +62,7 @@ async def register_profile(
         from gotrue import AdminUserAttributes
         db.auth.admin.update_user_by_id(
             user_id,
-            AdminUserAttributes(app_metadata={"role": body.role})
+            AdminUserAttributes(app_metadata={"role": "user"})
         )
     except Exception as e:
         log.warning("Failed to sync role to app_metadata: %s", e)

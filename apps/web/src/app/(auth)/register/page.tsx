@@ -59,7 +59,11 @@ export default function RegisterPage() {
       setApiErr(body.detail ?? "Profile setup failed. Please try signing in.");
       return;
     }
-    router.replace(`/${role}/dashboard`);
+    if (role === "lawyer") {
+      router.replace("/user/dashboard?notice=lawyer-pending");
+    } else {
+      router.replace("/user/dashboard");
+    }
   }
 
   return (
