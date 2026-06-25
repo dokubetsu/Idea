@@ -143,6 +143,11 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
   const [catFacts, setCatFacts] = useState<Record<string, string>>({});
   const [session, setSess]    = useState<IntakeSession | null>(null);
   const [matterId, setMid]    = useState<string | null>(null);
+  // FIX J: Track which phase of onDescribe failed so the user can retry
+  // from exactly that phase without re-starting or getting stuck.
+  type PhaseError = { phase: "start" | "facts" | "assess"; message: string } | null;
+  const [phaseError, setPhaseError] = useState<PhaseError>(null);
+  const [pendingSession, setPending] = useState<IntakeSession | null>(null);
 
   const startIntake   = useStartIntake();
   const updateFacts   = useUpdateFacts();
@@ -177,29 +182,65 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
 
   async function onDescribe(data: DescribeForm) {
     if (!category || !coreFacts) return;
+    setPhaseError(null);
 
-    // Build a title if user didn't provide enough
     const title = data.title || `${CATEGORIES.find(c => c.id === category)?.label} — ${coreFacts.opponent_name}`;
+    const description = data.description || "See structured facts.";
 
-    // Start intake with the description
-    const s = await startIntake.mutateAsync({ title, description: data.description || "See structured facts." });
-    setSess(s);
+    // ── Phase 1: start (idempotent — creates session) ─────────────
+    let s = pendingSession;
+    if (!s || s.step === "facts_review") {
+      try {
+        s = await startIntake.mutateAsync({ title, description });
+        setPending(s);
+        setSess(s);
+      } catch {
+        setPhaseError({ phase: "start", message: "Could not start your session. Check your connection and try again." });
+        return;
+      }
+    }
 
-    // Merge structured facts on top of AI-extracted facts
-    // Structured facts (source: "user", confidence: 1.0) take precedence
-    const structuredFacts = buildStructuredFacts(coreFacts, catFacts, category);
-    const aiFactKeys = new Set((s.extracted_facts.facts ?? []).map(f => f.key));
-    const merged = [
-      ...structuredFacts,
-      // Keep AI facts that don't overlap with structured ones
-      ...(s.extracted_facts.facts ?? []).filter(f => !structuredFacts.some(sf => sf.key === f.key)),
-    ];
+    // ── Phase 2: updateFacts (idempotent — overwrites facts) ──────
+    if (s.step === "facts_review" || s.step === "assessment") {
+      const structuredFacts = buildStructuredFacts(coreFacts, catFacts, category);
+      const merged = [
+        ...structuredFacts,
+        ...(s.extracted_facts.facts ?? []).filter(f => !structuredFacts.some(sf => sf.key === f.key)),
+      ];
+      try {
+        s = await updateFacts.mutateAsync({ sessionId: s.id, facts: merged });
+        setPending(s);
+        setSess(s);
+      } catch {
+        setPhaseError({ phase: "facts", message: "Facts were not saved. Please try again — your session is preserved." });
+        return;
+      }
+    }
 
-    const updated = await updateFacts.mutateAsync({ sessionId: s.id, facts: merged });
-    setSess(updated);
-    const assessed = await runAssessment.mutateAsync(s.id);
-    setSess(assessed);
-    setStep("assessment");
+    // ── Phase 3: assess (idempotent — session already at 'assessment') ─
+    if (s.step === "assessment" || s.step === "confirm") {
+      try {
+        const assessed = await runAssessment.mutateAsync(s.id);
+        setSess(assessed);
+        setPending(null); // clear pending once fully through
+        setStep("assessment");
+      } catch {
+        setPhaseError({ phase: "assess", message: "The AI assessment failed. Your case details are saved — tap \"Retry assessment\" to try again." });
+      }
+    }
+  }
+
+  async function retryAssessment() {
+    if (!pendingSession) return;
+    setPhaseError(null);
+    try {
+      const assessed = await runAssessment.mutateAsync(pendingSession.id);
+      setSess(assessed);
+      setPending(null);
+      setStep("assessment");
+    } catch {
+      setPhaseError({ phase: "assess", message: "Assessment failed again. Please wait a moment and retry." });
+    }
   }
 
   async function onCommit() {
@@ -436,10 +477,17 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
               AI will now review everything you've entered and generate your legal assessment.
             </div>
 
-            {startIntake.error && (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                Something went wrong. Please try again.
-              </p>
+            {/* FIX J: Per-phase error with targeted retry instead of generic message */}
+            {phaseError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-2">
+                <p className="text-sm text-red-600">{phaseError.message}</p>
+                {phaseError.phase === "assess" && pendingSession && (
+                  <button type="button" onClick={retryAssessment} disabled={runAssessment.isPending}
+                    className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition-colors disabled:opacity-50">
+                    {runAssessment.isPending ? <><Loader /> Retrying…</> : <><Sparkles className="h-3 w-3" /> Retry assessment</>}
+                  </button>
+                )}
+              </div>
             )}
 
             <div className="flex gap-3 pt-1">
@@ -454,6 +502,7 @@ export function IntakeWizard({ onClose }: { onClose: () => void }) {
             </div>
           </form>
         )}
+
 
         {/* ── Step 5: Assessment results ────────────────────── */}
         {step === "assessment" && a && (

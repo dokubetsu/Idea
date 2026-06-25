@@ -183,3 +183,33 @@ async def process_weekly_summaries(
 
     log.info("Weekly Summaries Cron: Processed %d summaries.", sent_count)
     return {"status": "success", "summaries_sent": sent_count}
+
+
+@router.post("/cron/cleanup-sessions", status_code=200)
+async def cleanup_intake_sessions(
+    x_cron_secret: str | None = Header(default=None, alias="X-Cron-Secret"),
+):
+    """
+    FIX N: Replace in-process asyncio.sleep(21600) cleanup loop with a proper
+    HTTP cron endpoint. Call this from Render's cron job, GitHub Actions
+    scheduler, or any external cron every 6 hours.
+
+    Schedule example (Render):  0 */6 * * *
+    Must be called with:  X-Cron-Secret: <CRON_SECRET>
+
+    Deletes uncommitted intake sessions whose `expires_at` has passed.
+    """
+    verify_cron_secret(x_cron_secret)
+    db = get_db()
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        db.table("intake_sessions")
+        .delete()
+        .eq("is_committed", False)
+        .lt("expires_at", now)
+        .execute()
+    )
+    deleted = len(result.data) if result.data else 0
+    log.info("Session Cleanup Cron: Deleted %d expired sessions.", deleted)
+    return {"status": "success", "sessions_deleted": deleted}

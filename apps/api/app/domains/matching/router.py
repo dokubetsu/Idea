@@ -40,15 +40,26 @@ async def list_lawyers(
     if max_fee is not None:
         q = q.lte("consultation_fee", max_fee)
 
-    if city:
-        q = q.eq("profiles.city", city)
-    if state:
-        q = q.eq("profiles.state", state)
     if specialization:
         q = q.contains("specializations", [specialization])
 
-    rows = q.range(off, off + per_page - 1).execute().data or []
-    return [_build_lawyer_out(r) for r in rows]
+    # FIX F: PostgREST resource-embedding filters (profiles.city / profiles.state)
+    # silently no-op in many versions of the supabase-py client. Filter in Python
+    # after the join is resolved instead. Fetch a slightly larger window to
+    # compensate for rows dropped by the Python filter.
+    fetch_limit = per_page * 3 if (city or state) else per_page
+    rows = q.range(off, off + fetch_limit - 1).execute().data or []
+
+    out = [_build_lawyer_out(r) for r in rows]
+
+    if city:
+        city_lower = city.strip().lower()
+        out = [r for r in out if (r.get("city") or "").lower() == city_lower]
+    if state:
+        state_lower = state.strip().lower()
+        out = [r for r in out if (r.get("state") or "").lower() == state_lower]
+
+    return out[:per_page]
 
 
 

@@ -64,7 +64,6 @@ async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
     if session["step"] not in ("facts_review", "assessment"):
         raise BadRequest(f"Cannot update facts. Expected session step to be 'facts_review', but got '{session['step']}'")
 
-
     existing = session["extracted_facts"]
     existing["facts"] = [f.model_dump() for f in body.facts]
 
@@ -86,7 +85,6 @@ async def run_intake_assessment(request: Request, session_id: str, user: Auth):
 
     if session["step"] not in ("assessment", "confirm"):
         raise BadRequest(f"Cannot run assessment. Expected session step to be 'assessment', but got '{session['step']}'")
-
 
     facts_data = session["extracted_facts"]
     facts_dict = {f["key"]: f["value"] for f in facts_data.get("facts", [])}
@@ -114,12 +112,16 @@ async def run_intake_assessment(request: Request, session_id: str, user: Auth):
 
 @router.post("/{session_id}/commit", status_code=201)
 @limiter.limit("5/minute")
-async def commit_intake(request: Request, session_id: str, body: CommitIntakeRequest | None = None, user: Auth = None):
+async def commit_intake(request: Request, session_id: str, user: Auth, body: CommitIntakeRequest | None = None):
     """
     Step 4: Commit — create matter + persist facts + emit events.
     Returns the created matter.
+
+    FIX D: `user: Auth` (no `= None` default). The `Auth` alias is
+    `Annotated[CurrentUser, Depends(get_current_user)]`. Placing it before the
+    optional `body` arg avoids a misleading `None` default while keeping
+    slowapi happy (request is still the first arg).
     """
-    from datetime import datetime, timezone
     db      = get_db()
     session = _get_session(db, session_id, user.id)
 
@@ -134,7 +136,6 @@ async def commit_intake(request: Request, session_id: str, body: CommitIntakeReq
         facts_data["facts"] = body.confirmed_facts
         db.table("intake_sessions").update({"extracted_facts": facts_data}).eq("id", session_id).execute()
         session["extracted_facts"] = facts_data
-
 
     facts_data = session["extracted_facts"]
     assessment = session.get("assessment_result") or {}
@@ -171,10 +172,9 @@ async def commit_intake(request: Request, session_id: str, body: CommitIntakeReq
         log.error("RPC commit_intake failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Database transaction failed during commit.")
 
-
     if not rpc_res.data:
         raise HTTPException(status_code=500, detail="Failed to commit intake session")
-    
+
     commit_data = rpc_res.data[0]
     matter_id = commit_data["matter_id"]
     already_committed = commit_data["already_committed"]
@@ -235,12 +235,21 @@ def _risk_to_priority(risk: str) -> str:
 
 
 def _format_assessment_update(a: dict) -> str:
+    # FIX E: Coerce budget values to int before using the :, format specifier.
+    # AI providers may return these as strings (e.g. "50000") which would crash
+    # with TypeError: unsupported format character.
+    def _fmt_money(val, default: int = 0) -> str:
+        try:
+            return f"{int(float(str(val))):,}"
+        except (TypeError, ValueError):
+            return str(val) if val else str(default)
+
     lines = [
         "📋 **AI Legal Assessment**\n",
         f"**Category:** {a.get('category','—').replace('_',' ').title()}",
         f"**Risk:** {a.get('risk_level','—').upper()}  |  **Success probability:** {a.get('success_probability','—')}%",
         f"**Timeline:** {a.get('timeline_min_months','—')}–{a.get('timeline_max_months','—')} months",
-        f"**Budget estimate:** ₹{a.get('budget_min_inr',0):,} – ₹{a.get('budget_max_inr',0):,}",
+        f"**Budget estimate:** ₹{_fmt_money(a.get('budget_min_inr'))} – ₹{_fmt_money(a.get('budget_max_inr'))}",
         f"**Recommended forum:** {a.get('recommended_forum','—')}\n",
         "**Immediate actions:**",
     ]

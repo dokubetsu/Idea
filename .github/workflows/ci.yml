@@ -59,6 +59,10 @@ jobs:
     - name: Build web application
       run: npm --prefix apps/web run build
       env:
-        NEXT_PUBLIC_SUPABASE_URL: https://dsjkhphbpspawcbellal.supabase.co
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzamtocGhicHNwYXdjYmVsbGFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDg5NDIsImV4cCI6MjA5NjU4NDk0Mn0.cAxRgckRkyptcFcAeF_29fDq-_6UJI2BShiXGVUxPac
+        # FIX B: Real project URL and anon key removed from source.
+        # Add these as GitHub Actions secrets: Settings → Secrets → Actions
+        #   NEXT_PUBLIC_SUPABASE_URL     → https://<your-ref>.supabase.co
+        #   NEXT_PUBLIC_SUPABASE_ANON_KEY → eyJ...
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         NEXT_PUBLIC_API_URL: http://localhost:8000

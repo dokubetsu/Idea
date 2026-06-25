@@ -32,22 +32,9 @@ from app.domains.system.router import router as system_router
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
 
-import asyncio
-
-async def cleanup_expired_sessions():
-    """Background task running every 6 hours to purge uncommitted expired intake sessions."""
-    from app.shared.database import get_db
-    from datetime import datetime, timezone
-    db = get_db()
-    while True:
-        try:
-            now = datetime.now(timezone.utc).isoformat()
-            db.table("intake_sessions").delete().eq("is_committed", False).lt("expires_at", now).execute()
-            log.info("Cleaned up expired intake sessions.")
-        except Exception as e:
-            log.error("Failed to run session cleanup: %s", e)
-        # Sleep for 6 hours
-        await asyncio.sleep(21600)
+# FIX N: Removed in-process asyncio.sleep(21600) cleanup loop.
+# Session cleanup is now a proper HTTP cron endpoint: POST /api/v1/system/cron/cleanup-sessions
+# Call it from Render, GitHub Actions cron, or any external scheduler every 6 hours.
 
 
 @asynccontextmanager
@@ -74,16 +61,9 @@ async def lifespan(app: FastAPI):
     provider = get_provider()
     log.info("✅ Assessment provider: %s", provider.name)
 
-    cleanup_task = asyncio.create_task(cleanup_expired_sessions())
-
     yield
     # ── Shutdown ─────────────────────────────────────────────
     log.info("Shutting down")
-    cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
 
 
 app = FastAPI(
