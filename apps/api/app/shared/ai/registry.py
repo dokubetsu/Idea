@@ -73,8 +73,8 @@ class ProviderRegistry:
             except Exception as e:
                 log.error("AI provider '%s' health check threw exception: %s. Initiating fallback...", name, e)
 
-        # Fallback chain: requested -> claude -> gemini -> openai_compatible -> mock
-        fallback_order = ["claude", "gemini", "openai_compatible", "mock"]
+        # Fallback chain: requested -> claude -> gemini -> openai_compatible
+        fallback_order = ["claude", "gemini", "openai_compatible"]
         if name in fallback_order:
             fallback_order.remove(name)
 
@@ -88,13 +88,15 @@ class ProviderRegistry:
                 except Exception:
                     continue
 
-        # Terminal fallback is always mock, which is guaranteed to be healthy
-        log.error("All AI providers unhealthy or unavailable. Falling back to 'mock'.")
-        mock_provider = self._get_or_init_provider("mock")
-        if not mock_provider:
-            from app.shared.ai.mock import MockProvider
-            mock_provider = MockProvider()
-        return mock_provider
+        # If mock is explicitly requested (opt-in), return it
+        if name == "mock":
+            mock_provider = self._get_or_init_provider("mock")
+            if not mock_provider:
+                from app.shared.ai.mock import MockProvider
+                mock_provider = MockProvider()
+            return mock_provider
+
+        raise RuntimeError("All configured AI providers are unhealthy or unavailable.")
 
 
 # Global registry instance

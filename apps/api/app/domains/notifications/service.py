@@ -7,6 +7,8 @@ from app.domains.notifications.templates import get_template
 
 log = logging.getLogger(__name__)
 
+BACKGROUND_TASKS: set[asyncio.Task] = set()
+
 
 def get_recipient_info(db, user_id: str) -> dict:
     try:
@@ -104,7 +106,9 @@ def create_notification(
 
     # 5. Trigger delivery worker in background
     from app.domains.notifications.worker import trigger_deliveries
-    asyncio.create_task(trigger_deliveries(db, notif_id, html_body=html_body))
+    task = asyncio.create_task(trigger_deliveries(db, notif_id, html_body=html_body))
+    BACKGROUND_TASKS.add(task)
+    task.add_done_callback(BACKGROUND_TASKS.discard)
 
     return notification
 

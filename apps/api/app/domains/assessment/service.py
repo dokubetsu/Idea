@@ -40,33 +40,8 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
     # 2. Build versioned prompt
     system_prompt, user_prompt = PromptBuilder.build("assessment", context, version="v1")
     
-    provider_name = "mock"
-    try:
-        # 3. Resolve active provider (handles fallback if unhealthy)
-        provider = await get_ai_provider()
-        provider_name = provider.name
-        
-        # 4. Generate raw response
-        raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
-        
-        # 5. Validate against Pydantic schema
-        validated = ResponseValidator.validate(raw, AssessmentOutput)
-        
-        # 6. Normalize and flat-map metadata
-        model_name = settings.AI_MODEL_NAME or provider.name
-        normalized = Normalizer.normalize_assessment(
-            validated,
-            provider_name=provider.name,
-            model_name=model_name,
-            prompt_version="assessment_v1",
-            temperature=0.1
-        )
-        
-        return AssessmentOutput(**normalized)
-        
-    except Exception as exc:
-        log.error("AI legal assessment failed using '%s': %s — falling back to mock", provider_name, exc)
-        # Safe deterministic local fallback
+    if settings.ai_provider == "mock":
+        # Safe deterministic local mock
         mock = MockProvider()
         raw_mock = await mock.generate(system_prompt, user_prompt)
         validated_mock = ResponseValidator.validate(raw_mock, AssessmentOutput)
@@ -78,3 +53,24 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
             temperature=0.1
         )
         return AssessmentOutput(**normalized_mock)
+
+    # 3. Resolve active provider (handles fallback if unhealthy)
+    provider = await get_ai_provider()
+    
+    # 4. Generate raw response
+    raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
+    
+    # 5. Validate against Pydantic schema
+    validated = ResponseValidator.validate(raw, AssessmentOutput)
+    
+    # 6. Normalize and flat-map metadata
+    model_name = settings.AI_MODEL_NAME or provider.name
+    normalized = Normalizer.normalize_assessment(
+        validated,
+        provider_name=provider.name,
+        model_name=model_name,
+        prompt_version="assessment_v1",
+        temperature=0.1
+    )
+    
+    return AssessmentOutput(**normalized)

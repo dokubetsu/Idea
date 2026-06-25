@@ -52,7 +52,20 @@ export function NotificationBell() {
         const token = data.session?.access_token;
         if (!token) return;
 
-        es = new EventSource(`${BASE_API_URL}/api/v1/notifications/stream?token=${encodeURIComponent(token)}`);
+        // Fetch short-lived ticket
+        const ticketRes = await fetch(`${BASE_API_URL}/api/v1/notifications/ticket`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!ticketRes.ok) {
+          throw new Error("Failed to acquire SSE ticket");
+        }
+        const { ticket } = await ticketRes.json();
+
+        es = new EventSource(`${BASE_API_URL}/api/v1/notifications/stream?ticket=${encodeURIComponent(ticket)}`);
 
         es.addEventListener("notification", (event) => {
           // Invalidate cache to refetch

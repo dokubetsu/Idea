@@ -8,7 +8,7 @@ The intake workflow — 4 steps:
   4. POST /:id/commit    → create matter from session
 """
 import logging
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Response
 from app.shared.limiter import limiter
 from app.shared.dependencies import Auth, UserAuth
 from app.shared.events import emit, EventType
@@ -29,9 +29,10 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 
 @router.post("/start", response_model=IntakeSessionOut, status_code=201)
 @limiter.limit("5/minute")
-async def start_intake(request: Request, body: StartIntakeRequest, user: Auth):
+async def start_intake(request: Request, body: StartIntakeRequest, user: Auth, response: Response):
     """Step 1: Extract facts from description."""
     result = await extract_facts(body.title, body.description)
+    response.headers["X-AI-Provider"] = result.provider or "unknown"
 
     db  = get_db()
     row = db.table("intake_sessions").insert({
@@ -80,7 +81,7 @@ async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
 
 @router.post("/{session_id}/assess", response_model=IntakeSessionOut)
 @limiter.limit("5/minute")
-async def run_intake_assessment(request: Request, session_id: str, user: Auth):
+async def run_intake_assessment(request: Request, session_id: str, user: Auth, response: Response):
     """Step 3: Run assessment on current facts."""
     db      = get_db()
     session = _get_session(db, session_id, user.id)
@@ -96,6 +97,7 @@ async def run_intake_assessment(request: Request, session_id: str, user: Auth):
         facts=facts_dict,
         raw_description=session.get("raw_description"),
     ))
+    response.headers["X-AI-Provider"] = assessment.provider or "unknown"
 
     updated = db.table("intake_sessions").update({
         "assessment_result": assessment.model_dump(),

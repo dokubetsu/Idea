@@ -58,6 +58,8 @@ class EventType(str, Enum):
 
 import asyncio
 
+BACKGROUND_TASKS: set[asyncio.Task] = set()
+
 _subscribers = []
 
 def subscribe(callback) -> None:
@@ -109,7 +111,9 @@ async def emit(
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):
-                    asyncio.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                    task = asyncio.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                    BACKGROUND_TASKS.add(task)
+                    task.add_done_callback(BACKGROUND_TASKS.discard)
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:
@@ -142,7 +146,9 @@ def sync_emit(
                 if asyncio.iscoroutinefunction(sub):
                     try:
                         loop = asyncio.get_running_loop()
-                        loop.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                        task = loop.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                        BACKGROUND_TASKS.add(task)
+                        task.add_done_callback(BACKGROUND_TASKS.discard)
                     except RuntimeError:
                         asyncio.run(sub(event_str, actor_id, matter_id, payload or {}))
                 else:

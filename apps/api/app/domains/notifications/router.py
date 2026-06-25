@@ -16,10 +16,25 @@ from fastapi import HTTPException
 
 bearer = HTTPBearer(auto_error=False)
 
+import uuid
+import time
+from typing import Dict
+
+# Dictionary mapping ticket_id -> {"user_id": str, "expires_at": float}
+SSE_TICKETS: Dict[str, dict] = {}
+TICKET_EXPIRY_SECONDS = 30
+
+def _clean_expired_tickets():
+    now = time.time()
+    expired = [k for k, v in SSE_TICKETS.items() if now > v["expires_at"]]
+    for k in expired:
+        SSE_TICKETS.pop(k, None)
+
 
 # ── SSE auth helper (query-param token for native EventSource) ────────────────
 async def get_sse_user(
-    token: Optional[str] = None,
+    ticket: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db=Depends(get_db),
 ) -> CurrentUser:
@@ -29,27 +44,44 @@ async def get_sse_user(
     elif token:
         raw_token = token
 
-    if not raw_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    if raw_token:
+        try:
+            payload = _decode_jwt(raw_token)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-    try:
-        payload = _decode_jwt(raw_token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        user_id = payload.get("sub", "")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-    user_id = payload.get("sub", "")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        result = db.table("profiles").select("id,role,full_name,is_active").eq("id", user_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=401, detail="Profile not found")
 
-    result = db.table("profiles").select("id,role,full_name,is_active").eq("id", user_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=401, detail="Profile not found")
+        p = result.data[0]
+        if not p["is_active"]:
+            raise HTTPException(status_code=403, detail="Account suspended")
 
-    p = result.data[0]
-    if not p["is_active"]:
-        raise HTTPException(status_code=403, detail="Account suspended")
+        return CurrentUser(id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"])
 
-    return CurrentUser(id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"])
+    if ticket:
+        ticket_data = SSE_TICKETS.pop(ticket, None)
+        if not ticket_data:
+            raise HTTPException(status_code=401, detail="Invalid or expired ticket")
+        if time.time() > ticket_data["expires_at"]:
+            raise HTTPException(status_code=401, detail="Ticket expired")
+
+        result = db.table("profiles").select("id,role,full_name,is_active").eq("id", ticket_data["user_id"]).execute()
+        if not result.data:
+            raise HTTPException(status_code=401, detail="Profile not found")
+
+        p = result.data[0]
+        if not p["is_active"]:
+            raise HTTPException(status_code=403, detail="Account suspended")
+
+        return CurrentUser(id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"])
+
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 # ── Preference request/response models ───────────────────────────────────────
@@ -121,6 +153,22 @@ def update_preferences(
         user.id,
         [u.model_dump() for u in updates],
     )
+
+
+@router.post("/ticket")
+async def create_sse_ticket(
+    user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """Generate a short-lived SSE connection ticket for the current user."""
+    _clean_expired_tickets()
+    ticket_id = str(uuid.uuid4())
+    SSE_TICKETS[ticket_id] = {
+        "user_id": user.id,
+        "role": user.role,
+        "full_name": user.full_name,
+        "expires_at": time.time() + TICKET_EXPIRY_SECONDS
+    }
+    return {"ticket": ticket_id}
 
 
 # ── SSE stream ────────────────────────────────────────────────────────────────

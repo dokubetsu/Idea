@@ -262,10 +262,7 @@ async def extract_facts(title: str, description: str) -> FactsExtractionResult:
     from app.config import settings
 
     if settings.ai_provider != "mock":
-        try:
-            return await _ai_extract(title, description)
-        except Exception as exc:
-            log.error("AI fact extraction failed: %s — using mock", exc)
+        return await _ai_extract(title, description)
 
     return _mock_extract(title, description)
 
