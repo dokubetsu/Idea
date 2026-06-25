@@ -50,6 +50,15 @@ class Settings(BaseSettings):
     # Never hardcode a fallback here; the absence of this value at startup is intentional.
     CRON_SECRET: str
 
+    FEATURE_CONSULTATIONS: bool = True
+    FEATURE_BILLING: bool = False
+    FEATURE_HEARINGS: bool = False
+    FEATURE_MILESTONES: bool = False
+    FEATURE_AI_SUMMARIES: bool = False
+
+    SUPABASE_TEST_PROJECT_URL: str | None = None
+    SUPABASE_TEST_SERVICE_ROLE_KEY: str | None = None
+
     APP_ENV: str = "development"
     API_VERSION: str = "v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]

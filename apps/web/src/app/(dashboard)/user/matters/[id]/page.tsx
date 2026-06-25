@@ -12,6 +12,7 @@ import { DocumentVault } from "@/features/matters/components/DocumentVault";
 import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
 import { MilestoneBillingCard } from "@/features/matters/components/MilestoneBillingCard";
 import { Badge, Button, Card, Spinner } from "@/shared/components/ui";
+import { useFeatures } from "@/shared/hooks/useFeatures";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -49,6 +50,7 @@ const PRIORITY_TONE: Record<string, "gold" | "teal" | "blue" | "red" | "muted"> 
 
 export default function UserMatterDetailPage() {
   const { id } = useParams() as { id: string };
+  const { features } = useFeatures();
   
   // Fetch details
   const { data: matter, isLoading, error, refetch: refetchDetails } = useMatter(id);
@@ -128,7 +130,7 @@ export default function UserMatterDetailPage() {
       </div>
 
       {/* Case Progress Stepper */}
-      {matter.milestones && matter.milestones.length > 0 && (
+      {features.milestones && matter.milestones && matter.milestones.length > 0 && (
         <Card className="p-6">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-5">
             Case Progress Milestones
@@ -180,7 +182,7 @@ export default function UserMatterDetailPage() {
 
           <DocumentVault matterId={matter.id} />
           <MeetingsPanel matterId={matter.id} />
-          <MilestoneBillingCard matterId={matter.id} isLawyer={false} />
+          {features.billing && <MilestoneBillingCard matterId={matter.id} isLawyer={false} />}
 
           {/* Document Templates Card */}
           <DocumentDraftCard matterId={matter.id} category={matter.category} />
@@ -275,7 +277,7 @@ export default function UserMatterDetailPage() {
         {/* Right Column: Metadata, Hearings & Facts (1/3 width) */}
         <div className="space-y-6">
           {/* Upcoming Court Hearings */}
-          {scheduledHearings.length > 0 && (
+          {features.hearings && scheduledHearings.length > 0 && (
             <Card className="p-6 space-y-4 border-brand-gold/25 bg-brand-gold/5 shadow-md">
               <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-brand-blue-dark">
                 <Clock className="h-5 w-5 text-brand-gold animate-float" /> Upcoming Court Date

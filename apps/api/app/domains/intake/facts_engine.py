@@ -17,35 +17,9 @@ import re
 import logging
 from pydantic import BaseModel, field_validator
 
+from app.domains.intake.schemas import ExtractedFact, FactType, FactsExtractionResult
+
 log = logging.getLogger(__name__)
-
-
-# ── Fact schema ───────────────────────────────────────────────────
-
-class ExtractedFact(BaseModel):
-    key: str
-    value: str
-    value_type: str = "string"  # string | number | date | boolean
-    label: str                  # human-readable
-    confidence: float = 0.9     # 0.0–1.0
-    source: str = "ai"
-
-    @field_validator("value", mode="before")
-    @classmethod
-    def coerce_value_to_string(cls, v):
-        if isinstance(v, bool):
-            return "true" if v else "false"
-        if v is None:
-            return ""
-        return str(v)
-
-
-class FactsExtractionResult(BaseModel):
-    facts: list[ExtractedFact]
-    detected_category: str
-    completeness_score: float   # 0–1: how complete are the facts we need?
-    missing_keys: list[str]     # what we still need to ask the user
-    provider: str
 
 
 # ── Fact schemas by category ─────────────────────────────────────

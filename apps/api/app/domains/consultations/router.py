@@ -67,9 +67,20 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
         "status": "pending",
         "payment_status": "unpaid" if body.package != "free" else "waived"
     }
+    if body.idempotency_key:
+        payload["idempotency_key"] = body.idempotency_key
     
-    res = db.table("consultations").insert(payload).select(SELECT_CONSULTATIONS).execute()
-    return enrich_consultation(res.data[0])
+    try:
+        res = db.table("consultations").insert(payload).select(SELECT_CONSULTATIONS).execute()
+        return enrich_consultation(res.data[0])
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate" in msg or "already exists" in msg or "unique" in msg:
+            if body.idempotency_key:
+                existing = db.table("consultations").select(SELECT_CONSULTATIONS).eq("idempotency_key", body.idempotency_key).execute()
+                if existing.data:
+                    return enrich_consultation(existing.data[0])
+        raise e
 
 @router.patch("/{consultation_id}/confirm", response_model=ConfirmConsultationOut)
 async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):

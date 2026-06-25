@@ -113,18 +113,27 @@ export interface LawyerProfile {
   offered_packages?: ConsultationPackage[];
 }
 
+export type FactType = "text" | "number" | "boolean" | "date" | "array";
+export type FactValue = string | number | boolean | string[] | number[] | null;
+
 export interface IntakeSession {
-  id: string; step: string;
+  id: string;
+  step: string;
   raw_description?: string;
   extracted_facts: {
-    title?: string; detected_category?: string;
-    completeness_score?: number; missing_keys?: string[];
-    facts?: Array<{ key: string; value: string; value_type?: string; label?: string; confidence?: number; source?: string }>;
+    title?: string;
+    detected_category?: string;
+    completeness_score?: number;
+    missing_keys?: string[];
+    facts?: Array<{ key: string; value: FactValue; type: FactType; label: string; confidence?: number; source?: string }>;
   };
   assessment_result?: Assessment;
-  completeness_score?: number; missing_keys?: string[];
-  provider_used?: string; is_committed: boolean;
-  matter_id?: string; created_at: string;
+  completeness_score?: number;
+  missing_keys?: string[];
+  provider_used?: string;
+  is_committed: boolean;
+  matter_id?: string;
+  created_at: string;
 }
 
 export interface Assessment {

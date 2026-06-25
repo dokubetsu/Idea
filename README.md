@@ -23,29 +23,37 @@ The platform architecture wins. The CRM data migrates forward.
 
 ## Quick start
 
-### If starting fresh (no existing Supabase data)
-```bash
-# 1. In Supabase SQL Editor, run in order:
-001_schema.sql
-002_rls.sql
+### Local Development Setup (Using Supabase CLI)
 
-# 2. Env
+The project uses the Supabase CLI for database migration and local stack management.
+
+```bash
+# 1. Initialize and start local Supabase stack (requires Docker)
+supabase start
+
+# 2. Configure Environment variables
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.local.example apps/web/.env.local
 # Fill in SUPABASE_URL, keys, JWT secret. Optionally add ANTHROPIC_API_KEY.
 
-# 3. Run
-cd apps/api  && pip install -r requirements.txt && uvicorn app.main:app --reload
-cd apps/web  && npm install && npm run dev
+# 3. Apply/Reset migrations on the database
+supabase db reset
+
+# 4. Start local development servers
+# Backend
+cd apps/api
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# Frontend
+cd apps/web
+npm install
+npm run dev
 ```
 
-### If migrating from lead-crm (you already ran the old schema)
-```bash
-# 1. In Supabase SQL Editor, run ONLY:
-003_migrate_from_crm.sql   ← renames cases→matters, adds facts/events/intake_sessions
-
-# 2. Same env + run steps as above
-```
+### Production Deploys & Migration Management
+- **Create a new migration**: `supabase migration new create_some_feature`
+- **Push migrations to remote database**: `supabase db push`
 
 ---
 
@@ -107,6 +115,20 @@ apps/web/src/
 
 ---
 
+## Feature Flags
+
+The application uses feature flags to manage stage rollouts and hide incomplete features. They can be set in `.env` or system environment variables:
+
+| Environment Variable | Description | Default |
+|---|---|---|
+| `FEATURE_CONSULTATIONS` | Enable lawyer search & consultations booking | `true` |
+| `FEATURE_BILLING` | Enable milestone billing functionality | `false` |
+| `FEATURE_HEARINGS` | Enable court hearing scheduling | `false` |
+| `FEATURE_MILESTONES` | Enable case progress milestone tracking | `false` |
+| `FEATURE_AI_SUMMARIES` | Enable weekly AI client summaries | `false` |
+
+---
+
 ## AI providers
 | Key set | Provider used |
 |---|---|
@@ -130,3 +152,18 @@ The platform is fully functional without any AI API key.
 | Admin | `/api/v1/admin` | `GET /stats` · `/lawyers/pending` · verify/suspend |
 
 API docs (dev only): http://localhost:8000/docs
+
+---
+
+## Authorization & Security Architecture
+
+The platform uses a two-tier authorization scheme:
+
+1. **FastAPI Application Layer (Primary/Authoritative)**:
+   - **DB-Authoritative Roles**: User authorization is determined by the `role` column in the database `profiles` table. The JWT token is treated **only as identity proof**.
+   - Immediate role updates: When an administrator changes a user's role in the DB, it takes effect immediately on the next API call (via the `get_current_user` dependency retrieving the fresh database profile), avoiding stale JWT permissions.
+   - **Service Role Bypass**: The backend uses the Supabase service role client to bypass DB Row Level Security (RLS) for server-side orchestrations. **The service role key is never exposed to the frontend**.
+
+2. **Database Row Level Security (RLS) (Secondary / Defense-in-Depth)**:
+   - RLS acts as a second line of defense. The frontend uses the Supabase client directly with `anon` public key to fetch basic read-only data, restricted by strict RLS policies bound to `auth.uid()`.
+

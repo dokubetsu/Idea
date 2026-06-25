@@ -17,6 +17,7 @@ import { DocumentVault } from "@/features/matters/components/DocumentVault";
 import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
 import { Button, Input, Textarea, Select, Badge, Card, Spinner } from "@/shared/components/ui";
 import type { Matter, MatterUpdate, Hearing, Milestone, MatterCategory, MatterPriority } from "@/entities/types";
+import { useFeatures } from "@/shared/hooks/useFeatures";
 
 const STATUS_DOT: Record<string, string> = {
   active: "bg-brand-teal", 
@@ -27,6 +28,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export default function LawyerMattersPage() {
+  const { features } = useFeatures();
   const { data: matters = [], isLoading, refetch } = useMatters();
   const [selected, setSelected] = useState<Matter | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -219,7 +221,13 @@ export default function LawyerMattersPage() {
 
             {/* Dashboard Tabs Navigation */}
             <div className="flex border-b border-brand-gold/8 bg-base-200/30 px-5 overflow-x-auto">
-              {(["overview", "milestones", "hearings", "discussion"] as const).map((tab) => (
+              {(["overview", "milestones", "hearings", "discussion"] as const)
+                .filter(tab => {
+                  if (tab === "milestones" && !features.milestones) return false;
+                  if (tab === "hearings" && !features.hearings) return false;
+                  return true;
+                })
+                .map((tab) => (
                 <button
                   key={tab}
                   type="button"

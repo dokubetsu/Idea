@@ -11,6 +11,7 @@ class ConsultationCreate(BaseModel):
     lawyer_id: str | None = None
     package: ConsultationPackage = 'free'
     notes: str | None = None
+    idempotency_key: str | None = None
 
     @model_validator(mode="after")
     def lawyer_required_for_paid_packages(self) -> "ConsultationCreate":
@@ -45,6 +46,7 @@ class ConsultationOut(BaseModel):
     # Enriched fields
     user_name: str | None = None
     lawyer_name: str | None = None
+    idempotency_key: str | None = None
 
 class ConsultationPatch(BaseModel):
     # Only allowed specific state transitions via specialized RPC or endpoints

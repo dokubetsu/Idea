@@ -213,3 +213,14 @@ async def cleanup_intake_sessions(
     deleted = len(result.data) if result.data else 0
     log.info("Session Cleanup Cron: Deleted %d expired sessions.", deleted)
     return {"status": "success", "sessions_deleted": deleted}
+
+
+@router.get("/features")
+async def get_features():
+    return {
+        "consultations": settings.FEATURE_CONSULTATIONS,
+        "billing": settings.FEATURE_BILLING,
+        "hearings": settings.FEATURE_HEARINGS,
+        "milestones": settings.FEATURE_MILESTONES,
+        "ai_summaries": settings.FEATURE_AI_SUMMARIES,
+    }

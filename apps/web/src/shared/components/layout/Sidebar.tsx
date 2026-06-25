@@ -7,11 +7,13 @@ import { createClient } from "@/shared/lib/supabase/client";
 import type { UserRole } from "@/entities/types";
 import { NAV, ROLE_COLOR, ROLE_LABEL } from "@/shared/lib/navigation";
 import { NotificationBell } from "./NotificationBell";
+import { useFeatures } from "@/shared/hooks/useFeatures";
 
 
 export function Sidebar({ role, userName }: { role: UserRole; userName: string }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const { features } = useFeatures();
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -42,7 +44,10 @@ export function Sidebar({ role, userName }: { role: UserRole; userName: string }
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-        {NAV[role]?.map(({ href, label, icon: Icon }) => {
+        {NAV[role]?.filter(({ href }) => {
+          if (href.includes("lawyers") && !features.consultations) return false;
+          return true;
+        }).map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link key={href} href={href}

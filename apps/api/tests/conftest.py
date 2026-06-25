@@ -7,6 +7,37 @@ from app.main import app
 from app.shared.database import get_db
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "integration: run integration tests against test Supabase")
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_test_database():
+    from app.config import settings
+    # Override Supabase credentials with dedicated test credentials if present
+    if settings.SUPABASE_TEST_PROJECT_URL and settings.SUPABASE_TEST_SERVICE_ROLE_KEY:
+        if "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL:
+            settings.SUPABASE_URL = settings.SUPABASE_TEST_PROJECT_URL
+            settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
+
+@pytest.fixture(autouse=True)
+def skip_if_no_test_database(request):
+    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
+    if is_integration:
+        from app.config import settings
+        test_url = settings.SUPABASE_TEST_PROJECT_URL
+        test_key = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
+        
+        # Check if they are configured or placeholders
+        has_test_db = (
+            test_url and 
+            "placeholder" not in test_url and 
+            "placeholder.supabase.co" not in test_url and
+            test_key and 
+            "placeholder" not in test_key
+        )
+        if not has_test_db:
+            pytest.skip("Skipping integration test: SUPABASE_TEST_PROJECT_URL and SUPABASE_TEST_SERVICE_ROLE_KEY are not configured.")
+
 class MockSupabaseTable:
     def __init__(self, name: str):
         self.name = name
@@ -97,7 +128,11 @@ def event_loop():
     loop.close()
 
 @pytest.fixture
-def mock_db(monkeypatch):
+def mock_db(request, monkeypatch):
+    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
+    if is_integration:
+        return None
+
     client = MockSupabaseClient()
     for path in (
         "app.shared.database.get_db",
@@ -115,7 +150,6 @@ def mock_db(monkeypatch):
         except AttributeError:
             pass
     return client
-
 
 @pytest.fixture
 def mock_user():

@@ -12,7 +12,7 @@ import {
 import {
   useStartIntake, useUpdateFacts, useRunAssessment, useCommitIntake,
 } from "@/features/intake/hooks/useIntake";
-import type { IntakeSession, Assessment } from "@/entities/types";
+import type { IntakeSession, Assessment, FactType } from "@/entities/types";
 
 // ── Step order ────────────────────────────────────────────────────
 type Step = "category" | "core_facts" | "category_facts" | "describe" | "facts" | "assessment" | "confirm" | "done";
@@ -126,8 +126,9 @@ const describeSchema = z.object({
 type DescribeForm = z.infer<typeof describeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────
-function toFact(key: string, value: string, label: string, type = "string") {
-  return { key, value, value_type: type, label, confidence: 1.0, source: "user" };
+function toFact(key: string, value: any, label: string, type = "text") {
+  const mappedType: FactType = (type === "string" ? "text" : type) as FactType;
+  return { key, value, type: mappedType, label, confidence: 1.0, source: "user" };
 }
 
 function urgencyLabel(v: string) {

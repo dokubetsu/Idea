@@ -143,17 +143,26 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
     category = assessment.get("category") or facts_data.get("detected_category", "other")
     priority = _risk_to_priority(assessment.get("risk_level", "medium"))
 
-    fact_rows = [
-        {
-            "key":        f["key"],
-            "value":      str(f["value"]),
-            "value_type": f.get("value_type", "string"),
-            "label":      f.get("label", f["key"].replace("_", " ").title()),
-            "source":     f.get("source", "ai"),
-            "confidence": f.get("confidence", 0.9),
-        }
-        for f in facts_data.get("facts", []) if f.get("key") and f.get("value")
-    ]
+    fact_rows = []
+    for f in facts_data.get("facts", []):
+        if f.get("key") and f.get("value") is not None and f.get("value") != "":
+            raw_type = f.get("type") or f.get("value_type", "text")
+            db_type = {
+                "text": "string",
+                "number": "number",
+                "boolean": "boolean",
+                "date": "date",
+                "array": "json"
+            }.get(raw_type, "string")
+            
+            fact_rows.append({
+                "key":        f["key"],
+                "value":      str(f["value"]),
+                "value_type": db_type,
+                "label":      f.get("label", f["key"].replace("_", " ").title()),
+                "source":     f.get("source", "ai"),
+                "confidence": f.get("confidence", 0.9),
+            })
 
     # Execute commit inside an atomic database transaction via RPC
     try:

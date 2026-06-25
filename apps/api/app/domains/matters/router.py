@@ -15,6 +15,8 @@ from app.domains.matters.service import enrich, get_matter_or_403, transition_st
 from app.shared.dependencies import UserRole
 from app.domains.matters.documents_router import router as documents_router
 
+from app.config import settings
+
 router = APIRouter(prefix="/matters", tags=["matters"])
 router.include_router(documents_router)
 
@@ -279,6 +281,8 @@ async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
 
 @router.post("/{matter_id}/hearings", response_model=HearingOut, status_code=201)
 async def create_hearing(matter_id: str, body: HearingCreate, user: LawyerOrAdmin):
+    if not settings.FEATURE_HEARINGS:
+        raise HTTPException(status_code=404, detail="Hearings feature not available")
     db = get_db()
     get_matter_or_403(db, matter_id, user)
     
@@ -299,6 +303,8 @@ async def create_hearing(matter_id: str, body: HearingCreate, user: LawyerOrAdmi
 
 @router.patch("/{matter_id}/hearings/{hearing_id}", response_model=HearingOut)
 async def update_hearing(matter_id: str, hearing_id: str, body: HearingUpdate, user: LawyerOrAdmin):
+    if not settings.FEATURE_HEARINGS:
+        raise HTTPException(status_code=404, detail="Hearings feature not available")
     db = get_db()
     get_matter_or_403(db, matter_id, user)
     
@@ -318,6 +324,8 @@ async def update_hearing(matter_id: str, hearing_id: str, body: HearingUpdate, u
 
 @router.post("/{matter_id}/milestones", response_model=MilestoneOut, status_code=201)
 async def create_milestone(matter_id: str, body: MilestoneCreate, user: LawyerOrAdmin):
+    if not settings.FEATURE_MILESTONES:
+        raise HTTPException(status_code=404, detail="Milestones feature not available")
     db = get_db()
     get_matter_or_403(db, matter_id, user)
     
@@ -335,10 +343,18 @@ async def create_milestone(matter_id: str, body: MilestoneCreate, user: LawyerOr
 
 @router.patch("/{matter_id}/milestones/{milestone_id}", response_model=MilestoneOut)
 async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpdate, user: Auth):
-    db = get_db()
-    get_matter_or_403(db, matter_id, user)
+    if not settings.FEATURE_MILESTONES:
+        raise HTTPException(status_code=404, detail="Milestones feature not available")
     
     data = body.model_dump(exclude_none=True)
+    
+    # If client/user tries to pay bill
+    if "is_paid" in data or "payment_id" in data:
+        if not settings.FEATURE_BILLING:
+            raise HTTPException(status_code=404, detail="Billing feature not available")
+            
+    db = get_db()
+    get_matter_or_403(db, matter_id, user)
     
     if user.role == "user":
         # Users can only update payment fields
