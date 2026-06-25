@@ -11,7 +11,7 @@ class MilestoneCompletedTemplate(BaseNotificationTemplate):
         milestone = self.data.get("milestone_title", "a milestone")
         return (
             f"A key milestone has been completed for your case '{title}': {milestone}. "
-            f"Log in to Nyay to see the updated progress timeline."
+            f"Log in to LeAd to see the updated progress timeline."
         )
 
     def _html_content(self) -> str:

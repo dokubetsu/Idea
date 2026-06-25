@@ -1,7 +1,7 @@
 -- ================================================================
---  NYAY PLATFORM — Migration from nyay-crm schema
+--  LEAD PLATFORM — Migration from lead-crm schema
 --
---  Run this ONLY if you already have the nyay-crm schema deployed.
+--  Run this ONLY if you already have the lead-crm schema deployed.
 --  If starting fresh, run 001_schema.sql + 002_rls.sql instead.
 --
 --  What this does:

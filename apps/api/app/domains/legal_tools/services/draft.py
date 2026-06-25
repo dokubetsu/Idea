@@ -91,7 +91,7 @@ _RERA_FORM_M_TEMPLATE = """
 
 ### 1. Particulars of the Complainant:
 - **Name:** {client_name}
-- **Contact:** Registered with Nyay.ai
+- **Contact:** Registered with lead.ai
 
 ### 2. Particulars of the Respondent (Builder / Promoter):
 - **Name:** {opponent_name}

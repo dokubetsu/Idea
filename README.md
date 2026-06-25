@@ -1,10 +1,10 @@
-# Nyay Platform
+# LeAd Platform
 
 > Legal workflow platform for India. Making legal processes visible and accessible.
 
 ## Merged from
-- **nyay-crm** — first CRM implementation, Supabase auth, basic case management
-- **nyay-platform** — production architecture, Facts Engine, Events system, domain-driven design
+- **lead-crm** — first CRM implementation, Supabase auth, basic case management
+- **lead-platform** — production architecture, Facts Engine, Events system, domain-driven design
 
 The platform architecture wins. The CRM data migrates forward.
 
@@ -39,7 +39,7 @@ cd apps/api  && pip install -r requirements.txt && uvicorn app.main:app --reload
 cd apps/web  && npm install && npm run dev
 ```
 
-### If migrating from nyay-crm (you already ran the old schema)
+### If migrating from lead-crm (you already ran the old schema)
 ```bash
 # 1. In Supabase SQL Editor, run ONLY:
 003_migrate_from_crm.sql   ← renames cases→matters, adds facts/events/intake_sessions

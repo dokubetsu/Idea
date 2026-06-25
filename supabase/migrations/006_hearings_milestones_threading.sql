@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Migration v6 (Hearings, Milestones, Threading)
+--  LEAD PLATFORM — Migration v6 (Hearings, Milestones, Threading)
 -- ================================================================
 
 -- 1. Modify matters table to allow direct invites and nullable user_id

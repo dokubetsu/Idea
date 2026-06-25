@@ -9,6 +9,7 @@ import {
   Database, Landmark, TrendingUp,
   Menu, X
 } from "lucide-react";
+import { LANDING_COPY } from "./landingCopy";
 
 // ─── Interfaces & Presets ──────────────────────────────────────────
 
@@ -34,7 +35,7 @@ interface PresetDemo {
 const PRESETS: PresetDemo[] = [
   {
     id: "cheque",
-    title: "Section 138 Cheque Bounce",
+    title: "Cheque Bounce (Section 138)",
     icon: Scale,
     text: "My cheque bounced yesterday due to insufficient funds. The cheque amount is 5 Lakhs, and the bank memo date was June 10, 2026.",
     category: "cheque_bounce",
@@ -59,7 +60,7 @@ const PRESETS: PresetDemo[] = [
   },
   {
     id: "rera",
-    title: "RERA Delayed Possession",
+    title: "Delayed Home Possession (RERA)",
     icon: Landmark,
     text: "My builder delayed possession of my flat. The promised date was Dec 31, 2025. I have paid a total of 30 Lakhs till date.",
     category: "rera",
@@ -260,19 +261,18 @@ export default function RootPage() {
           {/* Tagline Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-brand-gold/20 bg-brand-gold/5 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-gold">
             <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-            <span>The Operating System for Legal Services</span>
+            <span>{LANDING_COPY.hero.badge}</span>
           </div>
 
           {/* Hero Headline */}
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] text-white">
-            Justice, <br />
-            <span className="gold-text">reimagined</span> <br />
-            for the AI era.
+            {LANDING_COPY.hero.titleLine1} <br />
+            <span className="gold-text">{LANDING_COPY.hero.titleLine2}</span>
           </h1>
 
           {/* Subheading */}
           <p className="max-w-2xl mx-auto text-base md:text-xl text-white/55 font-medium leading-relaxed">
-            One platform. One conversation. Everything legal. LeAd structures facts, verifies statutory timelines, and drafts compliant documents instantly.
+            {LANDING_COPY.hero.subheading}
           </p>
 
           {/* Call-to-actions */}
@@ -281,20 +281,39 @@ export default function RootPage() {
               href="/register"
               className="shimmer-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-brand-gold px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#050b14] hover:bg-brand-gold-light hover:shadow-lg transition-all"
             >
-              Start your journey <ArrowRight className="h-4 w-4" />
+              {LANDING_COPY.hero.ctaPrimary} <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#demo"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white hover:bg-white/10 hover:border-white/20 transition-all"
             >
-              Watch it think
+              {LANDING_COPY.hero.ctaSecondary}
             </a>
+          </div>
+
+          {/* Trust Banner / Social Proof Row */}
+          <div className="pt-12 border-t border-white/5 w-full max-w-3xl mx-auto flex flex-col items-center gap-6">
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/35">
+              {LANDING_COPY.trust.badge}
+            </span>
+            <div className="grid grid-cols-3 gap-4 sm:gap-12 w-full text-center">
+              {LANDING_COPY.trust.metrics.map((m, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="font-serif text-2xl sm:text-4xl font-extrabold text-brand-gold">
+                    {m.value}{m.suffix}
+                  </div>
+                  <div className="text-[9px] sm:text-xs font-mono uppercase tracking-wider text-white/40">
+                    {m.label}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Scroll indicator */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] pointer-events-none">
-          <span>Scroll to Explore</span>
+          <span>{LANDING_COPY.hero.scrollExplore}</span>
           <div className="h-10 w-[1px] bg-gradient-to-b from-brand-gold/50 to-transparent animate-bounce mt-1" />
         </div>
       </section>
@@ -303,10 +322,10 @@ export default function RootPage() {
       <section id="demo" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Interactive Sandbox</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">Experience the logic loop.</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.demo.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.demo.title}</h2>
             <p className="text-sm text-white/50">
-              Select a statutory dispute scenario below and watch LeAd extract facts, calculate limits, and draft documents in real time.
+              {LANDING_COPY.demo.subheading}
             </p>
           </div>
 
@@ -334,7 +353,7 @@ export default function RootPage() {
           {/* Simulator Console Container */}
           <div className="grid gap-6 lg:grid-cols-2 max-w-5xl mx-auto">
             {/* Input Terminal */}
-            <CardLayout title="Petitioner Statement Input" icon={Cpu}>
+            <CardLayout title={LANDING_COPY.demo.inputCardTitle} icon={Cpu}>
               <div className="space-y-4">
                 <div className="bg-[#020509] border border-white/5 rounded-xl p-4 min-h-[160px] font-mono text-xs text-white/80 leading-relaxed relative overflow-hidden break-words whitespace-pre-wrap">
                   <div className="absolute top-2 right-2 flex items-center gap-1.5">
@@ -353,12 +372,12 @@ export default function RootPage() {
             </CardLayout>
 
             {/* AI Resolution Stack */}
-            <CardLayout title="LeAd AI Output Pipeline" icon={Activity}>
+            <CardLayout title={LANDING_COPY.demo.outputCardTitle} icon={Activity}>
               <div className="space-y-5 min-h-[360px] flex flex-col justify-between">
                 {simStep === "idle" && (
                   <div className="flex-1 flex flex-col justify-center items-center text-center text-white/30 py-12">
                     <Activity className="h-10 w-10 animate-spin text-brand-gold/30 mb-2" />
-                    <p className="text-xs">Waiting for user statement resolution...</p>
+                    <p className="text-xs">Waiting for case details resolution...</p>
                   </div>
                 )}
 
@@ -366,7 +385,7 @@ export default function RootPage() {
                 {(simStep === "analyze" || simStep === "facts" || simStep === "timeline" || simStep === "draft" || simStep === "lawyer") && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">Step 1: Fact Extraction</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">{LANDING_COPY.demo.steps.step1}</span>
                       {simStep === "analyze" ? (
                         <SpinnerSmall />
                       ) : (
@@ -391,7 +410,7 @@ export default function RootPage() {
                 {(simStep === "timeline" || simStep === "draft" || simStep === "lawyer") && (
                   <div className="space-y-2.5 pt-3 border-t border-white/5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">Step 2: Limitation & Deadlines</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">{LANDING_COPY.demo.steps.step2}</span>
                       {simStep === "timeline" ? <SpinnerSmall /> : <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />}
                     </div>
                     {simStep !== "timeline" && (
@@ -414,7 +433,7 @@ export default function RootPage() {
                 {(simStep === "draft" || simStep === "lawyer") && (
                   <div className="space-y-2.5 pt-3 border-t border-white/5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">Step 3: Stamped Draft Notice</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold">{LANDING_COPY.demo.steps.step3}</span>
                       {simStep === "draft" ? <SpinnerSmall /> : <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />}
                     </div>
                     {simStep !== "draft" && (
@@ -428,7 +447,7 @@ export default function RootPage() {
                 {/* Step 4: Lawyer Matching */}
                 {simStep === "lawyer" && (
                   <div className="space-y-2 pt-3 border-t border-brand-gold/15">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold block">Step 4: Secure Counsel Match</span>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-brand-gold block">{LANDING_COPY.demo.steps.step4}</span>
                     <div className="flex items-center gap-3 bg-[#020509] border border-brand-gold/20 rounded-xl p-3 w-full overflow-hidden">
                       <div className="h-8 w-8 shrink-0 rounded-full bg-brand-gold/15 flex items-center justify-center text-brand-gold border border-brand-gold/30">
                         <UserCheck className="h-4 w-4" />
@@ -453,8 +472,8 @@ export default function RootPage() {
       <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Old Paradigm vs. Next Gen</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">Replacing legal friction.</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.compare.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.compare.title}</h2>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -463,20 +482,13 @@ export default function RootPage() {
               <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
                 <AlertTriangle className="h-5 w-5" />
               </div>
-              <h3 className="font-serif text-xl font-bold text-red-400">The Traditional Process</h3>
+              <h3 className="font-serif text-xl font-bold text-red-400">{LANDING_COPY.compare.traditional.title}</h3>
               <ul className="space-y-3 font-mono text-xs text-white/40">
-                <li className="flex items-center gap-2 text-red-350/70">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Phone calls & voicemail chases
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Fragmented folders and paper files
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Ambiguous limitation dates & calendars
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> High upfront costs with zero assessment certainty
-                </li>
+                {LANDING_COPY.compare.traditional.points.map((pt, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> {pt}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -485,20 +497,13 @@ export default function RootPage() {
               <div className="h-10 w-10 rounded-xl bg-brand-gold/15 flex items-center justify-center text-brand-gold border border-brand-gold/30">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <h3 className="font-serif text-xl font-bold text-brand-gold">The LeAd Paradigm</h3>
+              <h3 className="font-serif text-xl font-bold text-brand-gold">{LANDING_COPY.compare.lead.title}</h3>
               <ul className="space-y-3 font-mono text-xs text-white/80">
-                <li className="flex items-center gap-2 text-brand-teal">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-teal" /> Structured client-advocate conversation logs
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" /> Auto-compiled fact boards & draft generators
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" /> Automated statutory checker & alerts
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" /> Transparent budgets, key metrics, and registry fallbacks
-                </li>
+                {LANDING_COPY.compare.lead.points.map((pt, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" /> {pt}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -509,10 +514,10 @@ export default function RootPage() {
       <section id="pipeline" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Processing Flow</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">How LeAd structures legal claims.</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.pipeline.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.pipeline.title}</h2>
             <p className="text-sm text-white/55">
-              Claims flow through standard AI, mapping client inputs directly into verified, actionable databases.
+              {LANDING_COPY.pipeline.subheading}
             </p>
           </div>
 
@@ -525,12 +530,12 @@ export default function RootPage() {
                 <path d="M 50,4 H 750" stroke="#c9a84c" strokeWidth="2" className="svg-pipeline-path" fill="none" />
               </svg>
 
-              <PipelineNode label="Conversation" desc="Voice or plain text" icon={Cpu} active />
-              <PipelineNode label="Facts" desc="Extracted coordinates" icon={Database} active />
-              <PipelineNode label="Validation" desc="Check limits & leaps" icon={Scale} active />
-              <PipelineNode label="Workflow" desc="Build Form M / notices" icon={FileText} />
-              <PipelineNode label="Assessment" desc="Risk probability metrics" icon={TrendingUp} />
-              <PipelineNode label="Lawyer" desc="Matched secure CRM" icon={UserCheck} />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[0].label} desc={LANDING_COPY.pipeline.nodes[0].desc} icon={Cpu} active />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[1].label} desc={LANDING_COPY.pipeline.nodes[1].desc} icon={Database} active />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[2].label} desc={LANDING_COPY.pipeline.nodes[2].desc} icon={Scale} active />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[3].label} desc={LANDING_COPY.pipeline.nodes[3].desc} icon={FileText} />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[4].label} desc={LANDING_COPY.pipeline.nodes[4].desc} icon={TrendingUp} />
+              <PipelineNode label={LANDING_COPY.pipeline.nodes[5].label} desc={LANDING_COPY.pipeline.nodes[5].desc} icon={UserCheck} />
             </div>
           </div>
 
@@ -539,12 +544,12 @@ export default function RootPage() {
             {/* Vertical Line */}
             <div className="absolute left-[40px] top-8 bottom-8 w-[2px] border-l border-dashed border-brand-gold/30 z-0" />
             
-            <PipelineNodeVertical label="Conversation" desc="Voice or plain text" icon={Cpu} active />
-            <PipelineNodeVertical label="Facts" desc="Extracted coordinates" icon={Database} active />
-            <PipelineNodeVertical label="Validation" desc="Check limits & leaps" icon={Scale} active />
-            <PipelineNodeVertical label="Workflow" desc="Build Form M / notices" icon={FileText} />
-            <PipelineNodeVertical label="Assessment" desc="Risk probability metrics" icon={TrendingUp} />
-            <PipelineNodeVertical label="Lawyer" desc="Matched secure CRM" icon={UserCheck} />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[0].label} desc={LANDING_COPY.pipeline.nodes[0].desc} icon={Cpu} active />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[1].label} desc={LANDING_COPY.pipeline.nodes[1].desc} icon={Database} active />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[2].label} desc={LANDING_COPY.pipeline.nodes[2].desc} icon={Scale} active />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[3].label} desc={LANDING_COPY.pipeline.nodes[3].desc} icon={FileText} />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[4].label} desc={LANDING_COPY.pipeline.nodes[4].desc} icon={TrendingUp} />
+            <PipelineNodeVertical label={LANDING_COPY.pipeline.nodes[5].label} desc={LANDING_COPY.pipeline.nodes[5].desc} icon={UserCheck} />
           </div>
         </div>
       </section>
@@ -553,10 +558,10 @@ export default function RootPage() {
       <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Next-Gen Interface</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">The Operating Space.</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.mockup.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.mockup.title}</h2>
             <p className="text-sm text-white/55">
-              Hover your mouse over the interface mockup below to explore the responsive 3D dashboard visualization.
+              {LANDING_COPY.mockup.subheading}
             </p>
           </div>
 
@@ -568,40 +573,40 @@ export default function RootPage() {
       <section id="features" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Platform Features</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">Designed for high-impact legal CRM.</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.features.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.features.title}</h2>
           </div>
 
           {/* Bento Grid */}
           <div className="grid gap-6 grid-cols-1 md:grid-cols-6 lg:grid-cols-3">
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-1"
-              title="Conversational AI Intake"
-              desc="Transcribe and parse plain speech or documents, structuring facts automatically."
+              title={LANDING_COPY.features.cards[0].title}
+              desc={LANDING_COPY.features.cards[0].desc}
               icon={Cpu}
             />
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-1"
-              title="Vakalatnama & Stamped Drafts"
-              desc="Instantly merge extracted databases with templates. Edit live inside our paper previewer."
+              title={LANDING_COPY.features.cards[1].title}
+              desc={LANDING_COPY.features.cards[1].desc}
               icon={FileText}
             />
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-1"
-              title="Statutory Calculators"
-              desc="Calculate timelines for Section 138 bounce notices or delayed property possession interest."
+              title={LANDING_COPY.features.cards[2].title}
+              desc={LANDING_COPY.features.cards[2].desc}
               icon={Scale}
             />
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-2"
-              title="Interactive Limitation Timeline"
-              desc="Track expiration deadlines (e.g. Order 37 CPC recovery limitation) with color-coded safety indicators."
+              title={LANDING_COPY.features.cards[3].title}
+              desc={LANDING_COPY.features.cards[3].desc}
               icon={Clock}
             />
             <BentoCard
               colSpan="md:col-span-3 lg:col-span-1"
-              title="Matched Advocate Matching"
-              desc="Pair matters with experienced legal experts based on specialization and ratings."
+              title={LANDING_COPY.features.cards[4].title}
+              desc={LANDING_COPY.features.cards[4].desc}
               icon={UserCheck}
             />
           </div>
@@ -612,10 +617,10 @@ export default function RootPage() {
       <section id="registry" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden bg-brand-blue-dark/20 border-y border-white/5">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Vendor Agnostic</p>
-            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">AI Provider Registry.</h2>
-            <p className="text-sm text-white/50">
-              LeAd routes prompt structures through a decoupled registry. Your legal data is never locked to a single AI vendor.
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.registry.badge}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold text-white">{LANDING_COPY.registry.title}</h2>
+            <p className="text-sm text-white/55">
+              {LANDING_COPY.registry.subheading}
             </p>
           </div>
 
@@ -623,10 +628,10 @@ export default function RootPage() {
           <div className="max-w-3xl mx-auto bg-[#020509] border border-white/5 rounded-2xl p-5 sm:p-8 space-y-8 relative overflow-hidden w-full">
             <div className="flex justify-between items-center relative z-10 gap-4">
               <div className="space-y-1 flex-1 min-w-0">
-                <p className="text-xs font-bold text-white uppercase tracking-wider truncate">AI Request Pipeline</p>
-                <p className="text-[10px] text-white/45 truncate">Context Builder resolving models</p>
+                <p className="text-xs font-bold text-white uppercase tracking-wider truncate">{LANDING_COPY.registry.pipelineTitle}</p>
+                <p className="text-[10px] text-white/45 truncate">{LANDING_COPY.registry.pipelineDesc}</p>
               </div>
-              <span className="rounded-full border border-brand-gold/25 bg-brand-gold/10 px-3 py-0.5 text-[9px] font-bold text-brand-gold shrink-0">ACTIVE PIPELINE</span>
+              <span className="rounded-full border border-brand-gold/25 bg-brand-gold/10 px-3 py-0.5 text-[9px] font-bold text-brand-gold shrink-0">{LANDING_COPY.registry.badgeActive}</span>
             </div>
 
             <div className="grid gap-6 md:grid-cols-4 items-center relative z-10">
@@ -640,30 +645,30 @@ export default function RootPage() {
                 <div className="flex items-center justify-between bg-brand-gold/10 border border-brand-gold/30 rounded-xl p-3">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-brand-gold animate-pulse" />
-                    <span className="text-xs font-bold text-white">Google Gemini</span>
+                    <span className="text-xs font-bold text-white">{LANDING_COPY.registry.primary}</span>
                   </div>
-                  <span className="text-[8px] text-brand-gold uppercase font-bold">Primary</span>
+                  <span className="text-[8px] text-brand-gold uppercase font-bold">{LANDING_COPY.registry.primaryRole}</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/8 rounded-xl p-3 opacity-60">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-white/20" />
-                    <span className="text-xs font-bold text-white">Anthropic Claude</span>
+                    <span className="text-xs font-bold text-white">{LANDING_COPY.registry.secondary}</span>
                   </div>
-                  <span className="text-[8px] text-white/40 uppercase">Secondary Fallback</span>
+                  <span className="text-[8px] text-white/40 uppercase">{LANDING_COPY.registry.secondaryRole}</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/8 rounded-xl p-3 opacity-60">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-white/20" />
-                    <span className="text-xs font-bold text-white">Local Ollama / vLLM</span>
+                    <span className="text-xs font-bold text-white">{LANDING_COPY.registry.offline}</span>
                   </div>
-                  <span className="text-[8px] text-white/40 uppercase">Offline Node</span>
+                  <span className="text-[8px] text-white/40 uppercase">{LANDING_COPY.registry.offlineRole}</span>
                 </div>
               </div>
 
               <div className="bg-[#050b14] border border-white/8 rounded-xl p-4 text-center">
                 <CheckCircle2 className="h-5 w-5 text-brand-teal mx-auto mb-2" />
-                <p className="text-xs font-bold">Normalizer</p>
-                <p className="text-[9px] text-white/40 mt-1">Validated output</p>
+                <p className="text-xs font-bold">{LANDING_COPY.registry.normalizer}</p>
+                <p className="text-[9px] text-white/40 mt-1">{LANDING_COPY.registry.normalizerRole}</p>
               </div>
             </div>
           </div>
@@ -673,35 +678,38 @@ export default function RootPage() {
       {/* ─── Section 8: Metrics Counter ──────────────────────────────── */}
       <section id="stats" className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-5xl mx-auto grid gap-8 md:grid-cols-3 text-center">
-          <MetricWidget value={15} suffix="k+" label="Advocate Hours Saved" />
-          <MetricWidget value={98} suffix="%" label="Assessment Accuracy" />
-          <MetricWidget value={1} suffix="" label="Conversation to Case File" />
+          {LANDING_COPY.trust.metrics.map((m, idx) => (
+            <MetricWidget key={idx} value={m.value} suffix={m.suffix} label={m.label} />
+          ))}
         </div>
       </section>
 
       {/* ─── Section 9: Testimonials Placeholder (Sleek Beta Strip) ──── */}
       <section className="py-16 md:py-24 px-4 sm:px-6 relative z-20 reveal-hidden max-w-4xl mx-auto text-center space-y-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">Beta Access Program</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand-gold">{LANDING_COPY.testimonial.badge}</p>
         <blockquote className="font-serif text-2xl md:text-3xl font-medium text-white/85 leading-relaxed">
-          "LeAd's AI extracted facts and mapped dates correctly. The Vakalatnama populated instantly with my RERA claims."
+          {LANDING_COPY.testimonial.quote}
         </blockquote>
-        <p className="text-xs text-brand-gold font-mono uppercase tracking-wider">— Petitioner, Maharashtra Property Dispute</p>
+        <p className="text-xs text-brand-gold font-mono uppercase tracking-wider">{LANDING_COPY.testimonial.author}</p>
       </section>
 
       {/* ─── Section 10: Immersive CTA ───────────────────────────────── */}
       <section className="min-h-screen flex flex-col justify-center items-center text-center px-4 sm:px-6 relative z-20 reveal-hidden">
         <div className="max-w-4xl mx-auto space-y-8">
           <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-tight text-white leading-tight">
-            Justice shouldn't depend <br />
-            on knowing where to start.
+            {LANDING_COPY.bottomCta.titleLine1} <br />
+            {LANDING_COPY.bottomCta.titleLine2}
           </h2>
+          <p className="max-w-xl mx-auto text-base text-white/50 leading-relaxed">
+            {LANDING_COPY.bottomCta.subheading}
+          </p>
 
           <div className="pt-6">
             <Link
               href="/register"
               className="shimmer-btn inline-flex items-center gap-3 rounded-full bg-brand-gold px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#050b14] hover:bg-brand-gold-light hover:shadow-lg transition-all"
             >
-              Start your free journey <ChevronRight className="h-4 w-4" />
+              {LANDING_COPY.bottomCta.cta} <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -709,7 +717,7 @@ export default function RootPage() {
 
       {/* Footer */}
       <footer className="py-12 border-t border-white/5 text-center text-xs text-white/30 font-mono relative z-20">
-        <p>© 2026 LeAd · Privacy Policy · Terms of Service · Indian Legal Tech OS</p>
+        <p>{LANDING_COPY.footer.text}</p>
       </footer>
 
       {isMobileMenuOpen && mounted && createPortal(
@@ -973,8 +981,8 @@ function DashboardTiltWidget() {
               <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" />
             </span>
             <div className="space-y-0.5">
-              <h4 className="text-xs font-bold text-white">Active Matter: Summary Suit Recovery</h4>
-              <p className="text-[9px] text-white/35">Case reference: NY-99881-CB</p>
+              <h4 className="text-xs font-bold text-white">{LANDING_COPY.mockup.cardTitle}</h4>
+              <p className="text-[9px] text-white/35">{LANDING_COPY.mockup.cardRef}</p>
             </div>
           </div>
           <span className="rounded-full border border-brand-teal/20 bg-brand-teal/10 px-2.5 py-0.5 text-[9px] font-bold text-brand-teal uppercase">Verified</span>
@@ -983,25 +991,25 @@ function DashboardTiltWidget() {
         {/* Info Grid */}
         <div className="grid gap-4 md:grid-cols-3">
           <div className="bg-[#020509] border border-white/5 rounded-xl p-3.5 space-y-1.5">
-            <p className="text-[9px] uppercase tracking-wider text-white/45">Filing Deadline</p>
-            <p className="text-sm font-bold text-white">June 20, 2027</p>
-            <span className="text-[8px] text-brand-teal font-semibold">365 Days Remaining</span>
+            <p className="text-[9px] uppercase tracking-wider text-white/45">{LANDING_COPY.mockup.stat1Label}</p>
+            <p className="text-sm font-bold text-white">{LANDING_COPY.mockup.stat1Val}</p>
+            <span className="text-[8px] text-brand-teal font-semibold">{LANDING_COPY.mockup.stat1Sub}</span>
           </div>
           <div className="bg-[#020509] border border-white/5 rounded-xl p-3.5 space-y-1.5">
-            <p className="text-[9px] uppercase tracking-wider text-white/45">Estimated Court Fees</p>
-            <p className="text-sm font-bold text-brand-gold">₹8,500.00</p>
-            <span className="text-[8px] text-white/40">Delhi State Schedule scale</span>
+            <p className="text-[9px] uppercase tracking-wider text-white/45">{LANDING_COPY.mockup.stat2Label}</p>
+            <p className="text-sm font-bold text-brand-gold">{LANDING_COPY.mockup.stat2Val}</p>
+            <span className="text-[8px] text-white/40">{LANDING_COPY.mockup.stat2Sub}</span>
           </div>
           <div className="bg-[#020509] border border-white/5 rounded-xl p-3.5 space-y-1.5">
-            <p className="text-[9px] uppercase tracking-wider text-white/45">RERA Delay Interest</p>
-            <p className="text-sm font-bold text-white">10.5% p.a.</p>
-            <span className="text-[8px] text-brand-teal font-semibold">SBI MCLR + 2.0%</span>
+            <p className="text-[9px] uppercase tracking-wider text-white/45">{LANDING_COPY.mockup.stat3Label}</p>
+            <p className="text-sm font-bold text-white">{LANDING_COPY.mockup.stat3Val}</p>
+            <span className="text-[8px] text-brand-teal font-semibold">{LANDING_COPY.mockup.stat3Sub}</span>
           </div>
         </div>
 
         {/* Large Chart Area mockup */}
         <div className="bg-[#020509] border border-white/5 rounded-xl p-4 space-y-3">
-          <p className="text-[9px] uppercase tracking-wider text-white/45">Case Progress Pipeline</p>
+          <p className="text-[9px] uppercase tracking-wider text-white/45">{LANDING_COPY.mockup.chartTitle}</p>
           <div className="h-16 flex items-end gap-1.5">
             <div className="w-full bg-brand-gold/15 h-[20%] rounded-md border border-brand-gold/25" />
             <div className="w-full bg-brand-gold/25 h-[45%] rounded-md border border-brand-gold/35" />

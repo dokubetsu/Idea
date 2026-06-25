@@ -7,7 +7,7 @@ test.describe("Petitioner Intake & Commit E2E Workflow", () => {
     await expect(page).toHaveTitle(/Login/);
 
     // 2. Fill login credentials
-    await page.fill('input[type="email"]', "client@nyay.ai");
+    await page.fill('input[type="email"]', "client@lead.ai");
     await page.fill('input[type="password"]', "password123");
     await page.click('button[type="submit"]');
 

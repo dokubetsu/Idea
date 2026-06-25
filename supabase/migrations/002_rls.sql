@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Row Level Security
+--  LEAD PLATFORM — Row Level Security
 -- ================================================================
 
 ALTER TABLE profiles          ENABLE ROW LEVEL SECURITY;

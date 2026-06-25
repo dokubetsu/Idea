@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Soft-Delete Migration
+--  LEAD PLATFORM — Soft-Delete Migration
 -- ================================================================
 
 -- 1. Add deleted_at column to matters and documents

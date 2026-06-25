@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Migration v7 (Notifications)
+--  LEAD PLATFORM — Migration v7 (Notifications)
 -- ================================================================
 
 -- 1. Create enum types if not exists

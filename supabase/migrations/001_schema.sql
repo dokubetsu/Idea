@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Production Schema v1
+--  LEAD PLATFORM — Production Schema v1
 --  Run in order in Supabase SQL Editor
 -- ================================================================
 

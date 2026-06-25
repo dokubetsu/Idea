@@ -1,5 +1,5 @@
 -- ================================================================
---  NYAY PLATFORM — Transaction-Safe commit_intake RPC
+--  LEAD PLATFORM — Transaction-Safe commit_intake RPC
 -- ================================================================
 
 CREATE OR REPLACE FUNCTION commit_intake(

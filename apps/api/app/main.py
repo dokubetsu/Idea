@@ -1,5 +1,5 @@
 """
-Nyay Platform — FastAPI application bootstrap.
+LeAd Platform — FastAPI application bootstrap.
 
 Startup sequence:
 1. Load settings → validate env vars
@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Nyay Platform API",
+    title="LeAd Platform API",
     description="Legal workflow platform for India",
     version="1.0.0",
     docs_url="/docs"  if not settings.is_production else None,

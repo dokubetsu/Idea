@@ -11,7 +11,7 @@ class MatterAssignedTemplate(BaseNotificationTemplate):
         lawyer_name = self.data.get("lawyer_name", "a lawyer")
         return (
             f"Good news! Advocate {lawyer_name} has been assigned to your case '{title}'. "
-            f"You can now track all updates, hearings, and documents directly on Nyay."
+            f"You can now track all updates, hearings, and documents directly on LeAd."
         )
 
     def _html_content(self) -> str:
@@ -38,5 +38,5 @@ class MatterAssignedTemplate(BaseNotificationTemplate):
   </tr>
 </table>
 <p style="margin:0;color:#9CA3AF;font-size:13px;">
-  Log in to Nyay to view your case timeline, upcoming hearings, and send messages to your advocate.
+  Log in to LeAd to view your case timeline, upcoming hearings, and send messages to your advocate.
 </p>"""

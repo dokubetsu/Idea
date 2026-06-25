@@ -53,5 +53,5 @@ class HearingScheduledTemplate(BaseNotificationTemplate):
   </tr>''' if purpose else ''}
 </table>
 <p style="margin:0;color:#9CA3AF;font-size:13px;">
-  Contact your advocate on Nyay if you have any questions about this hearing.
+  Contact your advocate on LeAd if you have any questions about this hearing.
 </p>"""

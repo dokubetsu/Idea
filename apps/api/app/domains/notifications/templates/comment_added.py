@@ -30,7 +30,7 @@ class CommentAddedTemplate(BaseNotificationTemplate):
         )
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">
-  You have a new message from your advocate — reply from within Nyay to keep communications organised.
+  You have a new message from your advocate — reply from within LeAd to keep communications organised.
 </p>
 <table cellpadding="0" cellspacing="0" width="100%"
        style="background:rgba(201,168,76,0.07);border-radius:10px;border:1px solid rgba(201,168,76,0.18);
@@ -50,5 +50,5 @@ class CommentAddedTemplate(BaseNotificationTemplate):
   {preview_block}
 </table>
 <p style="margin:0;color:#9CA3AF;font-size:13px;">
-  Reply directly on Nyay to keep all case communications in one place.
+  Reply directly on LeAd to keep all case communications in one place.
 </p>"""
