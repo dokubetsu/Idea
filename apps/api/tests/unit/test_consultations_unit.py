@@ -3,6 +3,7 @@ from httpx import AsyncClient
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.main import app
 
+
 def make_mock_consultation(overrides: dict) -> dict:
     base = {
         "id": "c-123",
@@ -16,19 +17,20 @@ def make_mock_consultation(overrides: dict) -> dict:
         "created_at": "2026-06-25T12:00:00Z",
         "updated_at": "2026-06-25T12:00:00Z",
         "up": {"full_name": "Test Petitioner"},
-        "lp": {"full_name": "Test Lawyer"}
+        "lp": {"full_name": "Test Lawyer"},
     }
     base.update(overrides)
     return base
 
+
 @pytest.mark.asyncio
 async def test_cancel_consultation_success(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "test-user-id"})]
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"user_id": "test-user-id"})
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="test-user-id",
-        role=UserRole.USER,
-        full_name="Test Petitioner"
+        id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
     )
 
     try:
@@ -41,12 +43,12 @@ async def test_cancel_consultation_success(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_cancel_consultation_not_owner(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "owner-user-id"})]
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"user_id": "owner-user-id"})
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="malicious-user-id",
-        role=UserRole.USER,
-        full_name="Malicious User"
+        id="malicious-user-id", role=UserRole.USER, full_name="Malicious User"
     )
 
     try:
@@ -59,12 +61,12 @@ async def test_cancel_consultation_not_owner(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_cancel_consultation_not_pending(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "test-user-id", "status": "confirmed"})]
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"user_id": "test-user-id", "status": "confirmed"})
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="test-user-id",
-        role=UserRole.USER,
-        full_name="Test Petitioner"
+        id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
     )
 
     try:
@@ -77,12 +79,12 @@ async def test_cancel_consultation_not_pending(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_decline_consultation_success(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [make_mock_consultation({"lawyer_id": "test-lawyer-id"})]
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="test-lawyer-id",
-        role=UserRole.LAWYER,
-        full_name="Test Lawyer"
+        id="test-lawyer-id", role=UserRole.LAWYER, full_name="Test Lawyer"
     )
 
     try:
@@ -95,12 +97,12 @@ async def test_decline_consultation_success(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_decline_consultation_not_assigned(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [make_mock_consultation({"lawyer_id": "test-lawyer-id"})]
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="other-lawyer-id",
-        role=UserRole.LAWYER,
-        full_name="Other Lawyer"
+        id="other-lawyer-id", role=UserRole.LAWYER, full_name="Other Lawyer"
     )
 
     try:

@@ -2,11 +2,11 @@
 Document Draft Service.
 Compiles matter facts into standard legal drafts (Vakalatnama, 138 Notice, RERA Form M).
 """
+
 from datetime import date
 from typing import Optional, Any
 from app.shared.database import get_db
 from app.shared.exceptions import NotFound, Forbidden
-
 
 # ── Templates ─────────────────────────────────────────────────────────
 
@@ -120,14 +120,21 @@ ___________________________
 
 class DocumentDraftService:
     @staticmethod
-    def generate(matter_id: str, document_type: str, current_user: Any) -> dict[str, Any]:
+    def generate(
+        matter_id: str, document_type: str, current_user: Any
+    ) -> dict[str, Any]:
         """
         Retrieves matter and verified facts, merges them into templates, and returns the markdown draft.
         """
         db = get_db()
 
         # 1. Fetch Matter details
-        m_res = db.table("matters").select("*, profiles!user_id(full_name, city, state)").eq("id", matter_id).execute()
+        m_res = (
+            db.table("matters")
+            .select("*, profiles!user_id(full_name, city, state)")
+            .eq("id", matter_id)
+            .execute()
+        )
         if not m_res.data:
             raise NotFound("Matter")
         matter = m_res.data[0]
@@ -137,7 +144,9 @@ class DocumentDraftService:
         is_lawyer = matter.get("lawyer_id") == current_user.id
         is_admin = getattr(current_user, "role", None) == "admin"
         if not (is_owner or is_lawyer or is_admin):
-            raise Forbidden("You are not authorized to view document drafts for this matter.")
+            raise Forbidden(
+                "You are not authorized to view document drafts for this matter."
+            )
 
         client_profile = matter.pop("profiles", {}) or {}
 
@@ -145,7 +154,12 @@ class DocumentDraftService:
         bar_council = "[Bar Council Registration Number]"
         lawyer_address = "[Advocate Office Address]"
         if matter.get("lawyer_id"):
-            l_res = db.table("profiles").select("full_name, city, state").eq("id", matter["lawyer_id"]).execute()
+            l_res = (
+                db.table("profiles")
+                .select("full_name, city, state")
+                .eq("id", matter["lawyer_id"])
+                .execute()
+            )
             if l_res.data:
                 lawyer_name = l_res.data[0]["full_name"]
                 city = l_res.data[0].get("city")
@@ -154,17 +168,26 @@ class DocumentDraftService:
                     lawyer_address = f"{city}, {state}"
                 elif city or state:
                     lawyer_address = city or state
-            lp_res = db.table("lawyer_profiles").select("bar_council_id").eq("id", matter["lawyer_id"]).execute()
+            lp_res = (
+                db.table("lawyer_profiles")
+                .select("bar_council_id")
+                .eq("id", matter["lawyer_id"])
+                .execute()
+            )
             if lp_res.data:
                 bar_council = lp_res.data[0].get("bar_council_id") or bar_council
 
         # 3. Fetch Matter Facts
-        f_res = db.table("facts").select("key, value").eq("matter_id", matter_id).execute()
-        
+        f_res = (
+            db.table("facts").select("key, value").eq("matter_id", matter_id).execute()
+        )
+
         def _escape(val: str) -> str:
             return str(val).replace("{", "{{").replace("}", "}}")
-            
-        facts_dict = {f["key"]: _escape(f["value"]) for f in f_res.data} if f_res.data else {}
+
+        facts_dict = (
+            {f["key"]: _escape(f["value"]) for f in f_res.data} if f_res.data else {}
+        )
 
         # 4. Process variables for templates
         today = date.today()
@@ -173,9 +196,15 @@ class DocumentDraftService:
         client_state = _escape(client_profile.get("state") or "[State]")
         client_address = f"{client_city}, {client_state}"
 
-        opponent_name = _escape(facts_dict.get("opponent_name") or facts_dict.get("builder_name") or "[Opponent Name]")
-        opponent_address = _escape(facts_dict.get("property_location") or "[Opponent Address]")
-        
+        opponent_name = _escape(
+            facts_dict.get("opponent_name")
+            or facts_dict.get("builder_name")
+            or "[Opponent Name]"
+        )
+        opponent_address = _escape(
+            facts_dict.get("property_location") or "[Opponent Address]"
+        )
+
         lawyer_name = _escape(lawyer_name)
         bar_council = _escape(bar_council)
         lawyer_address = _escape(lawyer_address)
@@ -194,9 +223,9 @@ class DocumentDraftService:
                 lawyer_address=lawyer_address,
                 day=today.strftime("%d"),
                 month=today.strftime("%B"),
-                year=today.strftime("%Y")
+                year=today.strftime("%Y"),
             )
-        
+
         # Generate Notice 138 (Cheque Bounce)
         elif document_type == "legal_notice_138":
             try:
@@ -214,14 +243,16 @@ class DocumentDraftService:
                 bank_name=facts_dict.get("bank_name") or "[Bank Name]",
                 client_name=client_name,
                 client_address=client_address,
-                debt_type=facts_dict.get("underlying_debt_type") or "outstanding legal dues",
+                debt_type=facts_dict.get("underlying_debt_type")
+                or "outstanding legal dues",
                 dishonour_date=facts_dict.get("dishonour_date") or "[Dishonour Date]",
-                dishonour_reason=facts_dict.get("dishonour_reason") or "Funds Insufficient",
+                dishonour_reason=facts_dict.get("dishonour_reason")
+                or "Funds Insufficient",
                 lawyer_name=lawyer_name,
                 bar_council_number=bar_council,
-                lawyer_address=lawyer_address
+                lawyer_address=lawyer_address,
             )
-            
+
         # Generate RERA Form M
         elif document_type == "rera_complaint_form_m":
             try:
@@ -231,21 +262,24 @@ class DocumentDraftService:
 
             # Calculate RERA delayed interest metrics using RERACalculator
             from app.domains.legal_tools.services.calculators import RERACalculator
+
             promised_date_str = facts_dict.get("promised_possession_date")
             delay_days = 0
             interest_rate = 10.5
             interest_accrued = 0.0
-            
+
             if promised_date_str:
                 try:
                     promised_date = date.fromisoformat(promised_date_str)
                     calc_res = RERACalculator.calculate(
                         total_paid_amount=total_paid if total_paid > 0 else 1.0,
-                        promised_possession_date=promised_date
+                        promised_possession_date=promised_date,
                     )
                     delay_days = calc_res["delay_days"]
                     interest_rate = calc_res["interest_rate"]
-                    interest_accrued = calc_res["interest_accrued"] if total_paid > 0 else 0.0
+                    interest_accrued = (
+                        calc_res["interest_accrued"] if total_paid > 0 else 0.0
+                    )
                 except Exception:
                     pass
 
@@ -263,7 +297,7 @@ class DocumentDraftService:
                 interest_rate=interest_rate,
                 interest_accrued=interest_accrued,
                 today_date=today.isoformat(),
-                client_city=client_city
+                client_city=client_city,
             )
         else:
             raise ValueError(f"Unsupported document type: {document_type}")
@@ -272,5 +306,5 @@ class DocumentDraftService:
             "matter_id": matter_id,
             "document_type": document_type,
             "title": document_type.replace("_", " ").title(),
-            "draft_content": draft
+            "draft_content": draft,
         }

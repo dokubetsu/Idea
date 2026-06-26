@@ -2,6 +2,7 @@
 Assessment Service.
 Provider-agnostic legal assessment orchestration routing through the AI Pipeline.
 """
+
 from __future__ import annotations
 import logging
 from app.config import settings
@@ -28,18 +29,24 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
     Coordinates context construction, versioned prompts, provider execution,
     validation, and normalization.
     """
-    from app.shared.ai import ContextBuilder, PromptBuilder, ResponseValidator, Normalizer, get_ai_provider
-    
+    from app.shared.ai import (
+        ContextBuilder,
+        PromptBuilder,
+        ResponseValidator,
+        Normalizer,
+        get_ai_provider,
+    )
+
     # 1. Build Context
     context = ContextBuilder.build_assessment_context(
-        title=input.title,
-        facts=input.facts,
-        raw_description=input.raw_description
+        title=input.title, facts=input.facts, raw_description=input.raw_description
     )
-    
+
     # 2. Build versioned prompt
-    system_prompt, user_prompt = PromptBuilder.build("assessment", context, version="v1")
-    
+    system_prompt, user_prompt = PromptBuilder.build(
+        "assessment", context, version="v1"
+    )
+
     if settings.ai_provider == "mock":
         # Safe deterministic local mock
         mock = MockProvider()
@@ -50,19 +57,19 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
             provider_name="mock",
             model_name="mock",
             prompt_version="assessment_v1",
-            temperature=0.1
+            temperature=0.1,
         )
         return AssessmentOutput(**normalized_mock)
 
     # 3. Resolve active provider (handles fallback if unhealthy)
     provider = await get_ai_provider()
-    
+
     # 4. Generate raw response
     raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
-    
+
     # 5. Validate against Pydantic schema
     validated = ResponseValidator.validate(raw, AssessmentOutput)
-    
+
     # 6. Normalize and flat-map metadata
     model_name = settings.AI_MODEL_NAME or provider.name
     normalized = Normalizer.normalize_assessment(
@@ -70,7 +77,7 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
         provider_name=provider.name,
         model_name=model_name,
         prompt_version="assessment_v1",
-        temperature=0.1
+        temperature=0.1,
     )
-    
+
     return AssessmentOutput(**normalized)

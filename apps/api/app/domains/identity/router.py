@@ -1,4 +1,5 @@
 """Identity domain — profile creation and self-management."""
+
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,8 +11,8 @@ from app.config import settings
 
 from app.shared.jwt import decode_token
 
-router  = APIRouter(prefix="/identity", tags=["identity"])
-bearer  = HTTPBearer(auto_error=False)
+router = APIRouter(prefix="/identity", tags=["identity"])
+bearer = HTTPBearer(auto_error=False)
 log = logging.getLogger(__name__)
 
 
@@ -46,16 +47,19 @@ async def register_profile(
     payload = _decode_signup_jwt(creds.credentials)
 
     user_id = payload.get("sub")
-    db      = get_service_role_db()
+    db = get_service_role_db()
 
-    res = db.rpc("register_profile", {
-        "p_user_id": user_id,
-        "p_full_name": body.full_name,
-        "p_phone": body.phone,
-        "p_city": body.city,
-        "p_state": body.state,
-        "p_role": body.role
-    }).execute()
+    res = db.rpc(
+        "register_profile",
+        {
+            "p_user_id": user_id,
+            "p_full_name": body.full_name,
+            "p_phone": body.phone,
+            "p_city": body.city,
+            "p_state": body.state,
+            "p_role": body.role,
+        },
+    ).execute()
 
     profile = res.data
 
@@ -65,13 +69,18 @@ async def register_profile(
         if profile:
             if isinstance(profile, dict) and "role" in profile:
                 resolved_role = profile["role"]
-            elif isinstance(profile, list) and len(profile) > 0 and isinstance(profile[0], dict) and "role" in profile[0]:
+            elif (
+                isinstance(profile, list)
+                and len(profile) > 0
+                and isinstance(profile[0], dict)
+                and "role" in profile[0]
+            ):
                 resolved_role = profile[0]["role"]
 
         from gotrue import AdminUserAttributes
+
         db.auth.admin.update_user_by_id(
-            user_id,
-            AdminUserAttributes(app_metadata={"role": resolved_role})
+            user_id, AdminUserAttributes(app_metadata={"role": resolved_role})
         )
     except Exception as e:
         log.warning("Failed to sync role to app_metadata: %s", e)
@@ -80,9 +89,13 @@ async def register_profile(
     user_email = payload.get("email")
     if body.role == "user" and user_email:
         try:
-            db.table("matters").update({"user_id": user_id}).eq("client_email", user_email).execute()
+            db.table("matters").update({"user_id": user_id}).eq(
+                "client_email", user_email
+            ).execute()
         except Exception as link_exc:
-            log.warning("Failed to link pending matters for email %s: %s", user_email, link_exc)
+            log.warning(
+                "Failed to link pending matters for email %s: %s", user_email, link_exc
+            )
 
     return profile
 
@@ -101,7 +114,7 @@ async def get_me(user: Auth):
 
 @router.patch("/me")
 async def update_me(body: ProfileUpdateRequest, user: Auth):
-    db   = get_db()
+    db = get_db()
     data = body.model_dump(exclude_none=True)
     if not data:
         raise HTTPException(status_code=422, detail="Nothing to update")

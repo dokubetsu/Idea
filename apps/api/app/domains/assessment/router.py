@@ -1,4 +1,5 @@
 """Assessment domain — expose provider info and standalone re-runs."""
+
 from fastapi import APIRouter, Response
 from app.shared.dependencies import Auth
 from app.domains.assessment.service import get_provider, run_assessment

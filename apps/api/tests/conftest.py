@@ -7,36 +7,48 @@ from app.main import app
 from app.shared.database import get_db
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 
+
 def pytest_configure(config):
-    config.addinivalue_line("markers", "integration: run integration tests against test Supabase")
+    config.addinivalue_line(
+        "markers", "integration: run integration tests against test Supabase"
+    )
+
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_test_database():
     from app.config import settings
+
     # Override Supabase credentials with dedicated test credentials if present
     if settings.SUPABASE_TEST_PROJECT_URL and settings.SUPABASE_TEST_SERVICE_ROLE_KEY:
         if "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL:
             settings.SUPABASE_URL = settings.SUPABASE_TEST_PROJECT_URL
             settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
 
+
 @pytest.fixture(autouse=True)
 def skip_if_no_test_database(request):
-    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
+    is_integration = (
+        "integration" in request.node.keywords or "integration" in request.node.nodeid
+    )
     if is_integration:
         from app.config import settings
+
         test_url = settings.SUPABASE_TEST_PROJECT_URL
         test_key = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
-        
+
         # Check if they are configured or placeholders
         has_test_db = (
-            test_url and 
-            "placeholder" not in test_url and 
-            "placeholder.supabase.co" not in test_url and
-            test_key and 
-            "placeholder" not in test_key
+            test_url
+            and "placeholder" not in test_url
+            and "placeholder.supabase.co" not in test_url
+            and test_key
+            and "placeholder" not in test_key
         )
         if not has_test_db:
-            pytest.skip("Skipping integration test: SUPABASE_TEST_PROJECT_URL and SUPABASE_TEST_SERVICE_ROLE_KEY are not configured.")
+            pytest.skip(
+                "Skipping integration test: SUPABASE_TEST_PROJECT_URL and SUPABASE_TEST_SERVICE_ROLE_KEY are not configured."
+            )
+
 
 class MockSupabaseTable:
     def __init__(self, name: str):
@@ -94,23 +106,27 @@ class MockSupabaseTable:
             self.last_inserted = None
         else:
             data = self.data
-            
+
         if is_single:
             ret = data[0] if data else None
         else:
             ret = data
         return MockSupabaseResponse(ret)
 
+
 class MockSupabaseResponse:
     def __init__(self, data, count=None):
         self.data = data
         self.count = count or len(data)
 
+
 class MockRpcBuilder:
     def __init__(self, data):
         self.data = data
+
     def execute(self):
         return MockSupabaseResponse(self.data)
+
 
 class MockSupabaseClient:
     def __init__(self):
@@ -124,7 +140,9 @@ class MockSupabaseClient:
 
     def rpc(self, name: str, params: dict):
         if name == "commit_intake":
-            return MockRpcBuilder([{"matter_id": "mock-matter-id", "already_committed": False}])
+            return MockRpcBuilder(
+                [{"matter_id": "mock-matter-id", "already_committed": False}]
+            )
         if name == "register_profile":
             # Add to mock profiles table
             uid = params.get("p_user_id")
@@ -141,15 +159,17 @@ class MockSupabaseClient:
                     "full_name": params.get("p_full_name"),
                     "phone": params.get("p_phone"),
                     "city": params.get("p_city"),
-                    "state": params.get("p_state")
+                    "state": params.get("p_state"),
                 }
                 profiles_table.data.append(found)
-                
+
                 # If role is lawyer, add to lawyer_profiles
                 if params.get("p_role") == "lawyer":
-                    self.table("lawyer_profiles").data.append({"id": uid, "is_verified": False, "is_available": True})
+                    self.table("lawyer_profiles").data.append(
+                        {"id": uid, "is_verified": False, "is_available": True}
+                    )
             return MockRpcBuilder(found)
-            
+
         if name == "schedule_meeting":
             matter_id = params.get("p_matter_id")
             # Enforce limits in mock DB
@@ -160,10 +180,17 @@ class MockSupabaseClient:
                     c = row
                     break
             if c:
-                scheduled_count = sum(1 for m in self.table("meetings").data if m.get("matter_id") == matter_id and m.get("status") == "scheduled")
-                if (c.get("sessions_used", 0) + scheduled_count) >= c.get("sessions_total", 1):
+                scheduled_count = sum(
+                    1
+                    for m in self.table("meetings").data
+                    if m.get("matter_id") == matter_id
+                    and m.get("status") == "scheduled"
+                )
+                if (c.get("sessions_used", 0) + scheduled_count) >= c.get(
+                    "sessions_total", 1
+                ):
                     raise Exception("Session limit reached")
-            
+
             # Insert meeting
             meeting = {
                 "id": "mock-meeting-id",
@@ -172,7 +199,7 @@ class MockSupabaseClient:
                 "duration_minutes": params.get("p_duration_minutes"),
                 "notes": params.get("p_notes"),
                 "meeting_link": params.get("p_meeting_link"),
-                "status": "scheduled"
+                "status": "scheduled",
             }
             self.table("meetings").data.append(meeting)
             return MockRpcBuilder(meeting)
@@ -204,7 +231,7 @@ class MockSupabaseClient:
             lawyer_id = params.get("p_lawyer_id")
             matter_id = params.get("p_matter_id")
             requests_table = self.table("lawyer_requests")
-            
+
             exists = False
             for r in requests_table.data:
                 if r.get("user_id") == user_id and r.get("lawyer_id") == lawyer_id:
@@ -214,30 +241,45 @@ class MockSupabaseClient:
                     elif not matter_id and not r.get("matter_id"):
                         exists = True
                         break
-            
+
             if exists:
-                return MockRpcBuilder({"ok": True, "message": "Request already sent", "already_exists": True})
-            
+                return MockRpcBuilder(
+                    {
+                        "ok": True,
+                        "message": "Request already sent",
+                        "already_exists": True,
+                    }
+                )
+
             new_req = {
                 "id": "mock-request-id",
                 "user_id": user_id,
                 "lawyer_id": lawyer_id,
                 "matter_id": matter_id,
                 "message": params.get("p_message"),
-                "status": "pending"
+                "status": "pending",
             }
             requests_table.data.append(new_req)
-            return MockRpcBuilder({"ok": True, "message": "Request sent to lawyer", "already_exists": False})
+            return MockRpcBuilder(
+                {
+                    "ok": True,
+                    "message": "Request sent to lawyer",
+                    "already_exists": False,
+                }
+            )
 
         return MockRpcBuilder([])
+
 
 class MockAuth:
     def __init__(self):
         self.admin = MockAuthAdmin()
 
+
 class MockAuthAdmin:
     def update_user_by_id(self, uid, attributes):
         return {"id": uid, "attributes": attributes}
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -245,9 +287,12 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture
 def mock_db(request, monkeypatch):
-    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
+    is_integration = (
+        "integration" in request.node.keywords or "integration" in request.node.nodeid
+    )
     if is_integration:
         return None
 
@@ -265,7 +310,7 @@ def mock_db(request, monkeypatch):
         "app.domains.legal_tools.router.get_db",
         "app.domains.legal_tools.services.draft.get_db",
         "app.domains.system.router.get_service_role_db",
-        "app.domains.consultations.router.get_db"
+        "app.domains.consultations.router.get_db",
     ):
         try:
             monkeypatch.setattr(path, lambda: client)
@@ -273,19 +318,23 @@ def mock_db(request, monkeypatch):
             pass
     return client
 
+
 @pytest.fixture
 def mock_user():
-    return CurrentUser(id="test-user-id", role=UserRole.USER, full_name="Test Petitioner")
+    return CurrentUser(
+        id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
+    )
+
 
 import pytest_asyncio
+
 
 @pytest_asyncio.fixture
 async def client(mock_user) -> AsyncGenerator[AsyncClient, None]:
     # Override authentication dependency to use mock user
     app.dependency_overrides[get_current_user] = lambda: mock_user
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
     app.dependency_overrides.clear()

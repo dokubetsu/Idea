@@ -12,7 +12,7 @@ class OpenAiCompatibleProvider(BaseAiProvider):
             self.client = AsyncOpenAI(
                 base_url=settings.AI_API_BASE_URL or "https://api.openai.com/v1",
                 api_key=settings.AI_API_KEY or "none",
-                timeout=30.0
+                timeout=30.0,
             )
         return self.client
 
@@ -28,7 +28,7 @@ class OpenAiCompatibleProvider(BaseAiProvider):
             client = AsyncOpenAI(
                 base_url=settings.AI_API_BASE_URL,
                 api_key=settings.AI_API_KEY or "none",
-                timeout=5.0
+                timeout=5.0,
             )
             # Fetch models list to verify connectivity
             await client.models.list()
@@ -36,9 +36,11 @@ class OpenAiCompatibleProvider(BaseAiProvider):
         except Exception:
             return False
 
-    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
+    async def generate(
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
+    ) -> str:
         client = self._get_client()
-        
+
         # Fallback default model if not configured
         model = settings.AI_MODEL_NAME or "gpt-4o"
 
@@ -46,10 +48,9 @@ class OpenAiCompatibleProvider(BaseAiProvider):
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
             temperature=temperature,
-            max_tokens=1500
+            max_tokens=1500,
         )
         return response.choices[0].message.content or ""
-

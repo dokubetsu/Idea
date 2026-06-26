@@ -1,6 +1,7 @@
 import asyncio
 from typing import Dict, Set
 
+
 class SSEBroadcaster:
     def __init__(self):
         # Maps user_id -> Set[asyncio.Queue]
@@ -23,5 +24,6 @@ class SSEBroadcaster:
         if user_id in self._queues:
             for queue in self._queues[user_id]:
                 queue.put_nowait(notification)
+
 
 sse_broadcaster = SSEBroadcaster()

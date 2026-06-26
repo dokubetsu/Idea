@@ -7,19 +7,19 @@ class HearingScheduledTemplate(BaseNotificationTemplate):
         return f"Hearing Scheduled — {title}"
 
     def render_body(self) -> str:
-        title        = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         hearing_date = self.data.get("hearing_date", "TBD")
-        courtroom    = self.data.get("courtroom", "TBD")
+        courtroom = self.data.get("courtroom", "TBD")
         return (
             f"A hearing has been scheduled for your case '{title}' on {hearing_date}. "
             f"Courtroom: {courtroom}. Please confirm attendance with your advocate."
         )
 
     def _html_content(self) -> str:
-        title        = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         hearing_date = self.data.get("hearing_date", "TBD")
-        courtroom    = self.data.get("courtroom", "TBD")
-        purpose      = self.data.get("purpose", "")
+        courtroom = self.data.get("courtroom", "TBD")
+        purpose = self.data.get("purpose", "")
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">
   A new court hearing has been scheduled for your case. Please mark your calendar.

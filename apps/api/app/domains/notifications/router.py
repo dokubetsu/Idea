@@ -24,6 +24,7 @@ from typing import Dict
 SSE_TICKETS: Dict[str, dict] = {}
 TICKET_EXPIRY_SECONDS = 30
 
+
 def _clean_expired_tickets():
     now = time.time()
     expired = [k for k, v in SSE_TICKETS.items() if now > v["expires_at"]]
@@ -54,7 +55,12 @@ async def get_sse_user(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        result = db.table("profiles").select("id,role,full_name,is_active").eq("id", user_id).execute()
+        result = (
+            db.table("profiles")
+            .select("id,role,full_name,is_active")
+            .eq("id", user_id)
+            .execute()
+        )
         if not result.data:
             raise HTTPException(status_code=401, detail="Profile not found")
 
@@ -62,7 +68,9 @@ async def get_sse_user(
         if not p["is_active"]:
             raise HTTPException(status_code=403, detail="Account suspended")
 
-        return CurrentUser(id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"])
+        return CurrentUser(
+            id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"]
+        )
 
     if ticket:
         ticket_data = SSE_TICKETS.pop(ticket, None)
@@ -71,7 +79,12 @@ async def get_sse_user(
         if time.time() > ticket_data["expires_at"]:
             raise HTTPException(status_code=401, detail="Ticket expired")
 
-        result = db.table("profiles").select("id,role,full_name,is_active").eq("id", ticket_data["user_id"]).execute()
+        result = (
+            db.table("profiles")
+            .select("id,role,full_name,is_active")
+            .eq("id", ticket_data["user_id"])
+            .execute()
+        )
         if not result.data:
             raise HTTPException(status_code=401, detail="Profile not found")
 
@@ -79,7 +92,9 @@ async def get_sse_user(
         if not p["is_active"]:
             raise HTTPException(status_code=403, detail="Account suspended")
 
-        return CurrentUser(id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"])
+        return CurrentUser(
+            id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"]
+        )
 
     raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -166,7 +181,7 @@ async def create_sse_ticket(
         "user_id": user.id,
         "role": user.role,
         "full_name": user.full_name,
-        "expires_at": time.time() + TICKET_EXPIRY_SECONDS
+        "expires_at": time.time() + TICKET_EXPIRY_SECONDS,
     }
     return {"ticket": ticket_id}
 

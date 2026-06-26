@@ -7,17 +7,17 @@ class CommentAddedTemplate(BaseNotificationTemplate):
         return f"New Message from {author}"
 
     def render_body(self) -> str:
-        title   = self.data.get("matter_title", "your case")
-        author  = self.data.get("author_name", "Someone")
+        title = self.data.get("matter_title", "your case")
+        author = self.data.get("author_name", "Someone")
         preview = self.data.get("preview", "")
         body = f"{author} posted a new message on your case '{title}'."
         if preview:
-            body += f" \"{preview}\""
+            body += f' "{preview}"'
         return body
 
     def _html_content(self) -> str:
-        title   = self.data.get("matter_title", "your case")
-        author  = self.data.get("author_name", "Someone")
+        title = self.data.get("matter_title", "your case")
+        author = self.data.get("author_name", "Someone")
         preview = self.data.get("preview", "")
         preview_block = (
             f"""<tr>
@@ -26,7 +26,8 @@ class CommentAddedTemplate(BaseNotificationTemplate):
                 <p style="margin:0;font-size:14px;color:#E5E7EB;font-style:italic;">"{preview}"</p>
               </td>
             </tr>"""
-            if preview else ""
+            if preview
+            else ""
         )
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">

@@ -2,6 +2,7 @@
 Legal Tools Calculators.
 Contains separate calculator services for Cheque Bounce, RERA delays, and Summary Suits.
 """
+
 from datetime import date, timedelta
 from typing import Optional, Any
 from app.domains.legal_tools.services.interest import InterestSource
@@ -15,7 +16,7 @@ class ChequeBounceCalculator:
         notice_date: Optional[date] = None,
         notice_receipt_date: Optional[date] = None,
         complaint_filed_date: Optional[date] = None,
-        current_date: Optional[date] = None
+        current_date: Optional[date] = None,
     ) -> dict[str, Any]:
         """
         Calculates timelines and limitation periods under Section 138 of the Negotiable Instruments Act.
@@ -26,15 +27,24 @@ class ChequeBounceCalculator:
         if notice_date and notice_date < dishonour_date:
             raise ValueError("Notice date cannot be earlier than dishonour date")
         if notice_receipt_date and notice_date and notice_receipt_date < notice_date:
-            raise ValueError("Notice receipt date cannot be earlier than notice sent date")
-        if complaint_filed_date and notice_receipt_date and complaint_filed_date < notice_receipt_date:
-            raise ValueError("Complaint filing date cannot be earlier than notice receipt date")
+            raise ValueError(
+                "Notice receipt date cannot be earlier than notice sent date"
+            )
+        if (
+            complaint_filed_date
+            and notice_receipt_date
+            and complaint_filed_date < notice_receipt_date
+        ):
+            raise ValueError(
+                "Complaint filing date cannot be earlier than notice receipt date"
+            )
 
         now = current_date or date.today()
 
         # 2. Presentation limit (Must be within 3 months)
         # NI Act specifies 3 months. We use a strict calendar calculation using relativedelta.
         from dateutil.relativedelta import relativedelta
+
         presentation_deadline = cheque_date + relativedelta(months=3)
         presentation_days = (dishonour_date - cheque_date).days
         presentation_valid = dishonour_date <= presentation_deadline
@@ -51,14 +61,16 @@ class ChequeBounceCalculator:
         filing_start_date = None
         filing_deadline = None
         filing_valid = None
-        
+
         if notice_receipt_date:
             wait_end_date = notice_receipt_date + timedelta(days=15)
             filing_start_date = wait_end_date + timedelta(days=1)
             filing_deadline = wait_end_date + timedelta(days=30)
-            
+
             if complaint_filed_date:
-                filing_valid = filing_start_date <= complaint_filed_date <= filing_deadline
+                filing_valid = (
+                    filing_start_date <= complaint_filed_date <= filing_deadline
+                )
 
         # 5. Determine status and colors
         status = "safe"
@@ -102,7 +114,7 @@ class ChequeBounceCalculator:
                 color = "green"
         elif notice_receipt_date:
             days_since_receipt = (now - notice_receipt_date).days
-            
+
             if complaint_filed_date:
                 if filing_valid:
                     status = "safe"
@@ -141,7 +153,7 @@ class ChequeBounceCalculator:
             "filing_valid": filing_valid,
             "status": status,
             "reason": reason,
-            "color": color
+            "color": color,
         }
 
 
@@ -152,7 +164,7 @@ class RERACalculator:
         promised_possession_date: date,
         actual_possession_date: Optional[date] = None,
         custom_interest_rate: Optional[float] = None,
-        current_date: Optional[date] = None
+        current_date: Optional[date] = None,
     ) -> dict[str, Any]:
         """
         Calculates delayed possession interest (SBI MCLR + 2% per annum) under RERA 2016.
@@ -161,7 +173,7 @@ class RERACalculator:
             raise ValueError("Total paid amount must be greater than zero")
 
         end_date = actual_possession_date or current_date or date.today()
-        
+
         if end_date < promised_possession_date:
             # Not delayed yet
             return {
@@ -171,14 +183,14 @@ class RERACalculator:
                 "total_claim": total_paid_amount,
                 "status": "safe",
                 "reason": "Project promised possession date has not yet been reached.",
-                "color": "green"
+                "color": "green",
             }
 
         delay_days = (end_date - promised_possession_date).days
-        
+
         # Fetch dynamic rate via InterestSource
         rate_percent = InterestSource.get_rera_rate(custom_rate=custom_interest_rate)
-        
+
         # Simple interest formula per annum: P * R * T
         time_years = delay_days / 365.0
         interest_accrued = total_paid_amount * (rate_percent / 100.0) * time_years
@@ -194,7 +206,7 @@ class RERACalculator:
             "total_claim": total_claim,
             "status": "action_required" if delay_days > 0 else "safe",
             "reason": f"Possession is delayed by {delay_days} days. Builder owes ₹{interest_accrued:,.2f} in interest.",
-            "color": "yellow" if delay_days > 0 else "green"
+            "color": "yellow" if delay_days > 0 else "green",
         }
 
 
@@ -204,7 +216,7 @@ class SummarySuitCalculator:
         claim_amount: float,
         due_date: date,
         state: str = "default",
-        current_date: Optional[date] = None
+        current_date: Optional[date] = None,
     ) -> dict[str, Any]:
         """
         Checks 3-year civil recovery limitations and estimates court fees under Order 37 CPC.
@@ -220,8 +232,8 @@ class SummarySuitCalculator:
             limitation_expiry = due_date.replace(year=due_date.year + 3)
         except ValueError:
             # Handles Feb 29 leap day edge case
-            limitation_expiry = due_date + timedelta(days=3*365 + 1)
-            
+            limitation_expiry = due_date + timedelta(days=3 * 365 + 1)
+
         days_left = (limitation_expiry - now).days
 
         status = "safe"
@@ -231,7 +243,9 @@ class SummarySuitCalculator:
         if days_left < 0:
             status = "expired"
             color = "red"
-            reason = f"Limitation period expired on {limitation_expiry}. Suit time-barred."
+            reason = (
+                f"Limitation period expired on {limitation_expiry}. Suit time-barred."
+            )
         elif days_left <= 30:
             status = "action_required"
             color = "yellow"
@@ -267,7 +281,11 @@ class SummarySuitCalculator:
             court_fee = max(1000.0, claim_amount * 0.015)
 
         court_fee = round(court_fee, 2)
-        fee_note = "Court fees are estimated at a default of 1.5% for states outside Delhi and Maharashtra." if state_cleaned not in ("delhi", "maharashtra") else None
+        fee_note = (
+            "Court fees are estimated at a default of 1.5% for states outside Delhi and Maharashtra."
+            if state_cleaned not in ("delhi", "maharashtra")
+            else None
+        )
 
         return {
             "limitation_expiry": str(limitation_expiry),
@@ -276,5 +294,5 @@ class SummarySuitCalculator:
             "fee_note": fee_note,
             "status": status,
             "reason": reason,
-            "color": color
+            "color": color,
         }

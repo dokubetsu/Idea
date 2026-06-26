@@ -11,9 +11,9 @@ bearer = HTTPBearer(auto_error=False)
 
 
 class UserRole(str, Enum):
-    USER   = "user"
+    USER = "user"
     LAWYER = "lawyer"
-    ADMIN  = "admin"
+    ADMIN = "admin"
 
 
 class CurrentUser(BaseModel):
@@ -38,7 +38,12 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     db = get_db()
-    result = db.table("profiles").select("id,role,full_name,is_active").eq("id", user_id).execute()
+    result = (
+        db.table("profiles")
+        .select("id,role,full_name,is_active")
+        .eq("id", user_id)
+        .execute()
+    )
     if not result.data:
         raise HTTPException(status_code=401, detail="Profile not found")
 
@@ -50,17 +55,26 @@ async def get_current_user(
 
 
 def require_roles(*roles: UserRole):
-    async def _guard(user: Annotated[CurrentUser, Depends(get_current_user)]) -> CurrentUser:
+    async def _guard(
+        user: Annotated[CurrentUser, Depends(get_current_user)],
+    ) -> CurrentUser:
         if user.role not in roles:
-            raise HTTPException(status_code=403, detail=f"Requires: {[r.value for r in roles]}")
+            raise HTTPException(
+                status_code=403, detail=f"Requires: {[r.value for r in roles]}"
+            )
         return user
+
     return _guard
 
 
 # Type aliases — use these in route signatures
-Auth        = Annotated[CurrentUser, Depends(get_current_user)]
-AdminAuth   = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]
-LawyerAuth  = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER))]
-UserAuth    = Annotated[CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))]
+Auth = Annotated[CurrentUser, Depends(get_current_user)]
+AdminAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]
+LawyerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER))]
+UserAuth = Annotated[
+    CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))
+]
 PetitionerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.USER))]
-LawyerOrAdmin = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER, UserRole.ADMIN))]
+LawyerOrAdmin = Annotated[
+    CurrentUser, Depends(require_roles(UserRole.LAWYER, UserRole.ADMIN))
+]

@@ -5,12 +5,14 @@ from app.config import settings
 
 _jwk_client: PyJWKClient | None = None
 
+
 def _get_jwk_client() -> PyJWKClient:
     global _jwk_client
     if _jwk_client is None:
         _jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
         _jwk_client = PyJWKClient(_jwks_url)
     return _jwk_client
+
 
 def decode_token(token: str) -> dict:
     """
@@ -22,30 +24,29 @@ def decode_token(token: str) -> dict:
         header = jwt.get_unverified_header(token)
         alg = header.get("alg")
         if alg not in ("HS256", "ES256"):
-            raise HTTPException(status_code=401, detail="Unsupported signature algorithm")
-        
+            raise HTTPException(
+                status_code=401, detail="Unsupported signature algorithm"
+            )
+
         if alg == "ES256":
             signing_key = _get_jwk_client().get_signing_key_from_jwt(token)
             key = signing_key.key
         else:
             key = settings.SUPABASE_JWT_SECRET
-            
+
         payload = jwt.decode(
-            token, key,
-            algorithms=["HS256", "ES256"],
-            options={"verify_aud": False}
+            token, key, algorithms=["HS256", "ES256"], options={"verify_aud": False}
         )
-        
+
         aud = payload.get("aud")
         if isinstance(aud, list):
             if "authenticated" not in aud:
                 raise HTTPException(status_code=401, detail="Invalid token audience")
         elif aud != "authenticated":
             raise HTTPException(status_code=401, detail="Invalid token audience")
-            
+
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-

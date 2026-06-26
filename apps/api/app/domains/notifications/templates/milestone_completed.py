@@ -7,7 +7,7 @@ class MilestoneCompletedTemplate(BaseNotificationTemplate):
         return f"Milestone Reached: {milestone}"
 
     def render_body(self) -> str:
-        title     = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         milestone = self.data.get("milestone_title", "a milestone")
         return (
             f"A key milestone has been completed for your case '{title}': {milestone}. "
@@ -15,7 +15,7 @@ class MilestoneCompletedTemplate(BaseNotificationTemplate):
         )
 
     def _html_content(self) -> str:
-        title     = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         milestone = self.data.get("milestone_title", "a milestone")
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">

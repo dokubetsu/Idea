@@ -53,7 +53,12 @@ async def process_hearing_reminders(
     for h in hearings:
         matter_id = h["matter_id"]
         # Fetch matter to get user/lawyer to notify
-        matter_res = db.table("matters").select("user_id, lawyer_id, title").eq("id", matter_id).execute()
+        matter_res = (
+            db.table("matters")
+            .select("user_id, lawyer_id, title")
+            .eq("id", matter_id)
+            .execute()
+        )
         if not matter_res.data:
             continue
 
@@ -66,22 +71,24 @@ async def process_hearing_reminders(
 
         # Create notification for each recipient
         for recipient_id in recipients:
-            db.table("notifications").insert({
-                "user_id": recipient_id,
-                "type": "hearing_scheduled",
-                "data": {
-                    "matter_id": matter_id,
-                    "matter_title": matter["title"],
-                    "hearing_date": h["hearing_date"],
-                    "courtroom": h.get("courtroom", ""),
-                    "purpose": h.get("purpose", ""),
-                    "message": f"Reminder: Upcoming hearing for {matter['title']} tomorrow.",
-                },
-                "action": {
-                    "label": "View Details",
-                    "url": f"/matters/{matter_id}",
-                },
-            }).execute()
+            db.table("notifications").insert(
+                {
+                    "user_id": recipient_id,
+                    "type": "hearing_scheduled",
+                    "data": {
+                        "matter_id": matter_id,
+                        "matter_title": matter["title"],
+                        "hearing_date": h["hearing_date"],
+                        "courtroom": h.get("courtroom", ""),
+                        "purpose": h.get("purpose", ""),
+                        "message": f"Reminder: Upcoming hearing for {matter['title']} tomorrow.",
+                    },
+                    "action": {
+                        "label": "View Details",
+                        "url": f"/matters/{matter_id}",
+                    },
+                }
+            ).execute()
 
         # Mark reminder as sent
         db.table("hearings").update({"reminder_sent": True}).eq("id", h["id"]).execute()
@@ -105,7 +112,12 @@ async def process_weekly_summaries(
     db = get_service_role_db()
 
     # 1. Fetch active matters
-    matters_res = db.table("matters").select("id, title, user_id").eq("status", "active").execute()
+    matters_res = (
+        db.table("matters")
+        .select("id, title, user_id")
+        .eq("status", "active")
+        .execute()
+    )
     matters = matters_res.data or []
 
     now = datetime.now(timezone.utc)
@@ -114,6 +126,7 @@ async def process_weekly_summaries(
     # 2. Resolve the active AI provider via the registry (same path used by run_assessment).
     #    get_ai_provider() returns a real BaseAiProvider — supports .generate(system, user) -> str
     from app.shared.ai.registry import get_ai_provider
+
     ai_provider = await get_ai_provider()
 
     sent_count = 0
@@ -156,7 +169,9 @@ async def process_weekly_summaries(
 
         try:
             # BaseAiProvider.generate(system_prompt, user_prompt) -> str
-            summary_text = await ai_provider.generate(system_prompt, user_prompt, temperature=0.3)
+            summary_text = await ai_provider.generate(
+                system_prompt, user_prompt, temperature=0.3
+            )
         except Exception as e:
             log.error("Failed to generate weekly summary for matter %s: %s", m["id"], e)
             summary_text = (
@@ -165,19 +180,21 @@ async def process_weekly_summaries(
             )
 
         # Send in-app notification
-        db.table("notifications").insert({
-            "user_id": m["user_id"],
-            "type": "weekly_summary",
-            "data": {
-                "matter_id": m["id"],
-                "matter_title": m["title"],
-                "summary": summary_text,
-            },
-            "action": {
-                "label": "View Matter",
-                "url": f"/matters/{m['id']}",
-            },
-        }).execute()
+        db.table("notifications").insert(
+            {
+                "user_id": m["user_id"],
+                "type": "weekly_summary",
+                "data": {
+                    "matter_id": m["id"],
+                    "matter_title": m["title"],
+                    "summary": summary_text,
+                },
+                "action": {
+                    "label": "View Matter",
+                    "url": f"/matters/{m['id']}",
+                },
+            }
+        ).execute()
 
         sent_count += 1
 

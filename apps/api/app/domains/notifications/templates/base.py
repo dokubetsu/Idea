@@ -18,13 +18,17 @@ class BaseNotificationTemplate:
         Subclasses override _html_content() to inject custom body markup.
         The outer layout (header, footer, wrapper) is shared.
         """
-        subject   = self.render_subject()
-        content   = self._html_content()
-        action    = self.data.get("action") or {}
-        action_url   = action.get("url", "") if isinstance(action, dict) else ""
-        action_label = action.get("label", "View Case") if isinstance(action, dict) else "View Case"
-        base_url  = settings.APP_URL
-        full_url  = f"{base_url}{action_url}" if action_url else base_url
+        subject = self.render_subject()
+        content = self._html_content()
+        action = self.data.get("action") or {}
+        action_url = action.get("url", "") if isinstance(action, dict) else ""
+        action_label = (
+            action.get("label", "View Case")
+            if isinstance(action, dict)
+            else "View Case"
+        )
+        base_url = settings.APP_URL
+        full_url = f"{base_url}{action_url}" if action_url else base_url
 
         cta_block = (
             f"""<tr><td align="center" style="padding:0 32px 28px;">
@@ -32,7 +36,8 @@ class BaseNotificationTemplate:
                  color:#0D1B2A;font-weight:700;font-size:14px;border-radius:8px;text-decoration:none;
                  letter-spacing:0.3px;">{action_label} →</a>
             </td></tr>"""
-            if action_url else ""
+            if action_url
+            else ""
         )
 
         return f"""<!DOCTYPE html>
@@ -93,6 +98,7 @@ class BaseNotificationTemplate:
         body = self.render_body()
         lines = "".join(
             f"<p style='margin:0 0 10px;'>{line}</p>"
-            for line in body.split("\n") if line.strip()
+            for line in body.split("\n")
+            if line.strip()
         )
         return lines

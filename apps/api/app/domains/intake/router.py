@@ -7,6 +7,7 @@ The intake workflow — 4 steps:
   3. POST /:id/assess    → run assessment on facts
   4. POST /:id/commit    → create matter from session
 """
+
 import logging
 from fastapi import APIRouter, Request, HTTPException, Response
 from app.shared.limiter import limiter
@@ -18,8 +19,10 @@ from app.shared.exceptions import NotFound, Forbidden, BadRequest
 log = logging.getLogger(__name__)
 from app.domains.intake.facts_engine import extract_facts
 from app.domains.intake.schemas import (
-    StartIntakeRequest, UpdateFactsRequest,
-    CommitIntakeRequest, IntakeSessionOut,
+    StartIntakeRequest,
+    UpdateFactsRequest,
+    CommitIntakeRequest,
+    IntakeSessionOut,
 )
 from app.domains.assessment.service import run_assessment
 from app.domains.assessment.providers.base import AssessmentInput
@@ -29,31 +32,45 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 
 @router.post("/start", response_model=IntakeSessionOut, status_code=201)
 @limiter.limit("5/minute")
-async def start_intake(request: Request, body: StartIntakeRequest, user: Auth, response: Response):
+async def start_intake(
+    request: Request, body: StartIntakeRequest, user: Auth, response: Response
+):
     """Step 1: Extract facts from description."""
     result = await extract_facts(body.title, body.description)
     response.headers["X-AI-Provider"] = result.provider or "unknown"
 
-    db  = get_db()
-    row = db.table("intake_sessions").insert({
-        "user_id":          user.id,
-        "step":             "facts_review",
-        "raw_description":  body.description,
-        "schema_version":   2,
-        "extracted_facts": {
-            "title":              body.title,
-            "detected_category":  result.detected_category,
-            "completeness_score": result.completeness_score,
-            "missing_keys":       result.missing_keys,
-            "facts": [f.model_dump() for f in result.facts],
-            "schema_version":     2,
-        },
-        "provider_used": result.provider,
-    }).execute().data[0]
+    db = get_db()
+    row = (
+        db.table("intake_sessions")
+        .insert(
+            {
+                "user_id": user.id,
+                "step": "facts_review",
+                "raw_description": body.description,
+                "schema_version": 2,
+                "extracted_facts": {
+                    "title": body.title,
+                    "detected_category": result.detected_category,
+                    "completeness_score": result.completeness_score,
+                    "missing_keys": result.missing_keys,
+                    "facts": [f.model_dump() for f in result.facts],
+                    "schema_version": 2,
+                },
+                "provider_used": result.provider,
+            }
+        )
+        .execute()
+        .data[0]
+    )
 
-    await emit(EventType.INTAKE_STARTED, actor_id=user.id, payload={
-        "session_id": row["id"], "category": result.detected_category,
-    })
+    await emit(
+        EventType.INTAKE_STARTED,
+        actor_id=user.id,
+        payload={
+            "session_id": row["id"],
+            "category": result.detected_category,
+        },
+    )
 
     return _session_out(row)
 
@@ -61,62 +78,99 @@ async def start_intake(request: Request, body: StartIntakeRequest, user: Auth, r
 @router.patch("/{session_id}/facts", response_model=IntakeSessionOut)
 async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
     """Step 2: User reviews / corrects extracted facts."""
-    db      = get_db()
+    db = get_db()
     session = _get_session(db, session_id, user.id)
 
     if session["step"] not in ("facts_review", "assessment"):
-        raise BadRequest(f"Cannot update facts. Expected session step to be 'facts_review', but got '{session['step']}'")
+        raise BadRequest(
+            f"Cannot update facts. Expected session step to be 'facts_review', but got '{session['step']}'"
+        )
 
     existing = session["extracted_facts"]
     existing["facts"] = [f.model_dump() for f in body.facts]
 
-    updated = db.table("intake_sessions").update({
-        "extracted_facts": existing,
-        "step": "assessment",
-    }).eq("id", session_id).execute().data[0]
+    updated = (
+        db.table("intake_sessions")
+        .update(
+            {
+                "extracted_facts": existing,
+                "step": "assessment",
+            }
+        )
+        .eq("id", session_id)
+        .execute()
+        .data[0]
+    )
 
-    await emit(EventType.INTAKE_FACTS_SAVED, actor_id=user.id, payload={"session_id": session_id})
+    await emit(
+        EventType.INTAKE_FACTS_SAVED,
+        actor_id=user.id,
+        payload={"session_id": session_id},
+    )
     return _session_out(updated)
 
 
 @router.post("/{session_id}/assess", response_model=IntakeSessionOut)
 @limiter.limit("5/minute")
-async def run_intake_assessment(request: Request, session_id: str, user: Auth, response: Response):
+async def run_intake_assessment(
+    request: Request, session_id: str, user: Auth, response: Response
+):
     """Step 3: Run assessment on current facts."""
-    db      = get_db()
+    db = get_db()
     session = _get_session(db, session_id, user.id)
 
     if session["step"] not in ("assessment", "confirm"):
-        raise BadRequest(f"Cannot run assessment. Expected session step to be 'assessment', but got '{session['step']}'")
+        raise BadRequest(
+            f"Cannot run assessment. Expected session step to be 'assessment', but got '{session['step']}'"
+        )
 
     facts_data = session["extracted_facts"]
     facts_dict = {f["key"]: f["value"] for f in facts_data.get("facts", [])}
 
-    assessment = await run_assessment(AssessmentInput(
-        title=facts_data.get("title", ""),
-        facts=facts_dict,
-        raw_description=session.get("raw_description"),
-    ))
+    assessment = await run_assessment(
+        AssessmentInput(
+            title=facts_data.get("title", ""),
+            facts=facts_dict,
+            raw_description=session.get("raw_description"),
+        )
+    )
     response.headers["X-AI-Provider"] = assessment.provider or "unknown"
 
-    updated = db.table("intake_sessions").update({
-        "assessment_result": assessment.model_dump(),
-        "provider_used": assessment.provider,
-        "step": "confirm",
-    }).eq("id", session_id).execute().data[0]
+    updated = (
+        db.table("intake_sessions")
+        .update(
+            {
+                "assessment_result": assessment.model_dump(),
+                "provider_used": assessment.provider,
+                "step": "confirm",
+            }
+        )
+        .eq("id", session_id)
+        .execute()
+        .data[0]
+    )
 
-    await emit(EventType.ASSESSMENT_COMPLETED, actor_id=user.id, payload={
-        "session_id": session_id,
-        "provider": assessment.provider,
-        "risk_level": assessment.risk_level,
-        "success_probability": assessment.success_probability,
-    })
+    await emit(
+        EventType.ASSESSMENT_COMPLETED,
+        actor_id=user.id,
+        payload={
+            "session_id": session_id,
+            "provider": assessment.provider,
+            "risk_level": assessment.risk_level,
+            "success_probability": assessment.success_probability,
+        },
+    )
     return _session_out(updated)
 
 
 @router.post("/{session_id}/commit", status_code=201)
 @limiter.limit("5/minute")
-async def commit_intake(request: Request, session_id: str, user: Auth, body: CommitIntakeRequest | None = None):
+async def commit_intake(
+    request: Request,
+    session_id: str,
+    user: Auth,
+    body: CommitIntakeRequest | None = None,
+):
     """
     Step 4: Commit — create matter + persist facts + emit events.
     Returns the created matter.
@@ -126,11 +180,13 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
     optional `body` arg avoids a misleading `None` default while keeping
     slowapi happy (request is still the first arg).
     """
-    db      = get_db()
+    db = get_db()
     session = _get_session(db, session_id, user.id)
 
     if session["step"] != "confirm":
-        raise BadRequest(f"Cannot commit. Expected session step to be 'confirm', but got '{session['step']}'")
+        raise BadRequest(
+            f"Cannot commit. Expected session step to be 'confirm', but got '{session['step']}'"
+        )
 
     if session["is_committed"]:
         return {"matter_id": session["matter_id"], "already_committed": True}
@@ -138,31 +194,32 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
     if body and body.confirmed_facts:
         facts_data = session["extracted_facts"]
         facts_data["facts"] = body.confirmed_facts
-        db.table("intake_sessions").update({"extracted_facts": facts_data}).eq("id", session_id).execute()
+        db.table("intake_sessions").update({"extracted_facts": facts_data}).eq(
+            "id", session_id
+        ).execute()
         session["extracted_facts"] = facts_data
 
     facts_data = session["extracted_facts"]
     assessment = session.get("assessment_result") or {}
 
-    category = assessment.get("category") or facts_data.get("detected_category", "other")
+    category = assessment.get("category") or facts_data.get(
+        "detected_category", "other"
+    )
     db_category = {
         "cheque_bounce": "cheque_bounce",
         "bank_fraud": "cyber",
         "tax_dispute": "other",
         "money_recovery": "other",
         "other_finance": "other",
-        
         "product_defect": "consumer",
         "service_deficiency": "consumer",
         "ecommerce_dispute": "consumer",
         "insurance_rejection": "consumer",
         "medical_negligence": "other",
-        
         "delayed_possession": "rera",
         "project_cancellation": "rera",
         "structural_defects": "rera",
         "amenities_misrepresentation": "rera",
-        
         "accident_injury": "other",
         "accident_death": "other",
         "mv_insurance_rejection": "other",
@@ -180,34 +237,45 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
                 "number": "number",
                 "boolean": "boolean",
                 "date": "date",
-                "array": "json"
+                "array": "json",
             }.get(raw_type, "string")
-            
-            fact_rows.append({
-                "key":        f["key"],
-                "value":      str(f["value"]),
-                "value_type": db_type,
-                "label":      f.get("label", f["key"].replace("_", " ").title()),
-                "source":     f.get("source", "ai"),
-                "confidence": f.get("confidence", 0.9),
-            })
+
+            fact_rows.append(
+                {
+                    "key": f["key"],
+                    "value": str(f["value"]),
+                    "value_type": db_type,
+                    "label": f.get("label", f["key"].replace("_", " ").title()),
+                    "source": f.get("source", "ai"),
+                    "confidence": f.get("confidence", 0.9),
+                }
+            )
 
     # Execute commit inside an atomic database transaction via RPC
     try:
-        rpc_res = db.rpc("commit_intake", {
-            "p_session_id": session_id,
-            "p_user_id": user.id,
-            "p_title": facts_data.get("title", "Untitled matter"),
-            "p_summary": assessment.get("success_rationale", facts_data.get("title", "")),
-            "p_category": db_category,
-            "p_status": "intake" if not assessment else "assessment",
-            "p_priority": priority,
-            "p_facts": fact_rows,
-            "p_assessment_summary": _format_assessment_update(assessment) if assessment else None
-        }).execute()
+        rpc_res = db.rpc(
+            "commit_intake",
+            {
+                "p_session_id": session_id,
+                "p_user_id": user.id,
+                "p_title": facts_data.get("title", "Untitled matter"),
+                "p_summary": assessment.get(
+                    "success_rationale", facts_data.get("title", "")
+                ),
+                "p_category": db_category,
+                "p_status": "intake" if not assessment else "assessment",
+                "p_priority": priority,
+                "p_facts": fact_rows,
+                "p_assessment_summary": (
+                    _format_assessment_update(assessment) if assessment else None
+                ),
+            },
+        ).execute()
     except Exception as e:
         log.error("RPC commit_intake failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Database transaction failed during commit.")
+        raise HTTPException(
+            status_code=500, detail="Database transaction failed during commit."
+        )
 
     if not rpc_res.data:
         raise HTTPException(status_code=500, detail="Failed to commit intake session")
@@ -217,17 +285,36 @@ async def commit_intake(request: Request, session_id: str, user: Auth, body: Com
     already_committed = commit_data["already_committed"]
 
     if already_committed:
-        existing = db.table("matters").select("status").eq("id", matter_id).execute().data
+        existing = (
+            db.table("matters").select("status").eq("id", matter_id).execute().data
+        )
         existing_status = existing[0]["status"] if existing else "intake"
-        return {"matter_id": matter_id, "status": existing_status, "category": category, "already_committed": True}
+        return {
+            "matter_id": matter_id,
+            "status": existing_status,
+            "category": category,
+            "already_committed": True,
+        }
 
     # Emit events
-    await emit(EventType.MATTER_CREATED, actor_id=user.id, matter_id=matter_id, payload={
-        "category": category, "priority": priority,
-    })
-    await emit(EventType.INTAKE_COMPLETED, actor_id=user.id, matter_id=matter_id, payload={
-        "session_id": session_id, "facts_count": len(fact_rows),
-    })
+    await emit(
+        EventType.MATTER_CREATED,
+        actor_id=user.id,
+        matter_id=matter_id,
+        payload={
+            "category": category,
+            "priority": priority,
+        },
+    )
+    await emit(
+        EventType.INTAKE_COMPLETED,
+        actor_id=user.id,
+        matter_id=matter_id,
+        payload={
+            "session_id": session_id,
+            "facts_count": len(fact_rows),
+        },
+    )
 
     status_ = "intake" if not assessment else "assessment"
     return {"matter_id": matter_id, "status": status_, "category": category}
@@ -241,8 +328,10 @@ async def get_session(session_id: str, user: Auth):
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def migrate_extracted_facts(ef: dict, row: dict) -> dict:
     import re
+
     if not isinstance(ef, dict):
         ef = {}
     version = ef.get("schema_version", 0)
@@ -255,7 +344,13 @@ def migrate_extracted_facts(ef: dict, row: dict) -> dict:
         # Migrate flat key-value to structured facts list
         facts_list = []
         for k, v in ef.items():
-            if k in ("title", "detected_category", "completeness_score", "missing_keys", "schema_version"):
+            if k in (
+                "title",
+                "detected_category",
+                "completeness_score",
+                "missing_keys",
+                "schema_version",
+            ):
                 continue
             # Guess the type of the value
             val_type = "text"
@@ -269,30 +364,34 @@ def migrate_extracted_facts(ef: dict, row: dict) -> dict:
             elif isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}$", v):
                 val_type = "date"
 
-            facts_list.append({
-                "key": k,
-                "value": v,
-                "value_type": val_type,
-                "label": k.replace("_", " ").title(),
-                "confidence": 1.0,
-                "source": "user"
-            })
-        
+            facts_list.append(
+                {
+                    "key": k,
+                    "value": v,
+                    "value_type": val_type,
+                    "label": k.replace("_", " ").title(),
+                    "confidence": 1.0,
+                    "source": "user",
+                }
+            )
+
         migrated = {
-            "title": ef.get("title") or row.get("raw_description", "Migrated Case")[:50] or "Migrated Case",
+            "title": ef.get("title")
+            or row.get("raw_description", "Migrated Case")[:50]
+            or "Migrated Case",
             "detected_category": ef.get("detected_category") or "other",
             "completeness_score": ef.get("completeness_score") or 1.0,
             "missing_keys": ef.get("missing_keys") or row.get("missing_keys") or [],
             "facts": facts_list,
-            "schema_version": 2
+            "schema_version": 2,
         }
         return migrated
-    
+
     # If it is version 1 (has "facts" but lacks schema_version), we just add schema_version: 2
     if "schema_version" not in ef:
         ef = dict(ef)
         ef["schema_version"] = 2
-        
+
     return ef
 
 
@@ -302,9 +401,11 @@ def _get_session(db, session_id: str, user_id: str) -> dict:
         raise NotFound("Intake session")
     if r.data["user_id"] != user_id:
         raise Forbidden()
-    
+
     row = r.data
-    row["extracted_facts"] = migrate_extracted_facts(row.get("extracted_facts", {}), row)
+    row["extracted_facts"] = migrate_extracted_facts(
+        row.get("extracted_facts", {}), row
+    )
     return row
 
 
@@ -326,7 +427,9 @@ def _session_out(row: dict) -> IntakeSessionOut:
 
 
 def _risk_to_priority(risk: str) -> str:
-    return {"urgent": "urgent", "high": "high", "medium": "medium", "low": "low"}.get(risk, "medium")
+    return {"urgent": "urgent", "high": "high", "medium": "medium", "low": "low"}.get(
+        risk, "medium"
+    )
 
 
 def _format_assessment_update(a: dict) -> str:

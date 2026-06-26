@@ -2,6 +2,7 @@
 Interest Source Service.
 Abstracts interest rate definitions and calculations (e.g. SBI MCLR base rates).
 """
+
 from typing import Optional
 
 
@@ -18,6 +19,6 @@ class InterestSource:
             if custom_rate < 0:
                 raise ValueError("Interest rate cannot be negative")
             return custom_rate
-            
+
         # Standard formula: SBI MCLR + 2%
         return cls.DEFAULT_SBI_MCLR + 2.0

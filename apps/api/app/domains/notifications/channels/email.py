@@ -6,6 +6,7 @@ When blank              → logs a formatted preview to the console (mock mode).
 
 No extra SDK needed — uses httpx which is already a project dependency.
 """
+
 import logging
 import httpx
 
@@ -31,7 +32,9 @@ class EmailChannel(BaseNotificationChannel):
 
         # ── Real delivery ─────────────────────────────────────────────────
         if settings.RESEND_API_KEY:
-            html_body = notification.get("_html_body") or _text_to_html(rendered_body, rendered_subject)
+            html_body = notification.get("_html_body") or _text_to_html(
+                rendered_body, rendered_subject
+            )
             self._send_via_resend(email, rendered_subject, html_body)
         else:
             # ── Mock / dev fallback ───────────────────────────────────────
@@ -80,7 +83,11 @@ class EmailChannel(BaseNotificationChannel):
 # ── Minimal text-to-HTML fallback ─────────────────────────────────────────────
 def _text_to_html(body: str, subject: str) -> str:
     """Wraps plain-text body in the branded LeAd email layout."""
-    lines = "".join(f"<p style='margin:0 0 12px'>{line}</p>" for line in body.split("\n") if line.strip())
+    lines = "".join(
+        f"<p style='margin:0 0 12px'>{line}</p>"
+        for line in body.split("\n")
+        if line.strip()
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>

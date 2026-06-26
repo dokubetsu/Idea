@@ -8,6 +8,7 @@ Startup sequence:
 4. Register domain routers
 5. Register lifecycle events
 """
+
 from contextlib import asynccontextmanager
 import logging
 
@@ -18,12 +19,12 @@ from slowapi import _rate_limit_exceeded_handler
 
 from app.config import settings
 from app.shared.limiter import limiter
-from app.domains.identity.router  import router as identity_router
-from app.domains.intake.router    import router as intake_router
-from app.domains.matters.router   import router as matters_router
+from app.domains.identity.router import router as identity_router
+from app.domains.intake.router import router as intake_router
+from app.domains.matters.router import router as matters_router
 from app.domains.assessment.router import router as assessment_router
-from app.domains.matching.router  import router as matching_router
-from app.domains.admin.router     import router as admin_router
+from app.domains.matching.router import router as matching_router
+from app.domains.admin.router import router as admin_router
 from app.domains.legal_tools.router import router as legal_tools_router
 from app.domains.notifications.router import router as notifications_router
 from app.domains.consultations.router import router as consultations_router
@@ -48,9 +49,16 @@ async def lifespan(app: FastAPI):
 
     log.info("Environment: %s", settings.APP_ENV)
 
-    if settings.SUPABASE_URL == "http://placeholder.supabase.co" or "placeholder" in settings.SUPABASE_JWT_SECRET:
-        log.error("❌ SUPABASE_URL or SUPABASE_JWT_SECRET is missing or using default placeholder values.")
-        raise ValueError("Invalid database configuration: environment variables must be populated.")
+    if (
+        settings.SUPABASE_URL == "http://placeholder.supabase.co"
+        or "placeholder" in settings.SUPABASE_JWT_SECRET
+    ):
+        log.error(
+            "❌ SUPABASE_URL or SUPABASE_JWT_SECRET is missing or using default placeholder values."
+        )
+        raise ValueError(
+            "Invalid database configuration: environment variables must be populated."
+        )
 
     try:
         get_db().table("profiles").select("id").limit(1).execute()
@@ -70,7 +78,7 @@ app = FastAPI(
     title="LeAd Platform API",
     description="Legal workflow platform for India",
     version="1.0.0",
-    docs_url="/docs"  if not settings.is_production else None,
+    docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
     lifespan=lifespan,
 )
@@ -82,6 +90,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # ── Middleware ────────────────────────────────────────────────────
 
 from app.shared.middleware import RequestTracingMiddleware
+
 app.add_middleware(RequestTracingMiddleware)
 
 app.add_middleware(
@@ -96,19 +105,20 @@ app.add_middleware(
 
 PREFIX = f"/api/{settings.API_VERSION}"
 
-app.include_router(identity_router,  prefix=PREFIX)
-app.include_router(intake_router,    prefix=PREFIX)
-app.include_router(matters_router,   prefix=PREFIX)
+app.include_router(identity_router, prefix=PREFIX)
+app.include_router(intake_router, prefix=PREFIX)
+app.include_router(matters_router, prefix=PREFIX)
 app.include_router(assessment_router, prefix=PREFIX)
-app.include_router(matching_router,  prefix=PREFIX)
-app.include_router(admin_router,     prefix=PREFIX)
+app.include_router(matching_router, prefix=PREFIX)
+app.include_router(admin_router, prefix=PREFIX)
 app.include_router(legal_tools_router, prefix=PREFIX)
 app.include_router(notifications_router, prefix=PREFIX)
 app.include_router(consultations_router, prefix=PREFIX)
-app.include_router(system_router,    prefix=PREFIX)
+app.include_router(system_router, prefix=PREFIX)
 
 
 # ── System endpoints ──────────────────────────────────────────────
+
 
 @app.get("/health", tags=["system"])
 async def health():
@@ -116,4 +126,3 @@ async def health():
     if not settings.is_production:
         response["env"] = settings.APP_ENV
     return response
-

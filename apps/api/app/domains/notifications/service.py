@@ -12,7 +12,9 @@ BACKGROUND_TASKS: set[asyncio.Task] = set()
 
 def get_recipient_info(db, user_id: str) -> dict:
     try:
-        profile_resp = db.table("profiles").select("*").eq("id", user_id).single().execute()
+        profile_resp = (
+            db.table("profiles").select("*").eq("id", user_id).single().execute()
+        )
         profile = profile_resp.data if profile_resp else None
     except Exception:
         profile = None
@@ -21,10 +23,10 @@ def get_recipient_info(db, user_id: str) -> dict:
         return {}
 
     recipient = {
-        "id":        user_id,
+        "id": user_id,
         "full_name": profile.get("full_name"),
-        "phone":     profile.get("phone"),
-        "role":      profile.get("role"),
+        "phone": profile.get("phone"),
+        "role": profile.get("role"),
     }
 
     try:
@@ -55,10 +57,10 @@ def create_notification(
     # 1. Insert notification record
     notif_data = {
         "user_id": user_id,
-        "type":    type_name,
-        "data":    data,
-        "action":  action,
-        "status":  "unread",
+        "type": type_name,
+        "data": data,
+        "action": action,
+        "status": "unread",
     }
     if idempotency_key:
         notif_data["idempotency_key"] = idempotency_key
@@ -72,15 +74,21 @@ def create_notification(
         msg = str(e).lower()
         if "duplicate" in msg or "already exists" in msg or "unique" in msg:
             if idempotency_key:
-                existing = db.table("notifications").select("*").eq("idempotency_key", idempotency_key).execute()
+                existing = (
+                    db.table("notifications")
+                    .select("*")
+                    .eq("idempotency_key", idempotency_key)
+                    .execute()
+                )
                 if existing.data:
                     return existing.data[0]
         raise e
 
-    notif_id     = notification["id"]
+    notif_id = notification["id"]
 
     # 2. Resolve channels using user preferences (falls back to defaults)
     from app.domains.notifications.preferences import get_effective_channels
+
     channels: List[DeliveryChannel] = get_effective_channels(db, user_id, type_name)
 
     # 3. Pre-render HTML email body and attach to notification payload so
@@ -106,6 +114,7 @@ def create_notification(
 
     # 5. Trigger delivery worker in background
     from app.domains.notifications.worker import trigger_deliveries
+
     task = asyncio.create_task(trigger_deliveries(db, notif_id, html_body=html_body))
     BACKGROUND_TASKS.add(task)
     task.add_done_callback(BACKGROUND_TASKS.discard)
@@ -123,7 +132,9 @@ def get_notifications(
     query = db.table("notifications").select("*").eq("user_id", user_id)
     if status:
         query = query.eq("status", status)
-    resp = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    resp = (
+        query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    )
     return resp.data or []
 
 
@@ -137,6 +148,7 @@ def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
     )
     if not resp.data:
         from app.shared.exceptions import NotFound
+
         raise NotFound("Notification")
     return resp.data[0]
 

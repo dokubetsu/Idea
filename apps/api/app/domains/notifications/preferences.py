@@ -4,6 +4,7 @@ Notification delivery preferences CRUD.
 Each user can opt-out of specific (type, channel) combinations.
 When no preference row exists, the default TYPE_CHANNELS map is used (opt-in by default).
 """
+
 import logging
 from typing import Dict, List
 
@@ -13,26 +14,38 @@ log = logging.getLogger(__name__)
 
 # Default channels per notification type (used when no preference row exists)
 DEFAULT_CHANNELS: Dict[str, List[DeliveryChannel]] = {
-    "matter_assigned":    ["in_app", "email", "sms"],
-    "hearing_scheduled":  ["in_app", "email", "sms"],
+    "matter_assigned": ["in_app", "email", "sms"],
+    "hearing_scheduled": ["in_app", "email", "sms"],
     "milestone_completed": ["in_app", "email"],
-    "comment_added":      ["in_app", "email"],
-    "generic":            ["in_app", "email"],
+    "comment_added": ["in_app", "email"],
+    "generic": ["in_app", "email"],
 }
 
 
 def get_preferences(db, user_id: str) -> List[dict]:
     """Return all preference rows for a user."""
-    resp = db.table("notification_preferences").select("*").eq("user_id", user_id).execute()
+    resp = (
+        db.table("notification_preferences")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
+    )
     return resp.data or []
 
 
-def upsert_preference(db, user_id: str, type_name: str, channel: str, enabled: bool) -> dict:
+def upsert_preference(
+    db, user_id: str, type_name: str, channel: str, enabled: bool
+) -> dict:
     """Create or update a single preference row."""
     resp = (
         db.table("notification_preferences")
         .upsert(
-            {"user_id": user_id, "type": type_name, "channel": channel, "enabled": enabled},
+            {
+                "user_id": user_id,
+                "type": type_name,
+                "channel": channel,
+                "enabled": enabled,
+            },
             on_conflict="user_id,type,channel",
         )
         .execute()
@@ -48,7 +61,12 @@ def bulk_upsert_preferences(db, user_id: str, updates: List[Dict]) -> List[dict]
     Each entry: {"type": str, "channel": str, "enabled": bool}
     """
     rows = [
-        {"user_id": user_id, "type": u["type"], "channel": u["channel"], "enabled": u["enabled"]}
+        {
+            "user_id": user_id,
+            "type": u["type"],
+            "channel": u["channel"],
+            "enabled": u["enabled"],
+        }
         for u in updates
     ]
     resp = (
@@ -81,7 +99,9 @@ def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryCha
         .eq("type", type_name)
         .execute()
     )
-    prefs: Dict[str, bool] = {row["channel"]: row["enabled"] for row in (resp.data or [])}
+    prefs: Dict[str, bool] = {
+        row["channel"]: row["enabled"] for row in (resp.data or [])
+    }
 
     effective: List[DeliveryChannel] = []
     for ch in defaults:

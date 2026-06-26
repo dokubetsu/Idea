@@ -3,8 +3,10 @@ from datetime import date, datetime
 from typing import Literal
 from pydantic import BaseModel, Field
 
-MatterStatus = Literal['draft', 'intake', 'assessment', 'matching', 'active', 'resolved', 'archived']
-MatterPriority = Literal['low', 'medium', 'high', 'urgent']
+MatterStatus = Literal[
+    "draft", "intake", "assessment", "matching", "active", "resolved", "archived"
+]
+MatterPriority = Literal["low", "medium", "high", "urgent"]
 
 
 class HearingOut(BaseModel):
@@ -128,6 +130,7 @@ class MatterOut(BaseModel):
     milestones: list[MilestoneOut] = []
     meetings: list[MeetingOut] = []
 
+
 class MatterUpdateRequest(BaseModel):
     title: str | None = None
     summary: str | None = None
@@ -183,11 +186,10 @@ class FactOut(BaseModel):
 
 
 class VerifyFactRequest(BaseModel):
-    value: str | None = None   # optionally correct the value
+    value: str | None = None  # optionally correct the value
     is_verified: bool = True
 
 
 class AssignLawyerRequest(BaseModel):
     lawyer_id: str
     notes: str | None = None
-

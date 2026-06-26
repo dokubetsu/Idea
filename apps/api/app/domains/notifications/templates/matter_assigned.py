@@ -7,7 +7,7 @@ class MatterAssignedTemplate(BaseNotificationTemplate):
         return f"Advocate Assigned: {title}"
 
     def render_body(self) -> str:
-        title       = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         lawyer_name = self.data.get("lawyer_name", "a lawyer")
         return (
             f"Good news! Advocate {lawyer_name} has been assigned to your case '{title}'. "
@@ -15,7 +15,7 @@ class MatterAssignedTemplate(BaseNotificationTemplate):
         )
 
     def _html_content(self) -> str:
-        title       = self.data.get("matter_title", "your case")
+        title = self.data.get("matter_title", "your case")
         lawyer_name = self.data.get("lawyer_name", "a lawyer")
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">

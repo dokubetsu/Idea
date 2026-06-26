@@ -16,7 +16,9 @@ def get_service_role_db() -> Client:
     if _db_client is None:
         with _db_lock:
             if _db_client is None:
-                _db_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+                _db_client = create_client(
+                    settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
+                )
     return _db_client
 
 
@@ -39,4 +41,3 @@ def set_request_db(client: Client):
 def clear_request_db(token):
     """Clear the request-scoped database client context."""
     _request_db_client.reset(token)
-

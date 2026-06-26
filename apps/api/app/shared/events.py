@@ -6,6 +6,7 @@ Downstream: analytics, notifications, audit trail.
 Usage:
     await emit(EventType.MATTER_CREATED, matter_id=matter_id, actor_id=user_id, payload={...})
 """
+
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone
@@ -17,43 +18,43 @@ log = logging.getLogger(__name__)
 
 class EventType(str, Enum):
     # Intake
-    INTAKE_STARTED       = "intake.started"
-    INTAKE_FACTS_SAVED   = "intake.facts_saved"
-    INTAKE_COMPLETED     = "intake.completed"
+    INTAKE_STARTED = "intake.started"
+    INTAKE_FACTS_SAVED = "intake.facts_saved"
+    INTAKE_COMPLETED = "intake.completed"
 
     # Matter lifecycle
-    MATTER_CREATED       = "matter.created"
+    MATTER_CREATED = "matter.created"
     MATTER_STATUS_CHANGED = "matter.status_changed"
-    MATTER_RESOLVED      = "matter.resolved"
-    MATTER_ARCHIVED      = "matter.archived"
+    MATTER_RESOLVED = "matter.resolved"
+    MATTER_ARCHIVED = "matter.archived"
 
     # Facts
-    FACT_EXTRACTED       = "fact.extracted"
-    FACT_VERIFIED        = "fact.verified"
-    FACT_UPDATED         = "fact.updated"
+    FACT_EXTRACTED = "fact.extracted"
+    FACT_VERIFIED = "fact.verified"
+    FACT_UPDATED = "fact.updated"
 
     # Assessment
-    ASSESSMENT_STARTED   = "assessment.started"
+    ASSESSMENT_STARTED = "assessment.started"
     ASSESSMENT_COMPLETED = "assessment.completed"
 
     # Lawyer
-    LAWYER_REQUESTED     = "lawyer.requested"
-    LAWYER_ASSIGNED      = "lawyer.assigned"
-    LAWYER_ACCEPTED      = "lawyer.accepted"
-    LAWYER_DECLINED      = "lawyer.declined"
+    LAWYER_REQUESTED = "lawyer.requested"
+    LAWYER_ASSIGNED = "lawyer.assigned"
+    LAWYER_ACCEPTED = "lawyer.accepted"
+    LAWYER_DECLINED = "lawyer.declined"
 
     # Documents
-    DOCUMENT_UPLOADED    = "document.uploaded"
+    DOCUMENT_UPLOADED = "document.uploaded"
 
     # Updates
-    UPDATE_POSTED        = "update.posted"
+    UPDATE_POSTED = "update.posted"
 
     # Hearings, Meetings & Milestones
-    HEARING_SCHEDULED    = "hearing.scheduled"
-    HEARING_UPDATED      = "hearing.updated"
-    MEETING_SCHEDULED    = "meeting.scheduled"
-    MEETING_COMPLETED    = "meeting.completed"
-    MILESTONE_UPDATED    = "milestone.updated"
+    HEARING_SCHEDULED = "hearing.scheduled"
+    HEARING_UPDATED = "hearing.updated"
+    MEETING_SCHEDULED = "meeting.scheduled"
+    MEETING_COMPLETED = "meeting.completed"
+    MILESTONE_UPDATED = "milestone.updated"
 
 
 import asyncio
@@ -62,15 +63,18 @@ BACKGROUND_TASKS: set[asyncio.Task] = set()
 
 _subscribers = []
 
+
 def subscribe(callback) -> None:
     """Subscribe a callback to the event bus."""
     if callback not in _subscribers:
         _subscribers.append(callback)
 
+
 def unsubscribe(callback) -> None:
     """Unsubscribe a callback from the event bus."""
     if callback in _subscribers:
         _subscribers.remove(callback)
+
 
 def _write_event(row: dict) -> None:
     db = database.get_db()
@@ -81,6 +85,7 @@ def _get_event_value(event_type: EventType | str) -> str:
     if isinstance(event_type, Enum):
         return event_type.value
     return str(event_type)
+
 
 async def emit(
     event_type: EventType | str,
@@ -111,13 +116,17 @@ async def emit(
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):
-                    task = asyncio.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                    task = asyncio.create_task(
+                        sub(event_str, actor_id, matter_id, payload or {})
+                    )
                     BACKGROUND_TASKS.add(task)
                     task.add_done_callback(BACKGROUND_TASKS.discard)
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:
-                log.error("Subscriber callback failed for event %s: %s", event_str, sub_exc)
+                log.error(
+                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
+                )
 
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)
@@ -146,7 +155,9 @@ def sync_emit(
                 if asyncio.iscoroutinefunction(sub):
                     try:
                         loop = asyncio.get_running_loop()
-                        task = loop.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                        task = loop.create_task(
+                            sub(event_str, actor_id, matter_id, payload or {})
+                        )
                         BACKGROUND_TASKS.add(task)
                         task.add_done_callback(BACKGROUND_TASKS.discard)
                     except RuntimeError:
@@ -154,7 +165,8 @@ def sync_emit(
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:
-                log.error("Subscriber callback failed for event %s: %s", event_str, sub_exc)
+                log.error(
+                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
+                )
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)
-

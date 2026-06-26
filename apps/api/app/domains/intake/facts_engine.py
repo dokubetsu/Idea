@@ -11,6 +11,7 @@ Facts are:
 
 Every assessment, document draft, and CRM view is built from facts, not raw text.
 """
+
 from __future__ import annotations
 import json
 import re
@@ -29,119 +30,119 @@ log = logging.getLogger(__name__)
 FACT_SCHEMAS: dict[str, dict[str, str]] = {
     "cheque_bounce": {
         # ── Core keys (present in every category) ───────────────────
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Name of the cheque drawer",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Name of the cheque drawer",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
         # ── Category-specific keys ───────────────────────────────────
-        "cheque_amount":          "Amount on the cheque (₹)",
-        "cheque_date":            "Date on the cheque",
-        "dishonour_date":         "Date cheque was returned",
-        "dishonour_reason":       "Reason for dishonour (e.g. insufficient funds)",
-        "legal_notice_sent":      "Has legal notice been sent?",
-        "notice_date":            "Date legal notice was sent (if sent)",
-        "underlying_debt_type":   "Nature of underlying debt (loan, service, goods)",
+        "cheque_amount": "Amount on the cheque (₹)",
+        "cheque_date": "Date on the cheque",
+        "dishonour_date": "Date cheque was returned",
+        "dishonour_reason": "Reason for dishonour (e.g. insufficient funds)",
+        "legal_notice_sent": "Has legal notice been sent?",
+        "notice_date": "Date legal notice was sent (if sent)",
+        "underlying_debt_type": "Nature of underlying debt (loan, service, goods)",
     },
     "consumer": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Company / seller name",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "product_service":        "Product or service in dispute",
-        "purchase_amount":        "Amount paid (₹)",
-        "purchase_date":          "Date of purchase",
-        "company_name":           "Company / seller name",
-        "defect_type":            "Nature of defect or deficiency",
-        "complaint_sent":         "Has written complaint been sent to company?",
-        "company_response":       "Company's response (if any)",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Company / seller name",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "product_service": "Product or service in dispute",
+        "purchase_amount": "Amount paid (₹)",
+        "purchase_date": "Date of purchase",
+        "company_name": "Company / seller name",
+        "defect_type": "Nature of defect or deficiency",
+        "complaint_sent": "Has written complaint been sent to company?",
+        "company_response": "Company's response (if any)",
     },
     "rera": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Builder / developer name",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "project_name":           "Name of the housing project",
-        "builder_name":           "Builder / developer name",
-        "flat_number":            "Flat or unit number",
-        "total_paid_amount":      "Total amount paid (₹)",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Builder / developer name",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "project_name": "Name of the housing project",
+        "builder_name": "Builder / developer name",
+        "flat_number": "Flat or unit number",
+        "total_paid_amount": "Total amount paid (₹)",
         "promised_possession_date": "Possession date promised in agreement",
-        "actual_possession":      "Actual possession given (if any)",
-        "rera_registered":        "Is project RERA registered?",
+        "actual_possession": "Actual possession given (if any)",
+        "rera_registered": "Is project RERA registered?",
     },
     "property": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Other party name",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "property_type":          "Type of property (land, flat, commercial)",
-        "dispute_type":           "Nature of dispute (ownership, encroachment, title)",
-        "property_location":      "Location of the property",
-        "documents_available":    "Documents available (title deed, agreement)",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Other party name",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "property_type": "Type of property (land, flat, commercial)",
+        "dispute_type": "Nature of dispute (ownership, encroachment, title)",
+        "property_location": "Location of the property",
+        "documents_available": "Documents available (title deed, agreement)",
     },
     "labour": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Employer name",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "issue_type":             "Type of labour issue (termination, salary, PF)",
-        "employer_name":          "Employer name",
-        "employment_duration":    "How long were you employed there?",
-        "amount_in_dispute":      "Amount in dispute (₹) if applicable",
-        "termination_date":       "Date of termination (if terminated)",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Employer name",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "issue_type": "Type of labour issue (termination, salary, PF)",
+        "employer_name": "Employer name",
+        "employment_duration": "How long were you employed there?",
+        "amount_in_dispute": "Amount in dispute (₹) if applicable",
+        "termination_date": "Date of termination (if terminated)",
     },
     "family": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Name of the other party",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "marriage_date":          "Date of marriage",
-        "children_involved":      "Are children involved? (yes/no + how many)",
-        "relief_sought":          "What outcome are you looking for?",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Name of the other party",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "marriage_date": "Date of marriage",
+        "children_involved": "Are children involved? (yes/no + how many)",
+        "relief_sought": "What outcome are you looking for?",
     },
     "criminal": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Name of the other party / accused",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "offence_type":           "Nature of the offence",
-        "fir_filed":              "Has an FIR been filed?",
-        "police_station":         "Police station name (if FIR filed)",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Name of the other party / accused",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "offence_type": "Nature of the offence",
+        "fir_filed": "Has an FIR been filed?",
+        "police_station": "Police station name (if FIR filed)",
     },
     "cyber": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Person / entity involved (if known)",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "cyber_incident_type":    "Type of cyber incident",
-        "amount_lost":            "Amount lost (₹) if any",
-        "platform_name":          "Platform or website involved",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Person / entity involved (if known)",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "cyber_incident_type": "Type of cyber incident",
+        "amount_lost": "Amount lost (₹) if any",
+        "platform_name": "Platform or website involved",
     },
     "other": {
-        "incident_date":         "When did this happen?",
-        "incident_location":     "Where did this happen? (city / state)",
-        "opponent_name":         "Other party involved",
-        "urgency_level":         "How urgent is this?",
-        "preferred_language":    "Preferred language for communication",
-        "prior_legal_action":    "Has any FIR or case been filed?",
-        "dispute_type":           "Nature of the dispute",
-        "amount_involved":        "Amount involved (₹) if any",
-        "key_dates":              "Important dates",
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Other party involved",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "dispute_type": "Nature of the dispute",
+        "amount_involved": "Amount involved (₹) if any",
+        "key_dates": "Important dates",
     },
 }
 
@@ -154,14 +155,27 @@ import re as _re
 def _detect_category(text: str) -> str:
     text = text.lower()
     kw = {
-        "cheque_bounce": ["cheque", "bounce", "dishonour", "dishonored", "138", "ni act"],
-        "consumer":      ["consumer", "defective", "product", "service deficiency", "refund"],
-        "rera":          ["rera", "builder", "flat", "possession", "developer", "apartment"],
-        "property":      ["property", "land", "encroachment", "title", "ownership"],
-        "family":        ["divorce", "custody", "maintenance", "alimony", "matrimonial"],
-        "labour":        ["termination", "salary", "employer", "pf", "gratuity", "labour"],
-        "criminal":      ["fir", "police", "criminal", "arrest", "assault", "theft"],
-        "cyber":         ["cyber", "hack", "fraud", "online", "phishing", "scam"],
+        "cheque_bounce": [
+            "cheque",
+            "bounce",
+            "dishonour",
+            "dishonored",
+            "138",
+            "ni act",
+        ],
+        "consumer": [
+            "consumer",
+            "defective",
+            "product",
+            "service deficiency",
+            "refund",
+        ],
+        "rera": ["rera", "builder", "flat", "possession", "developer", "apartment"],
+        "property": ["property", "land", "encroachment", "title", "ownership"],
+        "family": ["divorce", "custody", "maintenance", "alimony", "matrimonial"],
+        "labour": ["termination", "salary", "employer", "pf", "gratuity", "labour"],
+        "criminal": ["fir", "police", "criminal", "arrest", "assault", "theft"],
+        "cyber": ["cyber", "hack", "fraud", "online", "phishing", "scam"],
     }
     for cat, words in kw.items():
         if any(w in text for w in words):
@@ -189,22 +203,50 @@ def _extract_date(text: str) -> str | None:
 
 
 def _mock_extract(title: str, description: str) -> FactsExtractionResult:
-    text     = (title + " " + description).lower()
+    text = (title + " " + description).lower()
     category = _detect_category(text)
     facts: list[ExtractedFact] = [
-        ExtractedFact(key="category",      value=category, label="Case category",   source="system", confidence=0.85),
-        ExtractedFact(key="issue_summary", value=title,    label="Issue summary",   source="user",   confidence=1.0),
+        ExtractedFact(
+            key="category",
+            value=category,
+            label="Case category",
+            source="system",
+            confidence=0.85,
+        ),
+        ExtractedFact(
+            key="issue_summary",
+            value=title,
+            label="Issue summary",
+            source="user",
+            confidence=1.0,
+        ),
     ]
     amount = _extract_amount(description)
     if amount:
-        facts.append(ExtractedFact(key="amount_involved", value=amount, value_type="number", label="Amount involved (₹)", confidence=0.9))
+        facts.append(
+            ExtractedFact(
+                key="amount_involved",
+                value=amount,
+                value_type="number",
+                label="Amount involved (₹)",
+                confidence=0.9,
+            )
+        )
     date = _extract_date(description)
     if date:
-        facts.append(ExtractedFact(key="key_date", value=date, value_type="date", label="Key date mentioned", confidence=0.8))
+        facts.append(
+            ExtractedFact(
+                key="key_date",
+                value=date,
+                value_type="date",
+                label="Key date mentioned",
+                confidence=0.8,
+            )
+        )
 
-    schema     = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
+    schema = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
     found_keys = {f.key for f in facts}
-    missing    = [v for k, v in schema.items() if k not in found_keys]
+    missing = [v for k, v in schema.items() if k not in found_keys]
 
     return FactsExtractionResult(
         facts=facts,
@@ -216,6 +258,7 @@ def _mock_extract(title: str, description: str) -> FactsExtractionResult:
 
 
 # ── Main extraction function ──────────────────────────────────────
+
 
 class FactsExtractionSchema(BaseModel):
     detected_category: str
@@ -236,14 +279,22 @@ async def extract_facts(title: str, description: str) -> FactsExtractionResult:
 
 
 async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
-    from app.shared.ai import ContextBuilder, PromptBuilder, ResponseValidator, Normalizer, get_ai_provider
+    from app.shared.ai import (
+        ContextBuilder,
+        PromptBuilder,
+        ResponseValidator,
+        Normalizer,
+        get_ai_provider,
+    )
     from app.config import settings
 
     # 1. Build Context
     context = ContextBuilder.build_intake_context(title, description)
 
     # 2. Build Prompts (Versioned)
-    system_prompt, user_prompt = PromptBuilder.build("extraction", context, version="v1")
+    system_prompt, user_prompt = PromptBuilder.build(
+        "extraction", context, version="v1"
+    )
 
     # 3. Resolve Provider via registry
     provider = await get_ai_provider()
@@ -261,19 +312,19 @@ async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
         provider_name=provider.name,
         model_name=model_name,
         prompt_version="extraction_v1",
-        temperature=0.1
+        temperature=0.1,
     )
 
     category = normalized.get("detected_category", "other")
-    facts    = [ExtractedFact(**f) for f in normalized.get("facts", [])]
-    schema   = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
-    found    = {f.key for f in facts}
-    missing  = [v for k, v in schema.items() if k not in found]
+    facts = [ExtractedFact(**f) for f in normalized.get("facts", [])]
+    schema = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
+    found = {f.key for f in facts}
+    missing = [v for k, v in schema.items() if k not in found]
 
     return FactsExtractionResult(
-        facts=facts, detected_category=category,
+        facts=facts,
+        detected_category=category,
         completeness_score=len(found) / max(len(schema), 1),
         missing_keys=missing[:4],
         provider=provider.name,
     )
-

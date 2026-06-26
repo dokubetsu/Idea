@@ -10,6 +10,7 @@ _CHANNELS = {
     "sms": SMSChannel(),
 }
 
+
 def get_channel(channel_name: str) -> BaseNotificationChannel:
     channel = _CHANNELS.get(channel_name)
     if not channel:

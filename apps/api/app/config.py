@@ -1,5 +1,9 @@
 from pydantic import model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict, PydanticBaseSettingsSource
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+)
 
 
 class Settings(BaseSettings):
@@ -25,16 +29,15 @@ class Settings(BaseSettings):
     SUPABASE_PUBLISHABLE_KEY: str | None = None
     SUPABASE_JWT_SECRET: str = "placeholder-secret-minimum-32-characters-long"
 
-
     # AI providers — at least one should be set; falls back to mock
     ANTHROPIC_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 
     # OpenAI-compatible / local models configuration
     AI_PROVIDER_TYPE: str = ""  # gemini, claude, openai_compatible, mock
-    AI_API_BASE_URL: str = ""   # e.g., http://localhost:11434/v1 for Ollama
-    AI_MODEL_NAME: str = ""     # e.g., llama3.1
-    AI_API_KEY: str = ""        # optional API key for custom endpoint
+    AI_API_BASE_URL: str = ""  # e.g., http://localhost:11434/v1 for Ollama
+    AI_MODEL_NAME: str = ""  # e.g., llama3.1
+    AI_API_KEY: str = ""  # optional API key for custom endpoint
 
     # ── Notification channels ─────────────────────────────
     # Resend (email). Leave blank to use console mock.
@@ -79,9 +82,13 @@ class Settings(BaseSettings):
             self.SUPABASE_PUBLISHABLE_KEY = self.SUPABASE_ANON_KEY
 
         if not self.SUPABASE_SERVICE_ROLE_KEY:
-            raise ValueError("Either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY must be provided.")
+            raise ValueError(
+                "Either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY must be provided."
+            )
         if not self.SUPABASE_ANON_KEY:
-            raise ValueError("Either SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY must be provided.")
+            raise ValueError(
+                "Either SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY must be provided."
+            )
         return self
 
     @property
@@ -100,7 +107,6 @@ class Settings(BaseSettings):
         if self.AI_API_BASE_URL:
             return "openai_compatible"
         return "mock"
-
 
 
 settings = Settings()  # type: ignore[call-arg]

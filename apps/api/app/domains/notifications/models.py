@@ -3,13 +3,15 @@ from datetime import datetime
 from typing import Literal, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
-NotificationStatus = Literal['unread', 'read', 'dismissed']
-DeliveryChannel = Literal['email', 'sms', 'in_app']
-DeliveryStatus = Literal['pending', 'sent', 'failed']
+NotificationStatus = Literal["unread", "read", "dismissed"]
+DeliveryChannel = Literal["email", "sms", "in_app"]
+DeliveryStatus = Literal["pending", "sent", "failed"]
+
 
 class ActionModel(BaseModel):
     label: str
     url: str
+
 
 class NotificationCreate(BaseModel):
     user_id: str
@@ -17,6 +19,7 @@ class NotificationCreate(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict)
     action: Optional[ActionModel] = None
     idempotency_key: Optional[str] = None
+
 
 class NotificationOut(BaseModel):
     id: str
@@ -27,6 +30,7 @@ class NotificationOut(BaseModel):
     status: NotificationStatus
     created_at: datetime
     idempotency_key: Optional[str] = None
+
 
 class NotificationDeliveryOut(BaseModel):
     id: str
