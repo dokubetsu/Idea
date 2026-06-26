@@ -46,6 +46,8 @@ async def register_profile(
     payload = _decode_signup_jwt(creds.credentials)
 
     user_id = payload.get("sub")
+    if not isinstance(user_id, str):
+        raise HTTPException(status_code=401, detail="Invalid user ID in token")
     db = get_service_role_db()
 
     res = db.rpc(

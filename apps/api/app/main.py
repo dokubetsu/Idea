@@ -11,6 +11,7 @@ Startup sequence:
 
 from contextlib import asynccontextmanager
 import logging
+from typing import Any, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,7 +87,7 @@ app = FastAPI(
 
 # Register rate limiter instance and handler
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
 
 # ── Middleware ────────────────────────────────────────────────────
 

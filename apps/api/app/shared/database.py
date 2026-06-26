@@ -6,8 +6,9 @@ from app.config import settings
 _db_client = None
 _db_lock = threading.Lock()
 
-# ContextVar to hold request-scoped database client (enforces user JWT & RLS)
-_request_db_client = contextvars.ContextVar("_request_db_client", default=None)
+_request_db_client: contextvars.ContextVar[Client | None] = contextvars.ContextVar(
+    "_request_db_client", default=None
+)
 
 
 def get_service_role_db() -> Client:
@@ -16,6 +17,9 @@ def get_service_role_db() -> Client:
     if _db_client is None:
         with _db_lock:
             if _db_client is None:
+                assert (
+                    settings.SUPABASE_SERVICE_ROLE_KEY is not None
+                ), "SUPABASE_SERVICE_ROLE_KEY not configured"
                 _db_client = create_client(
                     settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
                 )

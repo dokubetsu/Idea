@@ -8,7 +8,7 @@ class SSEBroadcaster:
         self._queues: Dict[str, Set[asyncio.Queue]] = {}
 
     def subscribe(self, user_id: str) -> asyncio.Queue:
-        queue = asyncio.Queue()
+        queue: asyncio.Queue = asyncio.Queue()
         if user_id not in self._queues:
             self._queues[user_id] = set()
         self._queues[user_id].add(queue)

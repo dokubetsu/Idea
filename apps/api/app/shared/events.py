@@ -59,7 +59,7 @@ class EventType(str, Enum):
 
 BACKGROUND_TASKS: set[asyncio.Task] = set()
 
-_subscribers = []
+_subscribers: list = []
 
 
 def subscribe(callback) -> None:

@@ -1,3 +1,4 @@
+from typing import Any, cast
 import anthropic
 from app.shared.ai.base import BaseAiProvider
 from app.config import settings
@@ -35,4 +36,4 @@ class ClaudeProvider(BaseAiProvider):
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        return msg.content[0].text.strip()
+        return cast(Any, msg.content[0]).text.strip()
