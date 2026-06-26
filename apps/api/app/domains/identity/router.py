@@ -3,7 +3,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Annotated, Literal
+from typing import Annotated
 from pydantic import BaseModel, Field
 from app.shared.database import get_db, get_service_role_db
 from app.shared.dependencies import Auth
