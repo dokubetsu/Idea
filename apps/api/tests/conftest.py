@@ -19,7 +19,10 @@ def configure_test_database():
 
     # Override Supabase credentials with dedicated test credentials if present
     if settings.SUPABASE_TEST_PROJECT_URL and settings.SUPABASE_TEST_SERVICE_ROLE_KEY:
-        if "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL:
+        if (
+            "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL
+            and settings.SUPABASE_TEST_PROJECT_URL != "null"
+        ):
             settings.SUPABASE_URL = settings.SUPABASE_TEST_PROJECT_URL
             settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
 
@@ -40,8 +43,10 @@ def skip_if_no_test_database(request):
             test_url
             and "placeholder" not in test_url
             and "placeholder.supabase.co" not in test_url
+            and test_url != "null"
             and test_key
             and "placeholder" not in test_key
+            and test_key != "null"
         )
         if not has_test_db:
             pytest.skip(

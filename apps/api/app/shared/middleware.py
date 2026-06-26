@@ -41,6 +41,7 @@ class RequestTracingMiddleware:
         if "pytest" in sys.modules and (
             not settings.SUPABASE_TEST_PROJECT_URL
             or "placeholder" in settings.SUPABASE_TEST_PROJECT_URL
+            or settings.SUPABASE_TEST_PROJECT_URL == "null"
         ):
             from app.shared.database import get_service_role_db
 

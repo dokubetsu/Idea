@@ -41,8 +41,9 @@ jobs:
         # Start Supabase services locally using Docker
         npx supabase start
         # Retrieve credentials and set them to env variables for integration tests
-        echo "SUPABASE_TEST_PROJECT_URL=$(npx supabase status -o json | jq -r '.api.url')" >> $GITHUB_ENV
-        echo "SUPABASE_TEST_SERVICE_ROLE_KEY=$(npx supabase status -o json | jq -r '.api.service_role_key')" >> $GITHUB_ENV
+        STATUS_JSON=$(npx supabase status -o json)
+        echo "SUPABASE_TEST_PROJECT_URL=$(echo "$STATUS_JSON" | jq -r 'if .api | type == "object" then .api.url else .api end')" >> $GITHUB_ENV
+        echo "SUPABASE_TEST_SERVICE_ROLE_KEY=$(echo "$STATUS_JSON" | jq -r 'if .api | type == "object" then .api.service_role_key else .service_role_key end')" >> $GITHUB_ENV
 
     - name: Run pytest tests (Unit & Integration)
       run: |
