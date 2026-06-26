@@ -3,6 +3,7 @@ import { createClient } from "@/shared/lib/supabase/server";
 import { Sidebar } from "@/shared/components/layout/Sidebar";
 import { MobileNav } from "@/shared/components/layout/MobileNav";
 import { NotificationBell } from "@/shared/components/layout/NotificationBell";
+import { FeatureErrorBoundary } from "@/shared/components/FeatureErrorBoundary";
 import type { UserRole } from "@/entities/types";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,14 +26,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <span className="font-serif text-2xl font-bold">Le<span className="font-sans font-medium text-brand-gold">Ad</span></span>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-brand-gold/20 bg-brand-gold/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-gold">{role}</span>
-            <NotificationBell />
+            {/* H7: Wrap NotificationBell so a polling error doesn't crash the header */}
+            <FeatureErrorBoundary context="Notifications">
+              <NotificationBell />
+            </FeatureErrorBoundary>
             <MobileNav role={role} userName={fullName} />
           </div>
         </header>
         <main className="custom-scrollbar flex-1 overflow-y-auto px-5 py-7 md:px-8 md:py-9">
-          {children}
+          {/* H7: Wrap page content so a feature crash stays contained */}
+          <FeatureErrorBoundary context="Page">
+            {children}
+          </FeatureErrorBoundary>
         </main>
       </div>
     </div>
   );
 }
+

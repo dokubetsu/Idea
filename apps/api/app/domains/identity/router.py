@@ -16,9 +16,10 @@ log = logging.getLogger(__name__)
 
 
 class RegisterProfileRequest(BaseModel):
-    # Role defaults to "user" and is overridden to "user" during registration.
-    # Existing roles (e.g., seeded lawyers) are preserved by the DB RPC.
-    role: str = "user"
+    # H8: Role is NOT accepted from the client — it is always forced to "user" at
+    # the API layer. Existing seeded lawyer profiles are preserved by the DB RPC
+    # (register_profile checks whether a profile already exists before inserting).
+    # Removing this field from the schema closes the self-assignment vector.
     full_name: str = Field(min_length=2, max_length=120)
     phone: str | None = None
     city: str | None = None
@@ -60,8 +61,9 @@ async def register_profile(
             "p_phone": body.phone,
             "p_city": body.city,
             "p_state": body.state,
-            # The DB RPC will insert the profile as "user", but if body.role is "lawyer" it also inserts into lawyer_profiles
-            "p_role": body.role,
+            # H8: Always register as "user" regardless of client input.
+            # Admin-promoted roles (lawyer) are set separately via /admin/lawyers/:id/verify.
+            "p_role": "user",
         },
     ).execute()
 

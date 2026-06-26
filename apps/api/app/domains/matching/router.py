@@ -175,14 +175,32 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
 
     if body.accept and req.get("matter_id"):
         from datetime import datetime, timezone
+        from fastapi import HTTPException
 
-        db.table("matters").update(
-            {
-                "lawyer_id": user.id,
-                "status": "active",
-                "assigned_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("id", req["matter_id"]).execute()
+        # H2: Optimistic locking — only assign if lawyer_id is still NULL.
+        # If two lawyers accept the same pending matter concurrently, the second
+        # UPDATE finds no rows (lawyer_id already set by the first winner) and
+        # returns a 409 rather than silently overwriting the first assignment.
+        update_result = (
+            db.table("matters")
+            .update(
+                {
+                    "lawyer_id": user.id,
+                    "status": "active",
+                    "assigned_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .eq("id", req["matter_id"])
+            .is_("lawyer_id", "null")  # optimistic lock: only update unassigned matters
+            .execute()
+        )
+
+        if not update_result.data:
+            raise HTTPException(
+                status_code=409,
+                detail="This matter has already been assigned to another lawyer.",
+            )
+
 
     event = EventType.LAWYER_ACCEPTED if body.accept else EventType.LAWYER_DECLINED
     await emit(

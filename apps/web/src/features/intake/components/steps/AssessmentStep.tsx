@@ -38,8 +38,29 @@ function StatuteBadge({ text }: { text: string }) {
 }
 
 export function AssessmentStep({ assessment: a, onNext }: AssessmentStepProps) {
+  // H1: Convert precise integer probability into a qualitative range to avoid
+  // implying false statistical precision in an AI-generated assessment.
+  const prob = a.success_probability ?? 50;
+  const probabilityLabel =
+    prob >= 75 ? "Strong" : prob >= 60 ? "Moderate" : prob >= 40 ? "Fair" : "Uncertain";
+  const probabilityRange =
+    prob >= 75 ? "70–85%" : prob >= 60 ? "55–70%" : prob >= 40 ? "35–55%" : "Below 40%";
+  const probabilityColor =
+    prob >= 75 ? "text-brand-teal" : prob >= 60 ? "text-brand-gold" : "text-red-500";
+
   return (
     <div className="space-y-4 p-6">
+      {/* H1: Prominent AI disclaimer — must appear before any metrics */}
+      <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-400/8 p-4">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-amber-600 mb-1">AI-Generated Preliminary Assessment</p>
+          <p className="text-xs leading-5 text-amber-700/80">
+            This analysis is produced by an AI model and is <strong>not legal advice</strong>. All estimates — including success likelihood, timeline, and cost — are indicative only and carry inherent uncertainty. <strong>Consult a qualified lawyer before taking any legal action or relying on these figures.</strong>
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         <MetricCard
           label="Risk"
@@ -54,16 +75,11 @@ export function AssessmentStep({ assessment: a, onNext }: AssessmentStepProps) {
               : "text-brand-accent"
           }
         />
+        {/* H1: Show qualitative label + range instead of precise integer */}
         <MetricCard
           label="Chance of success"
-          value={`${a.success_probability}%`}
-          color={
-            a.success_probability >= 70
-              ? "text-brand-teal"
-              : a.success_probability >= 50
-              ? "text-brand-gold"
-              : "text-red-500"
-          }
+          value={`${probabilityLabel} (${probabilityRange})`}
+          color={probabilityColor}
         />
         <MetricCard label="Complexity" value={a.complexity ?? "—"} color="text-brand-blue-dark" />
       </div>
@@ -127,8 +143,9 @@ export function AssessmentStep({ assessment: a, onNext }: AssessmentStepProps) {
         </div>
       )}
 
-      <p className="text-[11px] text-brand-blue-light/40 italic">
-        via {a.provider} · review by a qualified lawyer required before filing
+      {/* Provider attribution — brief and non-legal */}
+      <p className="text-[10px] text-brand-blue-light/35">
+        via {a.provider} · for informational purposes only
       </p>
 
       <button

@@ -14,9 +14,8 @@ async def test_lawyer_registration_defaults_to_user(
         lambda token: {"sub": "test-lawyer-id", "email": "lawyer@example.com"},
     )
 
-    # Submit profile creation request with role='lawyer'
+    # Submit profile creation request
     payload = {
-        "role": "lawyer",
         "full_name": "Advocate Jane Doe",
         "phone": "9999999999",
         "city": "Delhi",
@@ -33,10 +32,9 @@ async def test_lawyer_registration_defaults_to_user(
     assert data["role"] == "user"
     assert data["full_name"] == "Advocate Jane Doe"
 
-    # Assert lawyer_profiles record was created for lawyer registration
+    # Assert lawyer_profiles record was NOT created for standard registration
     lp_table = mock_db.table("lawyer_profiles")
-    assert len(lp_table.data) == 1
-    assert lp_table.data[0]["id"] == "test-lawyer-id"
+    assert len(lp_table.data) == 0
 
     # Assert profiles table insert got role='user'
     p_table = mock_db.table("profiles")

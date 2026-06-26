@@ -138,7 +138,7 @@ class ChequeBounceCalculator:
                     reason = f"Filing window active! File complaint in court before {filing_deadline} ({days_left} days remaining)."
                 else:
                     status = "expired"
-                    reason = f"Filing deadline ({filing_deadline}) has passed. File delay condonation application (Sec 142 NI Act)."
+                    reason = f"Filing deadline ({filing_deadline}) has passed. File delay condonation application under Section 5 of the Limitation Act, 1963."
                     color = "red"
 
         return {
@@ -207,6 +207,10 @@ class RERACalculator:
             "status": "action_required" if delay_days > 0 else "safe",
             "reason": f"Possession is delayed by {delay_days} days. Builder owes ₹{interest_accrued:,.2f} in interest.",
             "color": "yellow" if delay_days > 0 else "green",
+            # H5: Signal when the hardcoded MCLR base rate has not been updated recently.
+            # The frontend must display a prominent rate-staleness warning when True.
+            "mclr_rate_is_stale": InterestSource.mclr_is_stale(),
+            "mclr_last_updated": str(InterestSource.MCLR_LAST_UPDATED),
         }
 
 
