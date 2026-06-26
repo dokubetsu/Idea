@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
 import { CreditCard, CheckCircle2, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
-import { useMatter, useUpdateMilestone } from "../hooks/useMatters";
+import { useMatter, useTriggerPaymentWebhook } from "../hooks/useMatters";
 import { Button, Badge, Card, useToast } from "@/shared/components/ui";
 
 export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
-  const updateMilestone = useUpdateMilestone(matterId);
+  const triggerPayment = useTriggerPaymentWebhook(matterId);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const toast = useToast();
 
@@ -26,11 +26,19 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
     
     setTimeout(async () => {
       try {
-        await updateMilestone.mutateAsync({
-          milestoneId,
-          is_paid: true,
-          payment_gateway_ref: paymentId,
-          payment_idempotency_key: idempotencyKey
+        await triggerPayment.mutateAsync({
+          event: "payment.captured",
+          payload: {
+            payment: {
+              entity: {
+                id: paymentId,
+                notes: {
+                  milestone_id: milestoneId,
+                  payment_idempotency_key: idempotencyKey
+                }
+              }
+            }
+          }
         });
         toast.success("Payment successful! Invoice generated.");
       } catch (e: any) {

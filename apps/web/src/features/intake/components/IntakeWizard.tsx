@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -139,6 +139,54 @@ export function IntakeWizard({
 
   const coreForm = useForm<CoreForm>({ resolver: zodResolver(coreSchema) });
   const descForm = useForm<DescribeForm>({ resolver: zodResolver(describeSchema) });
+
+  // Load draft from sessionStorage on mount
+  useEffect(() => {
+    const draftJson = sessionStorage.getItem("lead_intake_wizard_draft");
+    if (draftJson) {
+      try {
+        const draft = JSON.parse(draftJson);
+        if (draft.step) setStep(draft.step);
+        if (draft.selectedDomain) setSelectedDomain(draft.selectedDomain);
+        if (draft.category) setCat(draft.category);
+        if (draft.coreFacts) {
+          setCore(draft.coreFacts);
+          coreForm.reset(draft.coreFacts);
+        }
+        if (draft.catFacts) setCatFacts(draft.catFacts);
+        if (draft.session) setSess(draft.session);
+        if (draft.matterId) setMid(draft.matterId);
+        if (draft.pendingSession) setPending(draft.pendingSession);
+        if (draft.descFacts) {
+          descForm.reset(draft.descFacts);
+        }
+      } catch (e) {
+        console.error("Failed to restore intake wizard draft:", e);
+      }
+    }
+  }, []);
+
+  // Save draft to sessionStorage on changes
+  useEffect(() => {
+    if (step === "done") {
+      sessionStorage.removeItem("lead_intake_wizard_draft");
+      return;
+    }
+
+    const descValues = descForm.getValues();
+    const draft = {
+      step,
+      selectedDomain,
+      category,
+      coreFacts,
+      catFacts,
+      session,
+      matterId,
+      pendingSession,
+      descFacts: descValues,
+    };
+    sessionStorage.setItem("lead_intake_wizard_draft", JSON.stringify(draft));
+  }, [step, selectedDomain, category, coreFacts, catFacts, session, matterId, pendingSession]);
 
   const isLoading = startIntake.isPending || updateFacts.isPending ||
                     runAssessment.isPending || commitIntake.isPending;

@@ -1,9 +1,13 @@
 from __future__ import annotations
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified
-from app.shared.database import get_db
+from app.shared.database import get_db, get_service_role_db
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound
+from app.config import settings
+import hmac
+import hashlib
+from datetime import datetime
 from app.domains.matters.schemas import (
     MatterOut,
     MatterUpdateRequest,
@@ -573,9 +577,8 @@ async def update_milestone(
     get_matter_or_403(db, matter_id, user)
 
     if user.role == "user":
-        # Users can only update payment fields
+        # Users can only update payment fields (excluding is_paid)
         allowed_keys = {
-            "is_paid",
             "payment_gateway_ref",
             "payment_record_id",
             "payment_idempotency_key",
@@ -718,3 +721,116 @@ async def update_meeting(
         )
 
     return r.data[0]
+
+
+@router.post("/webhook/payment")
+async def payment_webhook(request: Request):
+    # 1. Read request body
+    body_bytes = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature")
+
+    # 2. Verify signature
+    # In non-production, allow signature verification bypass if signature is "mock"
+    is_mock = settings.APP_ENV != "production" and signature == "mock"
+    
+    if not is_mock:
+        if not signature:
+            raise HTTPException(status_code=400, detail="Missing X-Razorpay-Signature header")
+        
+        expected_sig = hmac.new(
+            settings.PAYMENT_WEBHOOK_SECRET.encode(),
+            body_bytes,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(signature, expected_sig):
+            raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # 3. Parse payload
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    event = payload.get("event")
+    if event != "payment.captured":
+        return {"status": "ignored", "reason": f"Unhandled event type: {event}"}
+
+    payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+    payment_id = payment_entity.get("id")
+    notes = payment_entity.get("notes", {})
+    milestone_id = notes.get("milestone_id")
+    idemp_key = notes.get("payment_idempotency_key")
+
+    if not milestone_id:
+        raise HTTPException(status_code=400, detail="Missing milestone_id in notes")
+
+    # 4. Fetch milestone and verify existence
+    db = get_service_role_db()
+    milestone_res = db.table("matter_milestones").select("*").eq("id", milestone_id).execute()
+    if not milestone_res.data:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    milestone = milestone_res.data[0]
+
+    # Idempotency check: if already paid
+    if milestone.get("is_paid"):
+        return {"status": "success", "message": "Milestone already paid", "milestone_id": milestone_id}
+
+    if idemp_key:
+        existing_key_res = db.table("matter_milestones").select("id", "is_paid", "payment_gateway_ref").eq("payment_idempotency_key", idemp_key).execute()
+        if existing_key_res.data:
+            existing = existing_key_res.data[0]
+            if existing["id"] == milestone_id:
+                return {"status": "success", "message": "Milestone already paid", "milestone_id": milestone_id}
+            else:
+                raise HTTPException(status_code=400, detail="Idempotency key already used for another milestone")
+
+    # 5. Get matter and user details
+    matter_id = milestone["matter_id"]
+    matter_res = db.table("matters").select("user_id").eq("id", matter_id).execute()
+    user_id = None
+    if matter_res.data:
+        user_id = matter_res.data[0].get("user_id")
+
+    # 6. Perform database update
+    update_data = {
+        "is_paid": True,
+        "payment_gateway_ref": payment_id,
+        "payment_idempotency_key": idemp_key,
+        "completed_at": datetime.utcnow().isoformat()
+    }
+    
+    # Check if we should insert a payment record in payments table
+    payment_record_id = None
+    if settings.FEATURE_BILLING:
+        payment_data = {
+            "milestone_id": milestone_id,
+            "user_id": user_id,
+            "amount_inr": float(milestone["amount_inr"]) if milestone.get("amount_inr") is not None else 0.0,
+            "status": "completed",
+            "payment_id": payment_id,
+            "payment_idempotency_key": idemp_key
+        }
+        pay_res = db.table("payments").insert(payment_data).execute()
+        if pay_res.data:
+            payment_record_id = pay_res.data[0].get("id")
+            update_data["payment_record_id"] = payment_record_id
+
+    # Update the milestone
+    db.table("matter_milestones").update(update_data).eq("id", milestone_id).execute()
+
+    # Emit MILESTONE_UPDATED event
+    actor_id = user_id or "00000000-0000-0000-0000-000000000000"
+    await emit(
+        EventType.MILESTONE_UPDATED,
+        actor_id=actor_id,
+        matter_id=matter_id,
+        payload={"milestone_id": milestone_id},
+    )
+
+    return {
+        "status": "success",
+        "milestone_id": milestone_id,
+        "payment_gateway_ref": payment_id,
+        "payment_record_id": payment_record_id
+    }

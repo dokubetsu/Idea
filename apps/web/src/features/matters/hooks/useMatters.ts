@@ -190,3 +190,31 @@ export function useUpdateMeeting(matterId: string) {
     },
   });
 }
+
+export function useTriggerPaymentWebhook(matterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      event: string;
+      payload: {
+        payment: {
+          entity: {
+            id: string;
+            notes: {
+              milestone_id: string;
+              payment_idempotency_key: string;
+            };
+          };
+        };
+      };
+    }) =>
+      apiClient.post(`/matters/webhook/payment`, body, {
+        headers: {
+          "X-Razorpay-Signature": "mock",
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+    },
+  });
+}

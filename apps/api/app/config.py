@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Never hardcode a fallback here; the absence of this value at startup is intentional.
     CRON_SECRET: str
 
+    # ── Payment Webhook security ──────────────────────────
+    PAYMENT_WEBHOOK_SECRET: str = "test_webhook_secret"
+
     FEATURE_CONSULTATIONS: bool = True
     FEATURE_BILLING: bool = False
     FEATURE_HEARINGS: bool = False
