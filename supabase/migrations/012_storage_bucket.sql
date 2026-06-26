@@ -15,8 +15,8 @@ VALUES (
   file_size_limit = 10485760,
   allowed_mime_types = '{image/png,image/jpeg,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document}';
 
--- Enable RLS on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on storage.objects (Managed by Supabase automatically)
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Admin can do everything
 CREATE POLICY "Admins have full access"
