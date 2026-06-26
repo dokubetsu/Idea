@@ -1,4 +1,4 @@
-﻿-- ================================================================
+-- ================================================================
 -- LEAD PLATFORM -- Migration 022: Secure confirm_consultation RPC (H3)
 -- ================================================================
 -- SECURITY FIX: Replace caller-supplied p_lawyer_id with auth.uid()
@@ -13,6 +13,7 @@
 -- runs as the postgres role, but auth.uid() still reflects the JWT of the
 -- calling session, so the ownership check is cryptographically bound to the
 -- authenticated user -- not to whatever value the caller passes in.
+
 
 CREATE OR REPLACE FUNCTION confirm_consultation(
   p_consultation_id UUID
