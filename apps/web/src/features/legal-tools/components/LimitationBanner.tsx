@@ -20,9 +20,13 @@ interface CalculationResult {
 }
 
 
+export const EMPTY_FACTS: Fact[] = [];
+
 export function LimitationBanner({ category, facts }: LimitationBannerProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
+
+  const factsJson = JSON.stringify(facts.map((f) => ({ key: f.key, value: f.value })));
 
   useEffect(() => {
     async function calculateTimeline() {
@@ -107,7 +111,7 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
     }
 
     calculateTimeline();
-  }, [category, facts]);
+  }, [category, factsJson]);
 
   if (loading) {
     return (

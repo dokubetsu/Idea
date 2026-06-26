@@ -75,7 +75,7 @@ def unsubscribe(callback) -> None:
 
 
 def _write_event(row: dict) -> None:
-    db = database.get_db()
+    db = database.get_service_role_db()
     db.table("events").insert(row).execute()
 
 
@@ -96,6 +96,12 @@ async def emit(
     Write an event row. Fire-and-forget — failures are logged, not raised.
     Uses asyncio.to_thread to avoid blocking FastAPI's async event loop.
     Then dispatches the event to all registered subscribers.
+
+    H5 DURABILITY WARNING: Subscriber tasks are in-process asyncio tasks only.
+    If the server restarts mid-flight (e.g., during a deployment), pending notification
+    tasks will be silently lost with no retry. For production reliability, replace
+    asyncio.create_task() below with a persistent job queue (Celery, RQ, or a
+    transactional outbox pattern writing to the `events` table + a worker).
     """
     try:
         event_str = _get_event_value(event_type)
@@ -111,6 +117,8 @@ async def emit(
         await asyncio.to_thread(_write_event, row)
 
         # Dispatch to subscribers
+        # TODO(durability): Replace asyncio.create_task with a persistent job queue
+        # to survive process restarts. See H5 warning in docstring above.
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):

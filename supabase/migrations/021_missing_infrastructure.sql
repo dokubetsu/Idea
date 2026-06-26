@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id                       UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
   milestone_id             UUID           REFERENCES matter_milestones(id) ON DELETE SET NULL,
   user_id                  UUID           REFERENCES profiles(id) ON DELETE SET NULL,
-  amount_inr               NUMERIC(10,2)  NOT NULL,
+  amount_inr               NUMERIC(10,2)  NOT NULL CHECK (amount_inr > 0),
   status                   TEXT           NOT NULL CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
   payment_id               TEXT           UNIQUE,
   payment_idempotency_key  TEXT           UNIQUE,
@@ -81,7 +81,7 @@ CREATE POLICY "Admins can view all audit logs"
 
 CREATE POLICY "System can insert audit logs"
   ON audit_logs FOR INSERT
-  WITH CHECK (true); -- Typically inserted by system/service-role (server-side API operations)
+  WITH CHECK (auth.role() = 'service_role');
 
 -- ── 4. Lawyer Availability Table ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS lawyer_availability (
@@ -135,3 +135,37 @@ CREATE POLICY "Lawyers can manage their own slots"
   ON time_slots FOR ALL
   USING (auth.uid() = lawyer_id)
   WITH CHECK (auth.uid() = lawyer_id);
+
+-- ── Triggers: updated_at for 021 tables ──────────────────────────
+CREATE TRIGGER trg_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_lawyer_availability_updated_at BEFORE UPDATE ON public.lawyer_availability FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+CREATE TRIGGER trg_time_slots_updated_at BEFORE UPDATE ON public.time_slots FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+-- ── 6. Admin Stats RPC ───────────────────────────────────────────
+CREATE OR REPLACE FUNCTION get_admin_stats()
+RETURNS JSON SECURITY DEFINER AS $$
+DECLARE
+  v_total_users INT;
+  v_total_lawyers INT;
+  v_total_matters INT;
+  v_open_matters INT;
+  v_pending_verifications INT;
+  v_total_facts INT;
+BEGIN
+  SELECT COUNT(*)::INT INTO v_total_users FROM public.profiles WHERE role = 'user';
+  SELECT COUNT(*)::INT INTO v_total_lawyers FROM public.profiles WHERE role = 'lawyer';
+  SELECT COUNT(*)::INT INTO v_total_matters FROM public.matters;
+  SELECT COUNT(*)::INT INTO v_open_matters FROM public.matters WHERE status IN ('intake', 'assessment', 'matching', 'active');
+  SELECT COUNT(*)::INT INTO v_pending_verifications FROM public.lawyer_profiles WHERE is_verified = FALSE;
+  SELECT COUNT(*)::INT INTO v_total_facts FROM public.facts;
+
+  RETURN json_build_object(
+    'total_users', v_total_users,
+    'total_lawyers', v_total_lawyers,
+    'total_matters', v_total_matters,
+    'open_matters', v_open_matters,
+    'pending_verifications', v_pending_verifications,
+    'total_facts', v_total_facts
+  );
+END;
+$$ LANGUAGE plpgsql;

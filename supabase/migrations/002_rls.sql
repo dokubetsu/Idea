@@ -42,7 +42,7 @@ DROP POLICY IF EXISTS "requests:update_lawyer_admin" ON public.lawyer_requests;
 
 -- ── Helper ───────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION auth_role()
-RETURNS user_role LANGUAGE sql STABLE SECURITY DEFINER AS $$
+RETURNS user_role LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT role FROM profiles WHERE id = auth.uid()
 $$;
 

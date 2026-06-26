@@ -13,14 +13,15 @@ from contextlib import asynccontextmanager
 import logging
 from typing import Any, cast
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
 from app.config import settings
 from app.shared.limiter import limiter
-from app.shared.middleware import RequestTracingMiddleware
+from app.shared.middleware import RequestTracingMiddleware, request_id_var
 from app.domains.identity.router import router as identity_router
 from app.domains.intake.router import router as intake_router
 from app.domains.matters.router import router as matters_router
@@ -88,6 +89,24 @@ app = FastAPI(
 # Register rate limiter instance and handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = request_id_var.get()
+    log.error(
+        "[%s] Unhandled exception on %s %s",
+        request_id,
+        request.method,
+        request.url.path,
+        exc_info=exc,
+    )
+    headers = {"X-Request-ID": request_id} if request_id else {}
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": request_id},
+        headers=headers,
+    )
 
 # ── Middleware ────────────────────────────────────────────────────
 

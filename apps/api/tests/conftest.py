@@ -109,7 +109,12 @@ class MockSupabaseTable:
             data = self.last_inserted
             self.last_inserted = None
         else:
-            data = self.data
+            data = list(self.data)
+
+        for query in self.queries:
+            if query[0] == "eq":
+                column, value = query[1], query[2]
+                data = [row for row in data if row.get(column) == value]
 
         if is_single:
             ret = data[0] if data else None
@@ -224,11 +229,17 @@ class MockSupabaseClient:
             return MockRpcBuilder([{"old_status": current_status, "success": True}])
 
         if name == "assign_free_lawyer_rpc":
+            consultation_id = params.get("p_consultation_id")
             lawyers = self.table("lawyer_profiles").data
             for lp in lawyers:
                 if lp.get("is_available") and lp.get("offers_free_consultation"):
+                    if consultation_id:
+                        for row in self.table("consultations").data:
+                            if row.get("id") == consultation_id:
+                                row["lawyer_id"] = lp["id"]
+                                break
                     return MockRpcBuilder(lp["id"])
-            return MockRpcBuilder("mock-lawyer-id")
+            return MockRpcBuilder(None)
 
         if name == "contact_lawyer_rpc":
             user_id = params.get("p_user_id")

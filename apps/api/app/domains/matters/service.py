@@ -3,7 +3,7 @@
 from __future__ import annotations
 from app.shared.events import sync_emit, EventType
 from app.shared.exceptions import NotFound, Forbidden
-from app.shared.dependencies import CurrentUser, UserRole
+from app.shared.dependencies import CurrentUser, UserRole, ensure_lawyer_verified
 
 SELECT = "*, " "up:profiles!user_id(full_name), " "lp:profiles!lawyer_id(full_name)"
 
@@ -27,6 +27,8 @@ def enrich(row: dict, with_facts: bool = False) -> dict:
 
 
 def get_matter_or_403(db, matter_id: str, user: CurrentUser) -> dict:
+    if user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
     r = db.table("matters").select(SELECT).eq("id", matter_id).single().execute()
     if not r.data:
         raise NotFound("Matter")

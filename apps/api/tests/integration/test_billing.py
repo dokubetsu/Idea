@@ -58,7 +58,7 @@ async def test_payment_capture_idempotency_integration(
         # 4. Pay the milestone (first time)
         payload = {
             "is_paid": True,
-            "payment_id": "pay_tx_123",
+            "payment_gateway_ref": "pay_tx_123",
             "payment_idempotency_key": idemp_key,
         }
         res1 = await client.patch(
@@ -67,13 +67,13 @@ async def test_payment_capture_idempotency_integration(
         assert res1.status_code == 200
         data1 = res1.json()
         assert data1["is_paid"] is True
-        assert data1["payment_id"] == "pay_tx_123"
+        assert data1["payment_gateway_ref"] == "pay_tx_123"
         assert data1["payment_idempotency_key"] == idemp_key
 
-        # 5. Pay the milestone (second time, retrying with same key but different payment_id)
+        # 5. Pay the milestone (second time, retrying with same key but different payment_gateway_ref)
         payload2 = {
             "is_paid": True,
-            "payment_id": "pay_tx_456",
+            "payment_gateway_ref": "pay_tx_456",
             "payment_idempotency_key": idemp_key,
         }
         res2 = await client.patch(
@@ -83,7 +83,7 @@ async def test_payment_capture_idempotency_integration(
         data2 = res2.json()
         # It must return the original milestone details, NOT the updated pay_tx_456!
         assert data2["is_paid"] is True
-        assert data2["payment_id"] == "pay_tx_123"
+        assert data2["payment_gateway_ref"] == "pay_tx_123"
         assert data2["payment_idempotency_key"] == idemp_key
 
         # 6. Try to use the same idempotency key for another milestone (should be rejected)
@@ -102,7 +102,7 @@ async def test_payment_capture_idempotency_integration(
         try:
             payload3 = {
                 "is_paid": True,
-                "payment_id": "pay_tx_789",
+                "payment_gateway_ref": "pay_tx_789",
                 "payment_idempotency_key": idemp_key,
             }
             res3 = await client.patch(

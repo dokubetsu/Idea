@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { CategoryId, SUBTYPE_FIELDS } from "../IntakeWizard";
+import { CategoryId, SUBTYPE_FIELDS } from "../intakeConstants";
 
 interface CategoryFactsStepProps {
   category: CategoryId;
@@ -9,6 +9,54 @@ interface CategoryFactsStepProps {
   setCatFacts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onNext: () => void;
   onBack: () => void;
+}
+
+function shouldShowField(fieldKey: string, catFacts: Record<string, string>): boolean {
+  // Cheque Bounce conditionals
+  if (fieldKey === "notice_date" || fieldKey === "response_15days" || fieldKey === "notice_sent_by_regd_post") {
+    return catFacts["legal_notice_sent"] === "yes";
+  }
+  if (fieldKey === "drawer_company_name") {
+    return catFacts["drawer_type"] === "Company or Partnership";
+  }
+
+  // Money Recovery conditionals
+  if (fieldKey === "interest_rate") {
+    return catFacts["interest_agreed"] === "yes";
+  }
+  if (fieldKey === "amount_received") {
+    return catFacts["partial_payment"] === "yes";
+  }
+
+  // Bank Fraud conditionals
+  if (fieldKey === "complaint_number") {
+    return catFacts["cybercrime_complaint"] === "yes";
+  }
+
+  // Product Defect conditionals
+  if (fieldKey === "complaint_date") {
+    return catFacts["complaint_sent"] === "yes";
+  }
+
+  // Service Deficiency conditionals
+  if (fieldKey === "complaint_date") {
+    return catFacts["complaint_sent"] === "yes";
+  }
+
+  // Accident Injury conditionals
+  if (fieldKey === "fir_number" || fieldKey === "police_station") {
+    return catFacts["fir_filed"] === "yes";
+  }
+  if (fieldKey === "hospital_name") {
+    return catFacts["hospital_treatment"] === "yes";
+  }
+
+  // Accident Death conditionals
+  if (fieldKey === "dependents_count") {
+    return catFacts["dependents"] === "yes";
+  }
+
+  return true;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,29 +85,23 @@ export function CategoryFactsStep({
         These details are specific to your type of case. Fill in what you know — skip anything that doesn't apply.
       </p>
 
-      {fields.map((field) => (
+      {fields.filter(f => shouldShowField(f.key, catFacts)).map((field) => (
         <Field key={field.key} label={field.label}>
           {field.type === "yesno" ? (
             <div className="flex flex-col sm:flex-row gap-3">
               {["yes", "no"].map((v) => (
-                <label
+                <button
                   key={v}
-                  className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
+                  type="button"
+                  onClick={() => setCatFacts((p) => ({ ...p, [field.key]: v }))}
+                  className={`flex-1 flex relative cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
                     catFacts[field.key] === v
                       ? "border-brand-gold bg-brand-gold/8 font-semibold text-brand-blue-dark"
                       : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name={field.key}
-                    value={v}
-                    checked={catFacts[field.key] === v}
-                    onChange={() => setCatFacts((p) => ({ ...p, [field.key]: v }))}
-                    className="sr-only"
-                  />
                   {v === "yes" ? "Yes" : "No"}
-                </label>
+                </button>
               ))}
             </div>
           ) : field.type === "select" ? (

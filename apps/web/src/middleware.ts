@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
 
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
+    script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com;
     font-src 'self' https://fonts.gstatic.com;
@@ -72,6 +72,12 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin")  && role !== "admin")  return NextResponse.redirect(new URL(home, request.url));
   if (pathname.startsWith("/lawyer") && role !== "lawyer") return NextResponse.redirect(new URL(home, request.url));
   if (pathname.startsWith("/user")   && role !== "user")   return NextResponse.redirect(new URL(home, request.url));
+
+  // H8: Forward the already-resolved user role and ID as request headers so that
+  // dashboard layouts can read them via next/headers without a second Supabase
+  // network round-trip. The middleware has already authenticated the user above.
+  response.headers.set("x-user-role", role);
+  response.headers.set("x-user-id", user.id);
 
   return response;
 }

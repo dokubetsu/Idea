@@ -1,10 +1,11 @@
--- Minimal seed data
+-- Minimal seed data for LOCAL DEVELOPMENT ONLY.
+-- Passwords satisfy the auth policy: lower_upper_letters_digits_symbols.
 -- Insert test users into auth.users (local development only)
 INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, aud, confirmation_token)
 VALUES 
-  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'client@lead.ai', crypt('password123', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Test Client"}', 'authenticated', ''),
-  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'lawyer@lead.ai', crypt('password123', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"lawyer"}', '{"full_name":"Test Lawyer"}', 'authenticated', ''),
-  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'admin@lead.ai', crypt('password123', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"admin"}', '{"full_name":"Test Admin"}', 'authenticated', '')
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'client@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Test Client"}', 'authenticated', ''),
+  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'lawyer@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"lawyer"}', '{"full_name":"Test Lawyer"}', 'authenticated', ''),
+  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'admin@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"admin"}', '{"full_name":"Test Admin"}', 'authenticated', '')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert corresponding profiles

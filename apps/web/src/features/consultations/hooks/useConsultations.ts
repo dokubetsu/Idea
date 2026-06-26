@@ -10,7 +10,7 @@ import {
 } from "../api/consultations";
 import type { ConsultationPackage } from "@/entities/types";
 
-export function useConsultations(params?: { status?: string }) {
+export function useConsultations(params?: { status?: string; page?: number; per_page?: number }) {
   return useQuery({
     queryKey: ["consultations", params],
     queryFn: () => listConsultations(params),

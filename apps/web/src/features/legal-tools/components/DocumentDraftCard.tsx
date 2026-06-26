@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FileText, Copy, Check, Edit3, Eye, Loader2, Download } from "lucide-react";
 import { Card, Button, Spinner } from "@/shared/components/ui";
 import { apiClient } from "@/shared/lib/api/client";
@@ -46,41 +46,6 @@ export function DocumentDraftCard({ matterId, category }: DocumentDraftCardProps
       setLoading(false);
     }
   }
-
-  // Auto-generate on mount or template type change
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await apiClient.post<{ draft_content: string }>("/legal-tools/documents/draft", {
-          matter_id: matterId,
-          document_type: docType,
-        });
-        if (active) {
-          setDraftContent(res.draft_content);
-          setIsEditing(false);
-        }
-      } catch (err: unknown) {
-        if (active) {
-          const errMsg = err instanceof Error ? err.message : "Failed to generate document draft.";
-          setError(errMsg);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    load();
-
-    return () => {
-      active = false;
-    };
-  }, [docType, matterId]);
 
   const handleCopy = async () => {
     try {
@@ -144,7 +109,7 @@ export function DocumentDraftCard({ matterId, category }: DocumentDraftCardProps
             disabled={loading}
             className="text-xs"
           >
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reset Draft"}
+            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : draftContent ? "Regenerate" : "Generate Draft"}
           </Button>
         </div>
       </div>
@@ -229,9 +194,12 @@ export function DocumentDraftCard({ matterId, category }: DocumentDraftCardProps
           )}
         </div>
       ) : (
-        <p className="text-center py-8 text-xs text-brand-blue-light/40">
-          Select a document type to preview the populated draft.
-        </p>
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          <FileText className="h-8 w-8 text-brand-gold/40" />
+          <p className="text-xs text-brand-blue-light/40">
+            Select a document type and click <strong>Generate Draft</strong> to populate it with your matter details.
+          </p>
+        </div>
       )}
     </Card>
   );

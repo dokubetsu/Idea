@@ -132,6 +132,22 @@ FACT_SCHEMAS: dict[str, dict[str, str]] = {
         "amount_lost": "Amount lost (₹) if any",
         "platform_name": "Platform or website involved",
     },
+    "motor_vehicles": {
+        "incident_date": "When did this happen?",
+        "incident_location": "Where did this happen? (city / state)",
+        "opponent_name": "Other party name",
+        "urgency_level": "How urgent is this?",
+        "preferred_language": "Preferred language for communication",
+        "prior_legal_action": "Has any FIR or case been filed?",
+        "accident_date": "Date of accident",
+        "accident_location": "Location of accident",
+        "claimant_age": "Age of the claimant/deceased",
+        "employment_type": "Employment type",
+        "disability_percentage": "Disability percentage (if any)",
+        "offending_vehicle_registration": "Offending vehicle registration number",
+        "offending_vehicle_insurer": "Insurer of offending vehicle",
+        "six_month_limitation_check": "Is it within 6 months of accident?",
+    },
     "other": {
         "incident_date": "When did this happen?",
         "incident_location": "Where did this happen? (city / state)",
@@ -173,6 +189,17 @@ def _detect_category(text: str) -> str:
         "labour": ["termination", "salary", "employer", "pf", "gratuity", "labour"],
         "criminal": ["fir", "police", "criminal", "arrest", "assault", "theft"],
         "cyber": ["cyber", "hack", "fraud", "online", "phishing", "scam"],
+        "motor_vehicles": [
+            "accident",
+            "collision",
+            "mact",
+            "motor vehicle",
+            "hit and run",
+            "licence",
+            "driving licence",
+            "rto",
+            "vehicle",
+        ],
     }
     for cat, words in kw.items():
         if any(w in text for w in words):

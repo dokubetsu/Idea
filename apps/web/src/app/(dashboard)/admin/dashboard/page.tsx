@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, BookOpen, Briefcase, Database, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { User } from "@supabase/supabase-js";
 import { createClient } from "@/shared/lib/supabase/client";
 import { apiClient } from "@/shared/lib/api/client";
 import { Spinner } from "@/shared/components/ui";
 import { AdminStats } from "@/entities/types";
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {

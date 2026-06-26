@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.hearings (
   judge        TEXT,
   purpose      TEXT,
   notes        TEXT,
-  status       TEXT        NOT NULL DEFAULT 'scheduled',
+  status       TEXT        NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'adjourned', 'completed', 'cancelled')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.matter_milestones (
   title        TEXT        NOT NULL,
   description  TEXT,
   order_index  INTEGER     NOT NULL,
-  status       TEXT        NOT NULL DEFAULT 'pending',
+  status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'current', 'completed')),
   completed_at TIMESTAMPTZ,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),

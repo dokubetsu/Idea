@@ -36,6 +36,11 @@ jobs:
     - name: Run dependency security audit (pip-audit)
       run: pip-audit
 
+    - name: Set up Node.js (for Supabase CLI)
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+
     - name: Setup local Supabase test database
       run: |
         # Start Supabase services locally using Docker

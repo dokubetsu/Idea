@@ -44,7 +44,8 @@ export interface Milestone {
   status: string; // 'pending' | 'current' | 'completed'
   amount_inr?: number;
   is_paid?: boolean;
-  payment_id?: string;
+  payment_gateway_ref?: string;
+  payment_record_id?: string;
   payment_idempotency_key?: string | null;
   completed_at?: string;
   created_at: string;
@@ -159,7 +160,7 @@ export interface Notification {
   id: string;
   user_id: string;
   type: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   action?: {
     label: string;
     url: string;

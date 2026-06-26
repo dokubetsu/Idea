@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/shared/lib/api/client";
 import type { LawyerProfile } from "@/entities/types";
 
-interface LawyerFilters { city?: string; state?: string; specialization?: string; min_experience?: number; max_fee?: number; available_only?: boolean; }
+interface LawyerFilters { city?: string; state?: string; specialization?: string; min_experience?: number; max_fee?: number; available_only?: boolean; page?: number; per_page?: number; }
 
 export function useLawyers(filters?: LawyerFilters) {
   const qs = filters ? "?" + new URLSearchParams(

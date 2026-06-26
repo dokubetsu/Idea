@@ -140,7 +140,8 @@ export function useUpdateMilestone(matterId: string) {
       status?: string;
       amount_inr?: number;
       is_paid?: boolean;
-      payment_id?: string;
+      payment_gateway_ref?: string;
+      payment_record_id?: string;
       payment_idempotency_key?: string | null;
       completed_at?: string | null;
     }) => apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, body),

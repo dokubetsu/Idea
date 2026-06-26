@@ -82,6 +82,9 @@ async def test_decline_consultation_success(client: AsyncClient, mock_db):
     mock_db.table("consultations").data = [
         make_mock_consultation({"lawyer_id": "test-lawyer-id"})
     ]
+    mock_db.table("lawyer_profiles").data = [
+        {"id": "test-lawyer-id", "is_verified": True}
+    ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="test-lawyer-id", role=UserRole.LAWYER, full_name="Test Lawyer"
@@ -96,9 +99,33 @@ async def test_decline_consultation_success(client: AsyncClient, mock_db):
 
 
 @pytest.mark.asyncio
+async def test_decline_consultation_unverified_lawyer(client: AsyncClient, mock_db):
+    mock_db.table("consultations").data = [
+        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
+    ]
+    mock_db.table("lawyer_profiles").data = [
+        {"id": "test-lawyer-id", "is_verified": False}
+    ]
+
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        id="test-lawyer-id", role=UserRole.LAWYER, full_name="Test Lawyer"
+    )
+
+    try:
+        res = await client.patch("/api/v1/consultations/c-123/decline")
+        assert res.status_code == 403
+        assert "pending verification" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_decline_consultation_not_assigned(client: AsyncClient, mock_db):
     mock_db.table("consultations").data = [
         make_mock_consultation({"lawyer_id": "test-lawyer-id"})
+    ]
+    mock_db.table("lawyer_profiles").data = [
+        {"id": "other-lawyer-id", "is_verified": True}
     ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(

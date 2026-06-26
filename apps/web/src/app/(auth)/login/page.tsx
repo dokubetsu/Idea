@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/shared/lib/supabase/client";
+import { apiClient } from "@/shared/lib/api/client";
 import { Field } from "@/shared/components/ui";
 
 const schema = z.object({
@@ -30,20 +31,18 @@ function LoginForm() {
     const { data: result, error } = await sb.auth.signInWithPassword(data);
     if (error || !result.user) { setApiErr(error?.message ?? "Sign in failed"); return; }
 
-    const role = (result.user.app_metadata?.role as string) ?? (result.user.user_metadata?.role as string) ?? "user";
+    const role = (result.user.app_metadata?.role as string) ?? "user";
     const token = result.session?.access_token;
 
     // Create profile if it doesn't exist yet (handles email-confirmation flow
     // where the profile POST was skipped during registration).
     if (token) {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/identity/profile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          role,
-          full_name: result.user.user_metadata?.full_name ?? result.user.email ?? "User",
-        }),
-      });
+      await apiClient.post("/identity/profile", {
+        role,
+        full_name: result.user.user_metadata?.full_name ?? result.user.email ?? "User",
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => {});
       // Intentionally not blocking on failure — profile may already exist (idempotent endpoint).
     }
 

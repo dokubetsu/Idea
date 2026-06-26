@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { DOMAINS } from "../IntakeWizard";
+import { DOMAINS } from "../intakeConstants";
 
 interface DomainStepProps {
   onDomainSelect: (domainId: string) => void;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { CoreForm } from "../IntakeWizard";
@@ -36,7 +37,12 @@ function urgencyLabel(v: string) {
 }
 
 export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = form;
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = form;
+
+  useEffect(() => {
+    register("urgency_level");
+    register("prior_legal_action");
+  }, [register]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-6">
@@ -72,17 +78,18 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
       <Field label="How urgent is this?">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {(["exploring", "need_help_soon", "court_date_coming"] as const).map((v) => (
-            <label
+            <button
               key={v}
-              className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3 transition-all ${
+              type="button"
+              onClick={() => setValue("urgency_level", v, { shouldValidate: true })}
+              className={`flex relative cursor-pointer flex-col gap-1 rounded-xl border p-3 text-left transition-all ${
                 watch("urgency_level") === v
                   ? "border-brand-gold bg-brand-gold/8 text-brand-blue-dark"
                   : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
               }`}
             >
-              <input type="radio" value={v} {...register("urgency_level")} className="sr-only" />
               <span className="text-[11px] font-semibold leading-4">{urgencyLabel(v)}</span>
-            </label>
+            </button>
           ))}
         </div>
         <Err msg={errors.urgency_level?.message} />
@@ -101,17 +108,18 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
       <Field label="Has any FIR or court case been filed about this?">
         <div className="flex flex-col sm:flex-row gap-3">
           {(["no", "yes"] as const).map((v) => (
-            <label
+            <button
               key={v}
-              className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
+              type="button"
+              onClick={() => setValue("prior_legal_action", v, { shouldValidate: true })}
+              className={`flex-1 flex relative cursor-pointer items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
                 watch("prior_legal_action") === v
                   ? "border-brand-gold bg-brand-gold/8 font-semibold text-brand-blue-dark"
                   : "border-brand-gold/15 text-brand-blue-light/60 hover:border-brand-gold/30"
               }`}
             >
-              <input type="radio" value={v} {...register("prior_legal_action")} className="sr-only" />
               {v === "yes" ? "Yes" : "No"}
-            </label>
+            </button>
           ))}
         </div>
         {watch("prior_legal_action") === "yes" && (
@@ -122,6 +130,30 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
             className="form-input mt-2"
           />
         )}
+      </Field>
+
+      <Field label="Who is filing this complaint? (Complainant Type)">
+        <select {...register("complainant_type")} className="form-input">
+          <option value="">— Select Type —</option>
+          {["Individual", "Proprietorship", "Partnership", "Company"].map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <Err msg={errors.complainant_type?.message} />
+      </Field>
+
+      <Field label="Do you have key documents for this case?">
+        <select {...register("has_documents")} className="form-input">
+          <option value="">— Select Option —</option>
+          {["Yes, I have key documents", "Some documents, not all", "No documents"].map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <Err msg={errors.has_documents?.message} />
       </Field>
 
       <div className="flex gap-3 pt-1">

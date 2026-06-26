@@ -2,7 +2,8 @@
 
 import { UseFormReturn } from "react-hook-form";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { CategoryId, DescribeForm, getSubtypeLabel } from "../IntakeWizard";
+import { DescribeForm, getSubtypeLabel } from "../IntakeWizard";
+import { CategoryId } from "../intakeConstants";
 
 interface DescribeStepProps {
   form: UseFormReturn<DescribeForm>;
@@ -67,6 +68,7 @@ export function DescribeStep({
           placeholder="Add any extra context, timeline, or details that weren't covered in the form above..."
           className="form-input resize-none"
         />
+        <Err msg={errors.description?.message} />
         <p className="mt-1 text-[10px] text-brand-blue-light/40">
           This is optional — the structured details you've already entered are enough for a good assessment.
         </p>

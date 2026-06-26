@@ -29,7 +29,7 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
         await updateMilestone.mutateAsync({
           milestoneId,
           is_paid: true,
-          payment_id: paymentId,
+          payment_gateway_ref: paymentId,
           payment_idempotency_key: idempotencyKey
         });
         toast.success("Payment successful! Invoice generated.");

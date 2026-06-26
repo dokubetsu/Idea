@@ -49,7 +49,10 @@ class MilestoneOut(BaseModel):
     status: str
     amount_inr: float | None = None
     is_paid: bool = False
-    payment_id: str | None = None
+    # H12: payment_gateway_ref is the external gateway string (e.g. Razorpay "pay_XYZ").
+    # payment_record_id is the FK to our internal payments table.
+    payment_gateway_ref: str | None = None  # was: payment_id
+    payment_record_id: str | None = None    # FK -> payments.id (nullable until paid)
     payment_idempotency_key: str | None = None
     completed_at: datetime | None = None
     created_at: datetime
@@ -71,7 +74,8 @@ class MilestoneUpdate(BaseModel):
     status: str | None = None
     amount_inr: float | None = None
     is_paid: bool | None = None
-    payment_id: str | None = None
+    payment_gateway_ref: str | None = None  # was: payment_id (external gateway ref)
+    payment_record_id: str | None = None    # FK -> payments.id
     payment_idempotency_key: str | None = None
     completed_at: datetime | None = None
 

@@ -5,7 +5,9 @@ from app.domains.matters.service import get_matter_or_403
 from app.domains.matters.documents import PreSignedUrlResponse, DocumentUploadRequest
 from fastapi import HTTPException
 import os
+import logging
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -24,9 +26,10 @@ async def get_upload_url(matter_id: str, body: DocumentUploadRequest, user: Auth
         # Create a presigned upload URL valid for 60 seconds
         res = db.storage.from_("matter_documents").create_signed_upload_url(path)
         return PreSignedUrlResponse(url=res["signedUrl"])
-    except Exception as e:
+    except Exception:
+        log.exception("Failed to generate upload URL for path %s", path)
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate upload URL: {str(e)}"
+            status_code=500, detail="Failed to generate upload URL. Please try again later."
         )
 
 
@@ -44,9 +47,10 @@ async def get_download_url(matter_id: str, filename: str, user: Auth):
         # Create a presigned download URL valid for 60 seconds
         res = db.storage.from_("matter_documents").create_signed_url(path, 60)
         return PreSignedUrlResponse(url=res["signedUrl"])
-    except Exception as e:
+    except Exception:
+        log.exception("Failed to generate download URL for path %s", path)
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate download URL: {str(e)}"
+            status_code=500, detail="Failed to generate download URL. Please try again later."
         )
 
 

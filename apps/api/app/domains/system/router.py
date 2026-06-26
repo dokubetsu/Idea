@@ -1,3 +1,4 @@
+import hmac
 from fastapi import APIRouter, HTTPException, Header
 from app.shared.database import get_service_role_db
 from app.config import settings
@@ -14,8 +15,9 @@ def verify_cron_secret(secret: str | None) -> None:
     Validate the X-Cron-Secret header.
     CRON_SECRET is a required setting with no default — see config.py.
     Secrets are passed as headers, not query params, to keep them out of access logs.
+    Uses hmac.compare_digest to prevent timing-attack side-channel leakage.
     """
-    if not secret or secret != settings.CRON_SECRET:
+    if not secret or not hmac.compare_digest(secret, settings.CRON_SECRET):
         raise HTTPException(status_code=401, detail="Invalid cron secret")
 
 

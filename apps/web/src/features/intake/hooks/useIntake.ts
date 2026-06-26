@@ -45,7 +45,7 @@ export function useRunAssessment() {
 export function useCommitIntake() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ sessionId, confirmed_facts }: { sessionId: string; confirmed_facts: any[] }) =>
+    mutationFn: ({ sessionId, confirmed_facts }: { sessionId: string; confirmed_facts: NonNullable<IntakeSession["extracted_facts"]["facts"]> }) =>
       apiClient.post<{ matter_id: string; status: string }>(`/intake/${sessionId}/commit`, { confirmed_facts }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["matters"] });

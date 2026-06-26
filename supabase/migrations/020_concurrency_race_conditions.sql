@@ -143,17 +143,44 @@ $$;
 
 
 -- 4. assign_free_lawyer_rpc RPC (FOR UPDATE SKIP LOCKED on lawyer_profiles)
-CREATE OR REPLACE FUNCTION assign_free_lawyer_rpc()
+CREATE OR REPLACE FUNCTION assign_free_lawyer_rpc(p_consultation_id UUID)
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_lawyer_id UUID;
+  v_user_id UUID;
 BEGIN
-  -- Select first available opted-in lawyer using SKIP LOCKED to prevent concurrent assignments
+  -- Lock the consultation so assignment is atomic with lawyer selection.
+  SELECT user_id INTO v_user_id
+  FROM public.consultations
+  WHERE id = p_consultation_id
+    AND package = 'free'
+    AND lawyer_id IS NULL
+    AND status = 'pending'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  IF v_user_id IS DISTINCT FROM auth.uid() THEN
+    RAISE EXCEPTION 'Not authorized to assign lawyer to this consultation' USING ERRCODE = '42501';
+  END IF;
+
+  -- Select first available opted-in lawyer; lock is held until this transaction commits.
   SELECT id INTO v_lawyer_id
   FROM public.lawyer_profiles
   WHERE is_available = true AND offers_free_consultation = true
   LIMIT 1
   FOR UPDATE SKIP LOCKED;
+
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  UPDATE public.consultations
+  SET lawyer_id = v_lawyer_id,
+      updated_at = NOW()
+  WHERE id = p_consultation_id;
 
   RETURN v_lawyer_id;
 END;

@@ -21,7 +21,10 @@ async def handle_domain_event(
         except ValueError:
             pass
 
-    db = database.get_db()
+    db = database.get_service_role_db()
+    # NOTE: The subscriber runs in a background asyncio task where the request-scoped
+    # ContextVar has been cleared by middleware. Using get_service_role_db() explicitly
+    # here is correct — we need full access to look up matters and create notifications.
     try:
         m_row = (
             db.table("matters")

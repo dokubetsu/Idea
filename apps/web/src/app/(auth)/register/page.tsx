@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/shared/lib/supabase/client";
+import { apiClient } from "@/shared/lib/api/client";
 import type { UserRole } from "@/entities/types";
 import { Field } from "@/shared/components/ui";
 
@@ -50,14 +51,17 @@ export default function RegisterPage() {
       return;
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/identity/profile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ role, full_name: data.full_name, city: data.city, state: data.state }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setApiErr(body.detail ?? "Profile setup failed. Please try signing in.");
+    try {
+      await apiClient.post("/identity/profile", {
+        role,
+        full_name: data.full_name,
+        city: data.city,
+        state: data.state,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err: any) {
+      setApiErr(err.detail ?? "Profile setup failed. Please try signing in.");
       return;
     }
     if (role === "lawyer") {

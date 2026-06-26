@@ -6,7 +6,7 @@ import {
   useMatters, useMatter, useUpdates, usePostUpdate, 
 } from "@/features/matters/hooks/useMatters";
 import { FactsPanel } from "@/features/matters/components/FactsPanel";
-import { LimitationBanner } from "@/features/legal-tools/components/LimitationBanner";
+import { LimitationBanner, EMPTY_FACTS } from "@/features/legal-tools/components/LimitationBanner";
 import { DocumentDraftCard } from "@/features/legal-tools/components/DocumentDraftCard";
 import { DocumentVault } from "@/features/matters/components/DocumentVault";
 import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
@@ -117,7 +117,7 @@ export default function LawyerMattersPage() {
               {/* Tab 1: Overview */}
               {activeTab === "overview" && (
                 <div className="space-y-6">
-                  <LimitationBanner category={details.category} facts={details.facts ?? []} />
+                  <LimitationBanner category={details.category} facts={details.facts ?? EMPTY_FACTS} />
                   <DocumentDraftCard matterId={details.id} category={details.category} />
                   <DocumentVault matterId={details.id} />
                   <MeetingsPanel matterId={details.id} isLawyer={true} />

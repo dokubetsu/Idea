@@ -7,7 +7,19 @@ export default function AdminUsersPage() {
   const [users, setUsers]   = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState("user");
-  useEffect(() => { setLoading(true); apiClient.get<Profile[]>(`/admin/users?role=${filter}`).then(setUsers).finally(()=>setLoading(false)); }, [filter]);
+  const [page, setPage]       = useState(1);
+  const perPage = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  useEffect(() => {
+    setLoading(true);
+    apiClient.get<Profile[]>(`/admin/users?role=${filter}&page=${page}&per_page=${perPage}`)
+      .then(setUsers)
+      .finally(() => setLoading(false));
+  }, [filter, page]);
   return (
     <div className="animate-fade-in-up space-y-7">
       <div className="flex items-end justify-between">
@@ -48,6 +60,27 @@ export default function AdminUsersPage() {
               ))}
             </tbody>
           </table>
+          <div className="flex items-center justify-between border-t border-brand-gold/10 px-4 py-3 bg-base-200/20">
+            <button
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="rounded-lg border border-brand-gold/25 bg-base-100 px-3 py-1.5 text-xs font-semibold text-brand-blue-dark hover:bg-brand-gold/5 disabled:opacity-50 transition-all"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-medium text-brand-blue-light/60">
+              Page {page}
+            </span>
+            <button
+              type="button"
+              disabled={users.length < perPage}
+              onClick={() => setPage(p => p + 1)}
+              className="rounded-lg border border-brand-gold/25 bg-base-100 px-3 py-1.5 text-xs font-semibold text-brand-blue-dark hover:bg-brand-gold/5 disabled:opacity-50 transition-all"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

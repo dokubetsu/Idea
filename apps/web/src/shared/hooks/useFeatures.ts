@@ -20,7 +20,11 @@ export function useFeatures() {
         return FEATURES_DEFAULT;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: Infinity, // Static configuration cache
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   return {

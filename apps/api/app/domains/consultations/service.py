@@ -31,10 +31,12 @@ def get_consultation_or_404(consultation_id: str) -> dict:
     return enrich_consultation(row)
 
 
-def assign_free_lawyer(category: str) -> str | None:
-    """Finds the first available lawyer opted into free consultations using SKIP LOCKED to prevent concurrent assignments"""
+def assign_free_lawyer(consultation_id: str) -> str | None:
+    """Atomically assign an available free-consult lawyer to a pending consultation."""
     db = get_db()
-    res = db.rpc("assign_free_lawyer_rpc").execute()
+    res = db.rpc(
+        "assign_free_lawyer_rpc", {"p_consultation_id": consultation_id}
+    ).execute()
     if res.data:
         return res.data
     return None

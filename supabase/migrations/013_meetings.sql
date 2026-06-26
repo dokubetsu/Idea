@@ -13,7 +13,7 @@ CREATE TABLE meetings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id UUID NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   scheduled_at TIMESTAMPTZ NOT NULL,
-  duration_minutes INT NOT NULL DEFAULT 30,
+  duration_minutes INT NOT NULL DEFAULT 30 CHECK (duration_minutes > 0),
   status meeting_status NOT NULL DEFAULT 'scheduled',
   meeting_link TEXT, -- Could be a Zoom/Google Meet link
   notes TEXT,

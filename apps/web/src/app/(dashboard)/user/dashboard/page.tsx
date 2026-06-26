@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, ChevronRight, Plus, Users, FileText, Scale } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/shared/lib/supabase/client";
 import { apiClient } from "@/shared/lib/api/client";
 import { useMatters } from "@/features/matters/hooks/useMatters";
 import { QuickStartGuide, Spinner } from "@/shared/components/ui";
+import { Consultation } from "@/entities/types";
 
 const HEALTH_DOT: Record<string, string> = {
   waiting_on_client: "bg-amber-400",
@@ -24,42 +23,26 @@ const HEALTH_LABEL: Record<string, string> = {
 };
 
 export default function UserDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-
-  useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoadingUser(false);
-    });
-  }, []);
+  // H13: Use apiClient (retry logic, timeout, centralised auth) instead of direct
+  // Supabase client queries. GET /identity/me already returns the embedded
+  // lawyer_profile field, so a single request replaces two separate round-trips.
+  const { data: me, isLoading: loadingUser } = useQuery({
+    queryKey: ["identity", "me"],
+    queryFn: () => apiClient.get<{ full_name?: string; lawyer_profile?: { is_verified: boolean } | null }>("/identity/me"),
+  });
 
   // Fetch matters
   const { data: matters = [], isLoading: loadingMatters } = useMatters();
   const recentCases = matters.filter(m => !["resolved", "archived"].includes(m.status)).slice(0, 3);
 
-  // Fetch pending consultations
+  // Fetch pending consultations (only once we know the user is loaded)
   const { data: pendingConsultations = [], isLoading: loadingConsultations } = useQuery({
     queryKey: ["consultations", "pending"],
-    queryFn: () => apiClient.get<any[]>("/consultations?status=pending"),
-    enabled: !!user,
+    queryFn: () => apiClient.get<Consultation[]>("/consultations?status=pending"),
+    enabled: !!me,
   });
 
-  // Check if they have an unverified lawyer profile
-  const { data: lawyerProfile, isLoading: loadingLawyerProfile } = useQuery({
-    queryKey: ["lawyer_profile", user?.id],
-    queryFn: async () => {
-      const { data } = await createClient()
-        .from("lawyer_profiles")
-        .select("is_verified")
-        .eq("id", user.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  if (loadingUser || loadingMatters || loadingConsultations || loadingLawyerProfile) {
+  if (loadingUser || loadingMatters || loadingConsultations) {
     return (
       <div className="flex justify-center items-center py-32">
         <Spinner className="h-8 w-8" />
@@ -67,7 +50,8 @@ export default function UserDashboard() {
     );
   }
 
-  const name = (user?.user_metadata?.full_name ?? "there").split(" ")[0];
+  const lawyerProfile = me?.lawyer_profile;
+  const name = (me?.full_name ?? "there").split(" ")[0];
 
   return (
     <>
@@ -160,8 +144,8 @@ export default function UserDashboard() {
               <p className="text-xs text-brand-blue-light/50 mt-1">Waiting for the lawyer to confirm</p>
             </div>
             <div className="divide-y divide-brand-gold/6">
-              {pendingConsultations.map((c: any) => {
-                const lawyerName = c.lp?.full_name ?? "Platform Assigned Lawyer";
+              {pendingConsultations.map((c: Consultation) => {
+                const lawyerName = c.lawyer_name ?? "Platform Assigned Lawyer";
                 return (
                   <div key={c.id} className="flex items-center justify-between px-5 py-3.5">
                     <div>

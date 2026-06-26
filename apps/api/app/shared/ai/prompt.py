@@ -14,7 +14,7 @@ Return ONLY valid JSON — no markdown, no explanation.
 
 JSON structure:
 {
-  "detected_category": "consumer|cheque_bounce|property|family|labour|criminal|cyber|rera|other",
+  "detected_category": "consumer|cheque_bounce|property|family|labour|criminal|cyber|rera|motor_vehicles|other",
   "facts": [
     {
       "key": "<snake_case_key>",
@@ -71,7 +71,7 @@ No markdown, no backticks, no explanation.
 
 Required JSON structure:
 {
-  "category": "consumer|cheque_bounce|property|family|labour|criminal|cyber|rera|other",
+  "category": "consumer|cheque_bounce|property|family|labour|criminal|cyber|rera|motor_vehicles|other",
   "risk_level": "low|medium|high|urgent",
   "success_probability": <integer 0-100>,
   "success_rationale": "<2-3 sentences>",

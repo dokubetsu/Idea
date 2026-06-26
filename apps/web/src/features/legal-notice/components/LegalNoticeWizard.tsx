@@ -316,6 +316,14 @@ ${data.senderAddress}
           </form>
         ) : (
           <div className="space-y-5 p-6">
+            {/* Legal disclaimer — required for a legal-tech product */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-50 p-4 text-xs leading-6 text-amber-800">
+              <p className="font-bold mb-1">⚠️ Disclaimer — Not Legal Advice</p>
+              <p>
+                This is an auto-generated <strong>template only</strong>. It has not been reviewed by a lawyer, verified for accuracy, or validated for your specific jurisdiction or circumstances. Do <strong>not</strong> send this notice without first having it reviewed by a qualified legal professional. LeAd and its affiliates accept no liability for any reliance placed on this document.
+              </p>
+            </div>
+
             <div className="rounded-xl border border-brand-gold/12 bg-brand-gold/5 p-4 text-xs leading-6 text-brand-blue-light/60">
               <Sparkles className="mr-1.5 inline h-3.5 w-3.5 text-brand-gold" />
               Your Legal Notice has been drafted. Please read through, review details, and then copy or download the markdown draft.

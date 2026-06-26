@@ -1,6 +1,6 @@
 from __future__ import annotations
 from fastapi import APIRouter, Query, HTTPException
-from app.shared.dependencies import Auth, LawyerOrAdmin
+from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified
 from app.shared.database import get_db
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound
@@ -54,6 +54,7 @@ async def list_matters(
     if user.role == UserRole.USER:
         q = q.eq("user_id", user.id)
     elif user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
         q = q.eq("lawyer_id", user.id)
     # admin: no filter = all matters
 
@@ -560,7 +561,7 @@ async def update_milestone(
     data = body.model_dump(exclude_none=True)
 
     # If client/user tries to pay bill
-    if "is_paid" in data or "payment_id" in data:
+    if "is_paid" in data or "payment_gateway_ref" in data or "payment_record_id" in data:
         if not settings.FEATURE_BILLING:
             raise HTTPException(status_code=404, detail="Billing feature not available")
 
@@ -569,7 +570,7 @@ async def update_milestone(
 
     if user.role == "user":
         # Users can only update payment fields
-        allowed_keys = {"is_paid", "payment_id", "payment_idempotency_key"}
+        allowed_keys = {"is_paid", "payment_gateway_ref", "payment_record_id", "payment_idempotency_key"}
         data = {k: v for k, v in data.items() if k in allowed_keys}
         if not data:
             raise HTTPException(

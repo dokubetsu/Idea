@@ -220,11 +220,11 @@ async def commit_intake(
         "project_cancellation": "rera",
         "structural_defects": "rera",
         "amenities_misrepresentation": "rera",
-        "accident_injury": "other",
-        "accident_death": "other",
-        "mv_insurance_rejection": "other",
-        "hit_and_run": "other",
-        "license_rc_dispute": "other",
+        "accident_injury": "motor_vehicles",
+        "accident_death": "motor_vehicles",
+        "mv_insurance_rejection": "motor_vehicles",
+        "hit_and_run": "motor_vehicles",
+        "license_rc_dispute": "motor_vehicles",
     }.get(category, category)
     priority = _risk_to_priority(assessment.get("risk_level", "medium"))
 

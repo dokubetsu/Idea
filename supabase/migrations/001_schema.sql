@@ -3,7 +3,7 @@
 --  Run in order in Supabase SQL Editor
 -- ================================================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ── Enums ────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS lawyer_profiles (
   specializations   TEXT[]       NOT NULL DEFAULT '{}',
   court_types       TEXT[]       NOT NULL DEFAULT '{}',
   languages         TEXT[]       NOT NULL DEFAULT '{"Hindi","English"}',
-  experience_years  INTEGER      NOT NULL DEFAULT 0,
+  experience_years  INTEGER      NOT NULL DEFAULT 0 CHECK (experience_years >= 0),
   bio               TEXT,
   consultation_fee  NUMERIC(10,2),
   is_verified       BOOLEAN      NOT NULL DEFAULT false,
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS lawyer_requests (
   lawyer_id   UUID        NOT NULL REFERENCES profiles(id),
   matter_id   UUID                 REFERENCES matters(id),
   message     TEXT,
-  status      TEXT        NOT NULL DEFAULT 'pending',
+  status      TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, lawyer_id, matter_id)
 );

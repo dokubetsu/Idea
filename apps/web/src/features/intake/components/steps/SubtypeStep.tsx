@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
-import { DOMAINS, CategoryId } from "../IntakeWizard";
+import { DOMAINS, CategoryId } from "../intakeConstants";
 
 interface SubtypeStepProps {
   selectedDomain: string;

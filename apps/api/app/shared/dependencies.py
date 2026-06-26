@@ -67,14 +67,57 @@ def require_roles(*roles: UserRole):
     return _guard
 
 
+def lawyer_is_verified(user_id: str) -> bool:
+    db = get_db()
+    result = (
+        db.table("lawyer_profiles")
+        .select("is_verified")
+        .eq("id", user_id)
+        .execute()
+    )
+    if not result.data:
+        return False
+    row = result.data[0] if isinstance(result.data, list) else result.data
+    return bool(row.get("is_verified"))
+
+
+def ensure_lawyer_verified(user: CurrentUser) -> None:
+    if user.role != UserRole.LAWYER:
+        return
+    if not lawyer_is_verified(user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="Lawyer account pending verification",
+        )
+
+
+async def require_verified_lawyer(
+    user: Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER))],
+) -> CurrentUser:
+    ensure_lawyer_verified(user)
+    return user
+
+
+async def require_lawyer_or_admin(
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> CurrentUser:
+    if user.role == UserRole.ADMIN:
+        return user
+    if user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
+        return user
+    raise HTTPException(
+        status_code=403, detail="Requires: ['lawyer', 'admin']"
+    )
+
+
 # Type aliases — use these in route signatures
 Auth = Annotated[CurrentUser, Depends(get_current_user)]
 AdminAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]
-LawyerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.LAWYER))]
+LawyerVerifiedAuth = Annotated[CurrentUser, Depends(require_verified_lawyer)]
+LawyerAuth = LawyerVerifiedAuth
 UserAuth = Annotated[
     CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))
 ]
 PetitionerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.USER))]
-LawyerOrAdmin = Annotated[
-    CurrentUser, Depends(require_roles(UserRole.LAWYER, UserRole.ADMIN))
-]
+LawyerOrAdmin = Annotated[CurrentUser, Depends(require_lawyer_or_admin)]

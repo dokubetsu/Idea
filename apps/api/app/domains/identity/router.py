@@ -16,7 +16,9 @@ log = logging.getLogger(__name__)
 
 
 class RegisterProfileRequest(BaseModel):
-    role: Literal["user", "lawyer"] = "user"
+    # Role defaults to "user" and is overridden to "user" during registration.
+    # Existing roles (e.g., seeded lawyers) are preserved by the DB RPC.
+    role: str = "user"
     full_name: str = Field(min_length=2, max_length=120)
     phone: str | None = None
     city: str | None = None
@@ -58,6 +60,7 @@ async def register_profile(
             "p_phone": body.phone,
             "p_city": body.city,
             "p_state": body.state,
+            # The DB RPC will insert the profile as "user", but if body.role is "lawyer" it also inserts into lawyer_profiles
             "p_role": body.role,
         },
     ).execute()
@@ -88,7 +91,7 @@ async def register_profile(
 
     # Link any pending matters created by a lawyer using this email
     user_email = payload.get("email")
-    if body.role == "user" and user_email:
+    if user_email:
         try:
             db.table("matters").update({"user_id": user_id}).eq(
                 "client_email", user_email

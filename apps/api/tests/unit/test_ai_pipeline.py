@@ -162,3 +162,15 @@ async def test_provider_registry_and_fallbacks():
     finally:
         settings.GEMINI_API_KEY = old_gemini
         settings.ANTHROPIC_API_KEY = old_anthropic
+
+
+def test_category_offline_detection():
+    from app.domains.intake.facts_engine import _detect_category
+
+    assert _detect_category("I had a car accident yesterday") == "motor_vehicles"
+    assert _detect_category("collision on the highway") == "motor_vehicles"
+    assert _detect_category("mact claim for injury") == "motor_vehicles"
+    assert _detect_category("cheque bounce notice under section 138") == "cheque_bounce"
+    assert _detect_category("rera flat possession delay") == "rera"
+    assert _detect_category("something completely unrelated") == "other"
+

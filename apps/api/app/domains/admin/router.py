@@ -9,42 +9,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/stats")
 async def stats(user: AdminAuth):
     db = get_db()
-    return {
-        "total_users": (
-            db.table("profiles")
-            .select("id", count="exact")
-            .eq("role", "user")
-            .execute()
-        ).count
-        or 0,
-        "total_lawyers": (
-            db.table("profiles")
-            .select("id", count="exact")
-            .eq("role", "lawyer")
-            .execute()
-        ).count
-        or 0,
-        "total_matters": (
-            db.table("matters").select("id", count="exact").execute()
-        ).count
-        or 0,
-        "open_matters": (
-            db.table("matters")
-            .select("id", count="exact")
-            .in_("status", ["intake", "assessment", "matching", "active"])
-            .execute()
-        ).count
-        or 0,
-        "pending_verifications": (
-            db.table("lawyer_profiles")
-            .select("id", count="exact")
-            .eq("is_verified", False)
-            .execute()
-        ).count
-        or 0,
-        "total_facts": (db.table("facts").select("id", count="exact").execute()).count
-        or 0,
-    }
+    res = db.rpc("get_admin_stats").execute()
+    return res.data or {}
 
 
 @router.get("/lawyers/pending")

@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, CheckCircle2, Clock, FileText, Landmark, MessageSq
 import Link from "next/link";
 import { useMatter, useUpdates, usePostUpdate, useFacts } from "@/features/matters/hooks/useMatters";
 import { FactsPanel } from "@/features/matters/components/FactsPanel";
-import { LimitationBanner } from "@/features/legal-tools/components/LimitationBanner";
+import { LimitationBanner, EMPTY_FACTS } from "@/features/legal-tools/components/LimitationBanner";
 import { DocumentDraftCard } from "@/features/legal-tools/components/DocumentDraftCard";
 import { DocumentVault } from "@/features/matters/components/DocumentVault";
 import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
@@ -21,7 +21,7 @@ export default function UserMatterDetailPage() {
   
   // Fetch details
   const { data: matter, isLoading, error, refetch: refetchDetails } = useMatter(id);
-  const { data: facts = [] } = useFacts(id);
+  const { data: facts = EMPTY_FACTS } = useFacts(id);
   const { data: updates = [], isLoading: updatesLoading, refetch: refetchUpdates } = useUpdates(id);
   
   // Reply states

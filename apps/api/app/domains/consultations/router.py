@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException
-from app.shared.dependencies import Auth, LawyerOrAdmin, UserRole
+from app.shared.dependencies import Auth, LawyerOrAdmin, UserRole, ensure_lawyer_verified
 from app.shared.database import get_db
 from app.shared.exceptions import Forbidden, NotFound
 from .schemas import (
@@ -32,6 +32,7 @@ async def list_consultations(
     if user.role == UserRole.USER:
         q = q.eq("user_id", user.id)
     elif user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
         q = q.eq("lawyer_id", user.id)
 
     if status:
@@ -49,8 +50,10 @@ async def get_consultation(consultation_id: str, user: Auth):
     row = get_consultation_or_404(consultation_id)
     if user.role == UserRole.USER and row["user_id"] != str(user.id):
         raise Forbidden("Not your consultation")
-    if user.role == UserRole.LAWYER and row["lawyer_id"] != str(user.id):
-        raise Forbidden("Not your assigned consultation")
+    if user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
+        if row["lawyer_id"] != str(user.id):
+            raise Forbidden("Not your assigned consultation")
     return row
 
 
@@ -68,13 +71,7 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
         sessions_total = 5
 
     lawyer_id = body.lawyer_id
-    if body.package == "free" and not lawyer_id:
-        lawyer_id = assign_free_lawyer(category="other")
-        if not lawyer_id:
-            raise HTTPException(
-                status_code=400,
-                detail="No lawyers currently available for free consultations",
-            )
+    needs_auto_assign = body.package == "free" and not lawyer_id
 
     payload = {
         "user_id": str(user.id),
@@ -95,7 +92,19 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
             .select(SELECT_CONSULTATIONS)
             .execute()
         )
-        return enrich_consultation(res.data[0])
+        consultation = res.data[0]
+
+        if needs_auto_assign:
+            assigned_lawyer_id = assign_free_lawyer(consultation["id"])
+            if not assigned_lawyer_id:
+                db.table("consultations").delete().eq("id", consultation["id"]).execute()
+                raise HTTPException(
+                    status_code=400,
+                    detail="No lawyers currently available for free consultations",
+                )
+            consultation = get_consultation_or_404(consultation["id"])
+
+        return enrich_consultation(consultation)
     except Exception as e:
         msg = str(e).lower()
         if "duplicate" in msg or "already exists" in msg or "unique" in msg:
@@ -133,15 +142,13 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
         raise Forbidden("This consultation is not assigned to you")
 
     try:
-        # When an admin confirms a consultation that already has a lawyer assigned,
-        # we must pass the *existing* lawyer_id — not the admin's own UUID.
-        # Passing the admin's UUID would silently reassign the consultation to them.
-        effective_lawyer_id = row["lawyer_id"] if row.get("lawyer_id") else str(user.id)
-
-        # Call the secure RPC which will do the FOR UPDATE lock and idempotent inserts
+        # H3 security fix: p_lawyer_id is no longer passed to the RPC.
+        # Migration 022 rewrote confirm_consultation to derive the lawyer identity
+        # from auth.uid() inside the DB function — it cannot be spoofed by the caller.
+        # The ownership and role checks happen atomically in the SECURITY DEFINER function.
         res = db.rpc(
             "confirm_consultation",
-            {"p_consultation_id": consultation_id, "p_lawyer_id": effective_lawyer_id},
+            {"p_consultation_id": consultation_id},
         ).execute()
 
         if res.data:

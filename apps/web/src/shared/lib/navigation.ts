@@ -1,4 +1,4 @@
-import { BarChart3, Bell, BookOpen, Briefcase, Home, Scale, Users } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Briefcase, FileText, Home, Scale, Users } from "lucide-react";
 import type { UserRole } from "@/entities/types";
 
 export const NAV: Record<UserRole, { href: string; label: string; icon: React.ElementType }[]> = {
@@ -14,6 +14,7 @@ export const NAV: Record<UserRole, { href: string; label: string; icon: React.El
     { href: "/lawyer/matters",   label: "Matters",      icon: BookOpen },
     { href: "/lawyer/clients",   label: "Clients",      icon: Users },
     { href: "/lawyer/legal-tools", label: "Legal Tools", icon: Scale },
+    { href: "/lawyer/legal-notice", label: "Legal Notice", icon: FileText },
   ],
   admin: [
     { href: "/admin/dashboard", label: "Dashboard",   icon: BarChart3 },

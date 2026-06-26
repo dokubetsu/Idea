@@ -93,6 +93,36 @@ _ASSESSMENT_TEMPLATES = {
         "complexity": "moderate",
         "notes": "Homebuyer associations significantly strengthen individual complaints.",
     },
+    "motor_vehicles": {
+        "category": "motor_vehicles",
+        "risk_level": "medium",
+        "success_probability": 65,
+        "success_rationale": "MACT claims have structured guidelines (Sarla Verma multiplier) for compensation. Success depends on insurance cover validation and filing within the 6-month limitation window.",
+        "timeline_min_months": 8,
+        "timeline_max_months": 24,
+        "budget_min_inr": 10000,
+        "budget_max_inr": 40000,
+        "key_statutes": [
+            "Section 166 Motor Vehicles Act 1988",
+            "Section 140/141 — No Fault Liability",
+        ],
+        "immediate_actions": [
+            "File / obtain Detailed Accident Report (DAR) from police",
+            "Verify offending vehicle registration and insurance coverage",
+            "Obtain disability certificate from medical board if injured",
+            "File MACT petition within 6 months of accident / death",
+        ],
+        "evidence_needed": [
+            "FIR and Post-Mortem / Disability Certificate",
+            "Offending vehicle insurance policy copy",
+            "Income proof of victim (salary slips / ITR)",
+            "Medical expense invoices and treatment summaries",
+        ],
+        "recommended_forum": "Motor Accident Claims Tribunal (MACT)",
+        "limitation_risk": "Petition MUST be filed within 6 months of the accident.",
+        "complexity": "moderate",
+        "notes": "Third-party insurer bears primary financial liability.",
+    },
     "other": {
         "category": "other",
         "risk_level": "medium",
@@ -144,6 +174,10 @@ class MockProvider(BaseAiProvider):
             w in text for w in ["rera", "builder", "flat", "possession", "developer"]
         ):
             category = "rera"
+        elif any(
+            w in text for w in ["accident", "injury", "mact", "insurer", "motor", "vehicle"]
+        ):
+            category = "motor_vehicles"
 
         # 2. Check if this is a Facts Extraction request based on the system prompt
         if (
@@ -215,6 +249,32 @@ class MockProvider(BaseAiProvider):
                             "value": "2025-12-31",
                             "value_type": "date",
                             "label": "Promised Possession Date",
+                            "confidence": 0.85,
+                        },
+                    ]
+                )
+            elif category == "motor_vehicles":
+                facts.extend(
+                    [
+                        {
+                            "key": "accident_date",
+                            "value": "2026-04-15",
+                            "value_type": "date",
+                            "label": "Accident Date",
+                            "confidence": 0.95,
+                        },
+                        {
+                            "key": "claimant_age",
+                            "value": "35",
+                            "value_type": "number",
+                            "label": "Claimant Age",
+                            "confidence": 0.90,
+                        },
+                        {
+                            "key": "offending_vehicle_insurer",
+                            "value": "National Insurance Co",
+                            "value_type": "string",
+                            "label": "Offending Vehicle Insurer",
                             "confidence": 0.85,
                         },
                     ]

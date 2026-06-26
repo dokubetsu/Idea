@@ -76,8 +76,8 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
 }
 
 export const apiClient = {
-  get:    <T>(p: string)             => request<T>(p),
-  post:   <T>(p: string, b: unknown) => request<T>(p, { method: "POST",  body: JSON.stringify(b) }),
-  patch:  <T>(p: string, b: unknown) => request<T>(p, { method: "PATCH", body: JSON.stringify(b) }),
-  delete: <T>(p: string)             => request<T>(p, { method: "DELETE" }),
+  get:    <T>(p: string, init?: RequestInit)             => request<T>(p, init),
+  post:   <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "POST",  body: JSON.stringify(b) }),
+  patch:  <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "PATCH", body: JSON.stringify(b) }),
+  delete: <T>(p: string, init?: RequestInit)             => request<T>(p, { ...init, method: "DELETE" }),
 };

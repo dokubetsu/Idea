@@ -17,13 +17,21 @@ export function NotificationBell() {
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const router = useRouter();
+  const [visibleCount, setVisibleCount] = useState(5);
 
   // Fetch unread notifications
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["notifications", "unread"],
-    queryFn: () => getNotifications("unread", 5),
+    queryFn: () => getNotifications("unread", 100),
     refetchInterval: false, // Disables active polling since we use SSE!
   });
+
+  // Reset visibleCount when dropdown is closed
+  useEffect(() => {
+    if (!open) {
+      setVisibleCount(5);
+    }
+  }, [open]);
 
   // Mark all as read mutation
   const markAllReadMutation = useMutation({
@@ -44,13 +52,21 @@ export function NotificationBell() {
   // SSE setup
   useEffect(() => {
     let es: EventSource | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 1000;
+    const maxRetryDelay = 30000;
+    let active = true;
 
     async function connectSSE() {
+      if (!active) return;
       try {
         const supabase = createClient();
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
-        if (!token) return;
+        if (!token) {
+          scheduleReconnect();
+          return;
+        }
 
         // Fetch short-lived ticket
         const ticketRes = await fetch(`${BASE_API_URL}/api/v1/notifications/ticket`, {
@@ -65,9 +81,15 @@ export function NotificationBell() {
         }
         const { ticket } = await ticketRes.json();
 
+        if (!active) return;
+
         es = new EventSource(`${BASE_API_URL}/api/v1/notifications/stream?ticket=${encodeURIComponent(ticket)}`);
 
-        es.addEventListener("notification", (event) => {
+        es.onopen = () => {
+          retryDelay = 1000; // reset delay on successful connection
+        };
+
+        es.addEventListener("notification", () => {
           // Invalidate cache to refetch
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
           // Trigger shake animation
@@ -75,17 +97,33 @@ export function NotificationBell() {
         });
 
         es.onerror = () => {
-          // Silent reconnect is handled automatically by browser EventSource
+          if (es) {
+            es.close();
+            es = null;
+          }
+          scheduleReconnect();
         };
       } catch (err) {
         console.error("SSE connection setup failed:", err);
+        scheduleReconnect();
       }
+    }
+
+    function scheduleReconnect() {
+      if (!active) return;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      reconnectTimeout = setTimeout(() => {
+        connectSSE();
+      }, retryDelay);
+      retryDelay = Math.min(retryDelay * 2, maxRetryDelay); // exponential backoff
     }
 
     connectSSE();
 
     return () => {
+      active = false;
       if (es) es.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, [queryClient]);
 
@@ -164,37 +202,53 @@ export function NotificationBell() {
                 <span className="text-[12px]">All caught up!</span>
               </div>
             ) : (
-              notifications.map((notif) => {
-                // Formatting templates locally if they are processed.
-                // Normally title and body are resolved on backend templates.
-                const title = notif.data.matter_title ?? "Update";
-                let description = "You have a new update.";
-                if (notif.type === "matter_assigned") {
-                  description = `Advocate ${notif.data.lawyer_name} has been assigned.`;
-                } else if (notif.type === "hearing_scheduled") {
-                  description = `New hearing on ${notif.data.hearing_date}.`;
-                } else if (notif.type === "milestone_completed") {
-                  description = `Milestone completed: ${notif.data.milestone_title}.`;
-                } else if (notif.type === "comment_added") {
-                  description = `New message from ${notif.data.author_name}.`;
-                }
+              <>
+                {notifications.slice(0, visibleCount).map((notif) => {
+                  // Formatting templates locally if they are processed.
+                  // title and body are resolved on backend templates.
+                  const data = notif.data as Record<string, string | undefined>;
+                  const title = data.matter_title ?? "Update";
+                  let description = "You have a new update.";
+                  if (notif.type === "matter_assigned") {
+                    description = `Advocate ${data.lawyer_name} has been assigned.`;
+                  } else if (notif.type === "hearing_scheduled") {
+                    description = `New hearing on ${data.hearing_date}.`;
+                  } else if (notif.type === "milestone_completed") {
+                    description = `Milestone completed: ${data.milestone_title}.`;
+                  } else if (notif.type === "comment_added") {
+                    description = `New message from ${data.author_name}.`;
+                  }
 
-                return (
+                  return (
+                    <button
+                      key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
+                      className="w-full text-left flex flex-col gap-1 rounded-xl p-2.5 bg-white/3 hover:bg-white/6 transition-all border border-transparent hover:border-white/5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-bold text-brand-gold/90 truncate max-w-[200px]">{title}</span>
+                        <span className="text-[9px] text-white/30">
+                          {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/60 line-clamp-2 leading-relaxed">{description}</p>
+                    </button>
+                  );
+                })}
+                
+                {notifications.length > visibleCount && (
                   <button
-                    key={notif.id}
-                    onClick={() => handleNotificationClick(notif)}
-                    className="w-full text-left flex flex-col gap-1 rounded-xl p-2.5 bg-white/3 hover:bg-white/6 transition-all border border-transparent hover:border-white/5"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVisibleCount((prev) => prev + 5);
+                    }}
+                    className="w-full py-2 text-center text-[11px] font-semibold text-brand-gold hover:text-brand-gold-light hover:bg-white/3 rounded-xl transition-all mt-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[12px] font-bold text-brand-gold/90 truncate max-w-[200px]">{title}</span>
-                      <span className="text-[9px] text-white/30">
-                        {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white/60 line-clamp-2 leading-relaxed">{description}</p>
+                    Load More
                   </button>
-                );
-              })
+                )}
+              </>
             )}
           </div>
         </div>

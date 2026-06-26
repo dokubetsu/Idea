@@ -9,11 +9,16 @@ export default function FindLawyersPage() {
   const [city, setCity]   = useState("");
   const [spec, setSpec]   = useState("");
   const [filters, setFilters] = useState<{ city?: string; specialization?: string }>({});
-  const { data: lawyers = [], isLoading } = useLawyers(filters);
+  const [page, setPage]   = useState(1);
+  const perPage = 9;
+  const { data: lawyers = [], isLoading } = useLawyers({ ...filters, page, per_page: perPage });
   const createConsultation = useCreateConsultation();
   const [contacted, setContacted] = useState<Set<string>>(new Set());
 
-  function search() { setFilters({ city: city || undefined, specialization: spec || undefined }); }
+  function search() {
+    setPage(1);
+    setFilters({ city: city || undefined, specialization: spec || undefined });
+  }
 
   async function contact(id: string) {
     await createConsultation.mutateAsync({ lawyer_id: id, package: "free" });
@@ -45,12 +50,35 @@ export default function FindLawyersPage() {
         </button>
       </div>
       {isLoading ? <Loader /> : lawyers.length === 0 ? <Empty /> : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {lawyers.map(l => (
-            <LawyerCard key={l.id} lawyer={l}
-              contacted={contacted.has(l.id)}
-              onContact={() => contact(l.id)} />
-          ))}
+        <div className="space-y-6">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {lawyers.map(l => (
+              <LawyerCard key={l.id} lawyer={l}
+                contacted={contacted.has(l.id)}
+                onContact={() => contact(l.id)} />
+            ))}
+          </div>
+          <div className="flex items-center justify-between border border-brand-gold/12 bg-base-100 rounded-xl px-4 py-3">
+            <button
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="rounded-lg border border-brand-gold/25 bg-base-100 px-3 py-1.5 text-xs font-semibold text-brand-blue-dark hover:bg-brand-gold/5 disabled:opacity-50 transition-all"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-medium text-brand-blue-light/60">
+              Page {page}
+            </span>
+            <button
+              type="button"
+              disabled={lawyers.length < perPage}
+              onClick={() => setPage(p => p + 1)}
+              className="rounded-lg border border-brand-gold/25 bg-base-100 px-3 py-1.5 text-xs font-semibold text-brand-blue-dark hover:bg-brand-gold/5 disabled:opacity-50 transition-all"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
