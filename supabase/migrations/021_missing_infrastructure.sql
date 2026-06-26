@@ -36,7 +36,7 @@ ON CONFLICT (version) DO NOTHING;
 -- ── 2. Payments Table ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS payments (
   id                       UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
-  milestone_id             UUID           REFERENCES milestones(id) ON DELETE SET NULL,
+  milestone_id             UUID           REFERENCES matter_milestones(id) ON DELETE SET NULL,
   user_id                  UUID           REFERENCES profiles(id) ON DELETE SET NULL,
   amount_inr               NUMERIC(10,2)  NOT NULL,
   status                   TEXT           NOT NULL CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
