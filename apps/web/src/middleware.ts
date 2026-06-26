@@ -14,20 +14,18 @@ export async function middleware(request: NextRequest) {
 
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""};
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com;
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:8000 http://127.0.0.1:8000 http://localhost:3000 ${supabaseUrl} ${supabaseWssUrl} ${apiUrl};
     frame-ancestors 'none';
-    upgrade-insecure-requests;
   `.replace(/\s{2,}/g, " ").trim();
 
   const { pathname } = request.nextUrl;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", cspHeader);
   requestHeaders.set("x-pathname", pathname);
 
   let response = NextResponse.next({
@@ -35,7 +33,6 @@ export async function middleware(request: NextRequest) {
       headers: requestHeaders,
     },
   });
-  response.headers.set("x-nonce", nonce);
   response.headers.set("Content-Security-Policy", cspHeader);
 
   const supabase = createServerClient(
@@ -75,9 +72,6 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/lawyer") && role !== "lawyer") return NextResponse.redirect(new URL(home, request.url));
   if (pathname.startsWith("/user")   && role !== "user")   return NextResponse.redirect(new URL(home, request.url));
 
-  // H8: Forward the already-resolved user role and ID as request headers so that
-  // dashboard layouts can read them via next/headers without a second Supabase
-  // network round-trip. The middleware has already authenticated the user above.
   response.headers.set("x-user-role", role);
   response.headers.set("x-user-id", user.id);
 
