@@ -175,7 +175,8 @@ class MockProvider(BaseAiProvider):
         ):
             category = "rera"
         elif any(
-            w in text for w in ["accident", "injury", "mact", "insurer", "motor", "vehicle"]
+            w in text
+            for w in ["accident", "injury", "mact", "insurer", "motor", "vehicle"]
         ):
             category = "motor_vehicles"
 

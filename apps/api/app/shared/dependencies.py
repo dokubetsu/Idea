@@ -70,10 +70,7 @@ def require_roles(*roles: UserRole):
 def lawyer_is_verified(user_id: str) -> bool:
     db = get_db()
     result = (
-        db.table("lawyer_profiles")
-        .select("is_verified")
-        .eq("id", user_id)
-        .execute()
+        db.table("lawyer_profiles").select("is_verified").eq("id", user_id).execute()
     )
     if not result.data:
         return False
@@ -106,9 +103,7 @@ async def require_lawyer_or_admin(
     if user.role == UserRole.LAWYER:
         ensure_lawyer_verified(user)
         return user
-    raise HTTPException(
-        status_code=403, detail="Requires: ['lawyer', 'admin']"
-    )
+    raise HTTPException(status_code=403, detail="Requires: ['lawyer', 'admin']")
 
 
 # Type aliases — use these in route signatures

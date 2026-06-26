@@ -89,7 +89,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Either SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY must be provided."
             )
-        if self.APP_ENV == "production" and (not self.APP_URL or "localhost" in self.APP_URL or "127.0.0.1" in self.APP_URL):
+        if self.APP_ENV == "production" and (
+            not self.APP_URL
+            or "localhost" in self.APP_URL
+            or "127.0.0.1" in self.APP_URL
+        ):
             raise ValueError(
                 "APP_URL must be set to a valid non-localhost production URL when APP_ENV is production."
             )

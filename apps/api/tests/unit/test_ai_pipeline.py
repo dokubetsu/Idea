@@ -173,4 +173,3 @@ def test_category_offline_detection():
     assert _detect_category("cheque bounce notice under section 138") == "cheque_bounce"
     assert _detect_category("rera flat possession delay") == "rera"
     assert _detect_category("something completely unrelated") == "other"
-

@@ -1,5 +1,10 @@
 from fastapi import APIRouter, Query, HTTPException
-from app.shared.dependencies import Auth, LawyerOrAdmin, UserRole, ensure_lawyer_verified
+from app.shared.dependencies import (
+    Auth,
+    LawyerOrAdmin,
+    UserRole,
+    ensure_lawyer_verified,
+)
 from app.shared.database import get_db
 from app.shared.exceptions import Forbidden, NotFound
 from .schemas import (
@@ -97,7 +102,9 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
         if needs_auto_assign:
             assigned_lawyer_id = assign_free_lawyer(consultation["id"])
             if not assigned_lawyer_id:
-                db.table("consultations").delete().eq("id", consultation["id"]).execute()
+                db.table("consultations").delete().eq(
+                    "id", consultation["id"]
+                ).execute()
                 raise HTTPException(
                     status_code=400,
                     detail="No lawyers currently available for free consultations",

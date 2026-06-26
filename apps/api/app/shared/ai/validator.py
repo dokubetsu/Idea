@@ -49,6 +49,7 @@ class ResponseValidator:
             # H9: Do NOT include the raw AI response in the exception message.
             # It may contain sensitive prompt content or user data. Log it server-side only.
             import logging
+
             logging.getLogger(__name__).debug(
                 "AI JSON parse failure. Raw response (first 200 chars): %.200s", raw
             )

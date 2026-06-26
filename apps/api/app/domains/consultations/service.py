@@ -64,4 +64,3 @@ def assign_free_lawyer(consultation_id: str) -> str | None:
             if v:
                 return str(v)
     return None
-

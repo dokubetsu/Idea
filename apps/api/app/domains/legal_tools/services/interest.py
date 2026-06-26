@@ -37,4 +37,3 @@ class InterestSource:
 
         # Standard formula: SBI MCLR + 2%
         return cls.DEFAULT_SBI_MCLR + 2.0
-

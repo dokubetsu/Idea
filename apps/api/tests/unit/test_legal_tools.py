@@ -170,7 +170,11 @@ def test_document_draft_generation(mock_db):
         {"matter_id": "matter-123", "key": "cheque_date", "value": "2026-03-01"},
         {"matter_id": "matter-123", "key": "bank_name", "value": "ICICI Bank"},
         {"matter_id": "matter-123", "key": "dishonour_date", "value": "2026-03-05"},
-        {"matter_id": "matter-123", "key": "dishonour_reason", "value": "Account Closed"},
+        {
+            "matter_id": "matter-123",
+            "key": "dishonour_reason",
+            "value": "Account Closed",
+        },
     ]
 
     class MockUser:

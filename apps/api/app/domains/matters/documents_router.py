@@ -29,7 +29,8 @@ async def get_upload_url(matter_id: str, body: DocumentUploadRequest, user: Auth
     except Exception:
         log.exception("Failed to generate upload URL for path %s", path)
         raise HTTPException(
-            status_code=500, detail="Failed to generate upload URL. Please try again later."
+            status_code=500,
+            detail="Failed to generate upload URL. Please try again later.",
         )
 
 
@@ -50,7 +51,8 @@ async def get_download_url(matter_id: str, filename: str, user: Auth):
     except Exception:
         log.exception("Failed to generate download URL for path %s", path)
         raise HTTPException(
-            status_code=500, detail="Failed to generate download URL. Please try again later."
+            status_code=500,
+            detail="Failed to generate download URL. Please try again later.",
         )
 
 

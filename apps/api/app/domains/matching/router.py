@@ -201,7 +201,6 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
                 detail="This matter has already been assigned to another lawyer.",
             )
 
-
     event = EventType.LAWYER_ACCEPTED if body.accept else EventType.LAWYER_DECLINED
     await emit(
         event,
