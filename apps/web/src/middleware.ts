@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
 
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""};
+    script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com;
     font-src 'self' https://fonts.gstatic.com;
@@ -35,6 +35,7 @@ export async function middleware(request: NextRequest) {
       headers: requestHeaders,
     },
   });
+  response.headers.set("x-nonce", nonce);
   response.headers.set("Content-Security-Policy", cspHeader);
 
   const supabase = createServerClient(
