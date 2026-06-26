@@ -76,11 +76,15 @@ END $$;
 -- ── Step 3: Rename columns on matters ────────────────────────────
 -- old: description → new: summary (add summary, keep description as fallback)
 ALTER TABLE matters ADD COLUMN IF NOT EXISTS summary TEXT;
-UPDATE matters SET summary = description WHERE summary IS NULL;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='matters' AND column_name='description') THEN
+    UPDATE matters SET summary = description WHERE summary IS NULL;
+    ALTER TABLE matters ALTER COLUMN description DROP NOT NULL;
+  END IF;
+END $$;
+
 ALTER TABLE matters ALTER COLUMN summary SET NOT NULL;
--- description is kept for backwards compatibility; can be dropped after QA
--- ALTER TABLE matters DROP COLUMN IF EXISTS description;
-ALTER TABLE matters ALTER COLUMN description DROP NOT NULL;
 
 -- New columns
 ALTER TABLE matters ADD COLUMN IF NOT EXISTS intake_session_id UUID;
