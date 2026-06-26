@@ -11,12 +11,11 @@ The intake workflow — 4 steps:
 import logging
 from fastapi import APIRouter, Request, HTTPException, Response
 from app.shared.limiter import limiter
-from app.shared.dependencies import Auth, UserAuth
+from app.shared.dependencies import Auth
 from app.shared.events import emit, EventType
 from app.shared.database import get_db
 from app.shared.exceptions import NotFound, Forbidden, BadRequest
 
-log = logging.getLogger(__name__)
 from app.domains.intake.facts_engine import extract_facts
 from app.domains.intake.schemas import (
     StartIntakeRequest,
@@ -27,6 +26,7 @@ from app.domains.intake.schemas import (
 from app.domains.assessment.service import run_assessment
 from app.domains.assessment.providers.base import AssessmentInput
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/intake", tags=["intake"])
 
 

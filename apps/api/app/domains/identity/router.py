@@ -7,7 +7,6 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 from app.shared.database import get_db, get_service_role_db
 from app.shared.dependencies import Auth
-from app.config import settings
 
 from app.shared.jwt import decode_token
 

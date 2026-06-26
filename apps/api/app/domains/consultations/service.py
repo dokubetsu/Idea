@@ -1,5 +1,5 @@
 from app.shared.database import get_db
-from app.shared.exceptions import NotFound, Forbidden
+from app.shared.exceptions import NotFound
 
 SELECT_CONSULTATIONS = (
     "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"

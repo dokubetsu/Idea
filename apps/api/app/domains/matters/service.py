@@ -1,7 +1,6 @@
 """Matter service — business logic separate from HTTP layer."""
 
 from __future__ import annotations
-from app.shared.database import get_db
 from app.shared.events import sync_emit, EventType
 from app.shared.exceptions import NotFound, Forbidden
 from app.shared.dependencies import CurrentUser, UserRole

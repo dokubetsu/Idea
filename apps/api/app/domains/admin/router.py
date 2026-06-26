@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from app.shared.database import get_db
 from app.shared.dependencies import AdminAuth
-from app.shared.events import emit, EventType
+from app.shared.events import emit
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

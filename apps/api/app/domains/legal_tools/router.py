@@ -3,7 +3,7 @@ FastAPI router for Legal Tools domain.
 Exposes endpoints for calculators.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from app.shared.dependencies import Auth
 from app.domains.legal_tools.schemas import (
     ChequeBounceRequest,

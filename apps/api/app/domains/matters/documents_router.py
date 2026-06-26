@@ -60,6 +60,6 @@ async def list_documents(matter_id: str, user: Auth):
         res = db.storage.from_("matter_documents").list(path=matter_id)
         # res returns a list of dictionaries with name, id, updated_at, created_at, last_accessed_at, metadata
         return res
-    except Exception as e:
+    except Exception:
         # If the directory doesn't exist yet, return empty list
         return []

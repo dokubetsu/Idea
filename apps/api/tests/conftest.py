@@ -1,10 +1,9 @@
 import pytest
+import pytest_asyncio
 import asyncio
 from typing import AsyncGenerator
-from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.shared.database import get_db
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 
 
@@ -91,8 +90,8 @@ class MockSupabaseTable:
         self.queries.append(("single",))
         return self
 
-    def limit(self, l):
-        self.queries.append(("limit", l))
+    def limit(self, limit_val):
+        self.queries.append(("limit", limit_val))
         return self
 
     def order(self, column, *args, **kwargs):
@@ -324,9 +323,6 @@ def mock_user():
     return CurrentUser(
         id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
     )
-
-
-import pytest_asyncio
 
 
 @pytest_asyncio.fixture

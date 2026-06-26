@@ -19,6 +19,7 @@ from slowapi import _rate_limit_exceeded_handler
 
 from app.config import settings
 from app.shared.limiter import limiter
+from app.shared.middleware import RequestTracingMiddleware
 from app.domains.identity.router import router as identity_router
 from app.domains.intake.router import router as intake_router
 from app.domains.matters.router import router as matters_router
@@ -89,7 +90,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Middleware ────────────────────────────────────────────────────
 
-from app.shared.middleware import RequestTracingMiddleware
 
 app.add_middleware(RequestTracingMiddleware)
 

@@ -13,12 +13,11 @@ Every assessment, document draft, and CRM view is built from facts, not raw text
 """
 
 from __future__ import annotations
-import json
-import re
+import re as _re
 import logging
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
-from app.domains.intake.schemas import ExtractedFact, FactType, FactsExtractionResult
+from app.domains.intake.schemas import ExtractedFact, FactsExtractionResult
 
 log = logging.getLogger(__name__)
 
@@ -148,8 +147,6 @@ FACT_SCHEMAS: dict[str, dict[str, str]] = {
 
 
 # ── Keyword-based extraction (offline fallback) ───────────────────
-
-import re as _re
 
 
 def _detect_category(text: str) -> str:

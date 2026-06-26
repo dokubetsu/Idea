@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import json
 import asyncio
+import uuid
+import time
 from sse_starlette.sse import EventSourceResponse
 
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole, _decode_jwt
@@ -11,14 +14,8 @@ from app.domains.notifications.models import NotificationOut, NotificationStatus
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
 import app.domains.notifications.service as service
 import app.domains.notifications.preferences as prefs_service
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi import HTTPException
 
 bearer = HTTPBearer(auto_error=False)
-
-import uuid
-import time
-from typing import Dict
 
 # Dictionary mapping ticket_id -> {"user_id": str, "expires_at": float}
 SSE_TICKETS: Dict[str, dict] = {}

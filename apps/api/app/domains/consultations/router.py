@@ -2,7 +2,6 @@ from fastapi import APIRouter, Query, HTTPException
 from app.shared.dependencies import Auth, LawyerOrAdmin, UserRole
 from app.shared.database import get_db
 from app.shared.exceptions import Forbidden, NotFound
-from app.shared.events import emit, EventType
 from .schemas import (
     ConsultationCreate,
     ConsultationOut,

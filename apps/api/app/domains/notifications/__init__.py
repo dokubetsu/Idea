@@ -1,1 +1,1 @@
-from app.domains.notifications.router import router
+from app.domains.notifications.router import router as router

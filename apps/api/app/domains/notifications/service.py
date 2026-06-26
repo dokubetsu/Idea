@@ -2,7 +2,6 @@ import logging
 import asyncio
 from typing import List, Optional, Dict, Any
 from app.domains.notifications.models import NotificationStatus, DeliveryChannel
-from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
 from app.domains.notifications.templates import get_template
 
 log = logging.getLogger(__name__)

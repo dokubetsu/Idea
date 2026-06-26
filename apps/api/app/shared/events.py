@@ -8,8 +8,8 @@ Usage:
 """
 
 from __future__ import annotations
+import asyncio
 import logging
-from datetime import datetime, timezone
 from enum import Enum
 from app.shared import database
 
@@ -56,8 +56,6 @@ class EventType(str, Enum):
     MEETING_COMPLETED = "meeting.completed"
     MILESTONE_UPDATED = "milestone.updated"
 
-
-import asyncio
 
 BACKGROUND_TASKS: set[asyncio.Task] = set()
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 ConsultationPackage = Literal["free", "starter", "full"]
 ConsultationStatus = Literal[
