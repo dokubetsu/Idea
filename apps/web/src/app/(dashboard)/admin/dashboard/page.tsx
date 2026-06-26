@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {cards.map(({ label, value, icon: Icon, color, bg }, i) => (
-          <div key={label} className={`animate-fade-in-up animate-stagger-${i+1} rounded-xl border p-5 bg-base-100 ${bg.split(" ")[0]}`}>
+          <div key={label} style={{ animationDelay: `${(i + 1) * 0.06}s` }} className={`animate-fade-in-up rounded-xl border p-5 bg-base-100 ${bg.split(" ")[0]}`}>
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${bg}`}>
               <Icon className={`h-5 w-5 ${color}`} />
             </div>

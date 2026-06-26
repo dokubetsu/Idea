@@ -1,0 +1,19 @@
+# Ignore local development dependencies and framework build artifacts
+node_modules/
+.next/
+venv/
+.venv/
+.git/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.github/
+.agents/
+docs/
+*.zip
+*.log
+.env
+.env.local
+.env.production

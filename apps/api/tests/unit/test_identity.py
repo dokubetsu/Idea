@@ -68,3 +68,50 @@ async def test_admin_verify_lawyer_promotes_role(client: AsyncClient, mock_db):
     finally:
         # Clean up dependency overrides
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_register_profile_preserves_existing_role(client: AsyncClient, mock_db, monkeypatch):
+    # Seed an existing lawyer profile in the mock database
+    lawyer_id = "existing-lawyer-uuid"
+    mock_db.table("profiles").data.append({
+        "id": lawyer_id,
+        "role": "lawyer",
+        "full_name": "Advocate Jane Doe",
+        "phone": "9999999999",
+        "city": "Delhi",
+        "state": "Delhi"
+    })
+
+    # Mock JWT decoding for profile registration
+    monkeypatch.setattr("app.domains.identity.router._decode_signup_jwt", lambda token: {"sub": lawyer_id, "email": "lawyer@example.com"})
+
+    # Track calls to update_user_by_id
+    updated_role = None
+    def mock_update_user_by_id(uid, attributes):
+        nonlocal updated_role
+        if uid == lawyer_id:
+            updated_role = attributes.get("app_metadata", {}).get("role")
+        return {"id": uid, "attributes": attributes}
+        
+    monkeypatch.setattr(mock_db.auth.admin, "update_user_by_id", mock_update_user_by_id)
+
+    payload = {
+        "role": "lawyer",
+        "full_name": "Advocate Jane Doe",
+        "phone": "9999999999",
+        "city": "Delhi",
+        "state": "Delhi"
+    }
+    
+    headers = {"Authorization": "Bearer fake-signup-token"}
+    res = await client.post("/api/v1/identity/profile", json=payload, headers=headers)
+    
+    assert res.status_code == 201
+    # Check that database profile role is still lawyer
+    p_table = mock_db.table("profiles")
+    p_row = next(r for r in p_table.data if r["id"] == lawyer_id)
+    assert p_row["role"] == "lawyer"
+    
+    # Check that auth metadata was updated to lawyer, not user!
+    assert updated_role == "lawyer"

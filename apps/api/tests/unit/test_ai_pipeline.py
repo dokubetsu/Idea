@@ -99,7 +99,6 @@ def test_normalizer():
     assert normalized["temperature"] == 0.1
     assert "created_at" in normalized
 
-
 @pytest.mark.asyncio
 async def test_provider_registry_and_fallbacks():
     # Resolve mock provider
@@ -107,8 +106,19 @@ async def test_provider_registry_and_fallbacks():
     assert provider.name == "mock"
     assert await provider.health() is True
 
-    # Resolve an unhealthy provider (which doesn't have credentials configured in tests)
-    # It should raise RuntimeError since mock is opt-in only, not in the fallback chain
-    with pytest.raises(RuntimeError) as exc_info:
-        await ai_registry.resolve("gemini")
-    assert "All configured AI providers are unhealthy or unavailable" in str(exc_info.value)
+    # Temporarily clear settings keys to force all real providers to be unhealthy
+    from app.config import settings
+    old_gemini = settings.GEMINI_API_KEY
+    old_anthropic = settings.ANTHROPIC_API_KEY
+    settings.GEMINI_API_KEY = None
+    settings.ANTHROPIC_API_KEY = None
+
+    try:
+        # Resolve an unhealthy provider (which doesn't have credentials configured in tests)
+        # It should raise RuntimeError since mock is opt-in only, not in the fallback chain
+        with pytest.raises(RuntimeError) as exc_info:
+            await ai_registry.resolve("gemini")
+        assert "All configured AI providers are unhealthy or unavailable" in str(exc_info.value)
+    finally:
+        settings.GEMINI_API_KEY = old_gemini
+        settings.ANTHROPIC_API_KEY = old_anthropic

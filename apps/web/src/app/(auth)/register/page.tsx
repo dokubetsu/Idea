@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/shared/lib/supabase/client";
 import type { UserRole } from "@/entities/types";
+import { Field } from "@/shared/components/ui";
 
 const schema = z.object({
   full_name: z.string().min(2, "Name required"),
@@ -83,21 +84,21 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-3.5">
-        <Field label="Full name" error={errors.full_name?.message}>
-          <input {...register("full_name")} placeholder="Amit Verma" className={INPUT} />
+        <Field label="Full name" error={errors.full_name?.message} htmlFor="full_name">
+          <input {...register("full_name")} id="full_name" placeholder="Amit Verma" className={INPUT} />
         </Field>
-        <Field label="Email" error={errors.email?.message}>
-          <input {...register("email")} type="email" placeholder="you@example.com" className={INPUT} />
+        <Field label="Email" error={errors.email?.message} htmlFor="email">
+          <input {...register("email")} id="email" type="email" placeholder="you@example.com" className={INPUT} />
         </Field>
-        <Field label="Password (min 8 chars)" error={errors.password?.message}>
-          <input {...register("password")} type="password" placeholder="••••••••" className={INPUT} />
+        <Field label="Password (min 8 chars)" error={errors.password?.message} htmlFor="password">
+          <input {...register("password")} id="password" type="password" placeholder="••••••••" className={INPUT} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="City">
-            <input {...register("city")} placeholder="Delhi" className={INPUT} />
+          <Field label="City" htmlFor="city">
+            <input {...register("city")} id="city" placeholder="Delhi" className={INPUT} />
           </Field>
-          <Field label="State">
-            <input {...register("state")} placeholder="Delhi" className={INPUT} />
+          <Field label="State" htmlFor="state">
+            <input {...register("state")} id="state" placeholder="Delhi" className={INPUT} />
           </Field>
         </div>
         {apiErr && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{apiErr}</p>}
@@ -111,15 +112,5 @@ export default function RegisterPage() {
         Have an account? <Link href="/login" className="font-semibold text-brand-gold hover:underline">Sign in</Link>
       </p>
     </div>
-  );
-}
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">{label}</span>
-      {children}
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </label>
   );
 }

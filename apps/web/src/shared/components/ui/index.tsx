@@ -54,36 +54,65 @@ export function DarkCard({ children, className }: { children: ReactNode; classNa
   return <div className={cn("grain relative overflow-hidden rounded-xl border border-white/8 bg-brand-blue-dark text-brand-base-100 shadow-xl", className)}>{children}</div>;
 }
 
-export function Input({ label, error, className, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
+export function Input({ label, error, className, id, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
   return (
-    <label className="block">
-      {label && <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">{label}</span>}
-      <input className={cn("min-h-11 w-full rounded-xl border px-3.5 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:shadow-sm",
+    <div className="block">
+      {label && (
+        <label htmlFor={id} className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+          {label}
+        </label>
+      )}
+      <input id={id} className={cn("min-h-11 w-full rounded-xl border px-3.5 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:shadow-sm",
         error ? "border-red-400 bg-red-50" : "border-brand-gold/15 bg-base-100 focus:border-brand-gold focus:bg-white", className)} {...props} />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </label>
+    </div>
   );
 }
 
-export function Textarea({ label, error, className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) {
+export function Textarea({ label, error, className, id, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) {
   return (
-    <label className="block">
-      {label && <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/55">{label}</span>}
-      <textarea rows={4} className={cn("w-full rounded-xl border px-3.5 py-3 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:bg-white focus:shadow-sm resize-none",
+    <div className="block">
+      {label && (
+        <label htmlFor={id} className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/55">
+          {label}
+        </label>
+      )}
+      <textarea id={id} rows={4} className={cn("w-full rounded-xl border px-3.5 py-3 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 placeholder:text-brand-blue-light/30 focus:bg-white focus:shadow-sm resize-none",
         error ? "border-red-400 bg-red-50" : "border-brand-gold/15 bg-base-100 focus:border-brand-gold", className)} {...props} />
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </label>
+    </div>
   );
 }
 
-export function Select({ label, children, className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
+export function Select({ label, children, error, className, id, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string; error?: string }) {
   return (
-    <label className="block">
-      {label && <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">{label}</span>}
-      <select className={cn("min-h-11 w-full rounded-xl border border-brand-gold/15 bg-base-100 px-3.5 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 focus:border-brand-gold focus:shadow-sm", className)} {...props}>{children}</select>
-    </label>
+    <div className="block">
+      {label && (
+        <label htmlFor={id} className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+          {label}
+        </label>
+      )}
+      <select id={id} className={cn("min-h-11 w-full rounded-xl border bg-base-100 px-3.5 text-[13px] text-brand-blue-dark outline-none transition-all duration-200 focus:shadow-sm",
+        error ? "border-red-400 bg-red-50" : "border-brand-gold/15 focus:border-brand-gold", className)} {...props}>
+        {children}
+      </select>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+    </div>
   );
 }
+
+export function Field({ label, error, htmlFor, children }: { label: string; error?: string; htmlFor?: string; children: React.ReactNode }) {
+  return (
+    <div className="block">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+        {label}
+      </label>
+      {children}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 
 export function Spinner({ className }: { className?: string }) {
   return <div className={cn("rounded-full border-2 border-brand-gold/25 border-t-brand-gold animate-spin", className ?? "h-5 w-5")} />;

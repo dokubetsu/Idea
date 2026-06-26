@@ -182,53 +182,58 @@ export function CalculatorsView() {
           <Card className="p-6">
             <h3 className="font-serif text-lg font-bold mb-4">Section 138 Date Parameters</h3>
             <form onSubmit={handleChequeCalculate} className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Cheque Date *</span>
+              <div className="block">
+                <label htmlFor="chequeDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Cheque Date *</label>
                 <input
+                  id="chequeDate"
                   type="date"
                   required
                   value={chequeDate}
                   onChange={(e) => setChequeDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Return Memo Date *</span>
+              </div>
+              <div className="block">
+                <label htmlFor="dishonourDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Return Memo Date *</label>
                 <input
+                  id="dishonourDate"
                   type="date"
                   required
                   value={dishonourDate}
                   onChange={(e) => setDishonourDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Notice Sent Date (Optional)</span>
+              </div>
+              <div className="block">
+                <label htmlFor="noticeDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Notice Sent Date (Optional)</label>
                 <input
+                  id="noticeDate"
                   type="date"
                   value={noticeDate}
                   onChange={(e) => setNoticeDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Notice Receipt Date (Optional)</span>
+              </div>
+              <div className="block">
+                <label htmlFor="noticeReceiptDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Notice Receipt Date (Optional)</label>
                 <input
+                  id="noticeReceiptDate"
                   type="date"
                   value={noticeReceiptDate}
                   onChange={(e) => setNoticeReceiptDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Court Complaint Filing Date (Optional)</span>
+              </div>
+              <div className="block">
+                <label htmlFor="filedDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Court Complaint Filing Date (Optional)</label>
                 <input
+                  id="filedDate"
                   type="date"
                   value={filedDate}
                   onChange={(e) => setFiledDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
+              </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Calculating..." : "Calculate Timeline Limits"}
               </Button>
@@ -245,7 +250,7 @@ export function CalculatorsView() {
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : chequeResult.color === "yellow"
                     ? "border-amber-200 bg-amber-50 text-amber-800"
-                    : "border-red-200 bg-red-55 text-red-800"
+                    : "border-red-200 bg-red-50 text-red-800"
                 }`}>
                   {chequeResult.color === "green" && <CircleCheck className="h-5 w-5 shrink-0 mt-0.5" />}
                   {chequeResult.color === "yellow" && <CircleAlert className="h-5 w-5 shrink-0 mt-0.5" />}
@@ -304,9 +309,10 @@ export function CalculatorsView() {
           <Card className="p-6">
             <h3 className="font-serif text-lg font-bold mb-4">RERA Delay Details</h3>
             <form onSubmit={handleReraCalculate} className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Total Amount Paid (INR) *</span>
+              <div className="block">
+                <label htmlFor="paidAmount" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Total Amount Paid (INR) *</label>
                 <input
+                  id="paidAmount"
                   type="number"
                   required
                   placeholder="e.g. 2500000"
@@ -314,29 +320,32 @@ export function CalculatorsView() {
                   onChange={(e) => setPaidAmount(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Promised Possession Date *</span>
+              </div>
+              <div className="block">
+                <label htmlFor="promisedDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Promised Possession Date *</label>
                 <input
+                  id="promisedDate"
                   type="date"
                   required
                   value={promisedDate}
                   onChange={(e) => setPromisedDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Actual Possession Offered Date (Optional)</span>
+              </div>
+              <div className="block">
+                <label htmlFor="actualDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Actual Possession Offered Date (Optional)</label>
                 <input
+                  id="actualDate"
                   type="date"
                   value={actualDate}
                   onChange={(e) => setActualDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Custom Interest Rate % (Optional)</span>
+              </div>
+              <div className="block">
+                <label htmlFor="customRate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Custom Interest Rate % (Optional)</label>
                 <input
+                  id="customRate"
                   type="number"
                   step="0.05"
                   placeholder="e.g. 10.5 (defaults to SBI MCLR + 2%)"
@@ -344,7 +353,7 @@ export function CalculatorsView() {
                   onChange={(e) => setCustomRate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
+              </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Calculating..." : "Calculate Delay Interest"}
               </Button>
@@ -416,30 +425,33 @@ export function CalculatorsView() {
           <Card className="p-6">
             <h3 className="font-serif text-lg font-bold mb-4">Suit Recovery Parameters</h3>
             <form onSubmit={handleCpcCalculate} className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Claim Amount (INR) *</span>
+              <div className="block">
+                <label htmlFor="claimAmount" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Claim Amount (INR) *</label>
                 <input
+                  id="claimAmount"
                   type="number"
                   required
-                  placeholder="e.g. 500000"
+                  placeholder="e.g. 50000"
                   value={claimAmount}
                   onChange={(e) => setClaimAmount(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Debt Due Date *</span>
+              </div>
+              <div className="block">
+                <label htmlFor="dueDate" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Debt Due Date *</label>
                 <input
+                  id="dueDate"
                   type="date"
                   required
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className={INPUT_FIELD}
                 />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Indian Jurisdiction State *</span>
+              </div>
+              <div className="block">
+                <label htmlFor="cpcState" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/50">Indian Jurisdiction State *</label>
                 <select
+                  id="cpcState"
                   value={cpcState}
                   onChange={(e) => setCpcState(e.target.value)}
                   className={INPUT_FIELD}
@@ -448,7 +460,7 @@ export function CalculatorsView() {
                   <option value="delhi">Delhi</option>
                   <option value="maharashtra">Maharashtra</option>
                 </select>
-              </label>
+              </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Calculating..." : "Estimate Court Fees & Timelines"}
               </Button>
@@ -464,7 +476,7 @@ export function CalculatorsView() {
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : cpcResult.color === "yellow"
                     ? "border-amber-200 bg-amber-50 text-amber-800"
-                    : "border-red-200 bg-red-55 text-red-800"
+                    : "border-red-200 bg-red-50 text-red-800"
                 }`}>
                   {cpcResult.color === "green" && <CircleCheck className="h-5 w-5 shrink-0 mt-0.5" />}
                   {cpcResult.color === "yellow" && <CircleAlert className="h-5 w-5 shrink-0 mt-0.5" />}

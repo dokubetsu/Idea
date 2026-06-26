@@ -3,14 +3,7 @@
 import { Scale } from "lucide-react";
 import { Matter } from "@/entities/types";
 import { Card, Spinner } from "@/shared/components/ui";
-
-const STATUS_DOT: Record<string, string> = {
-  active: "bg-brand-teal", 
-  matching: "bg-brand-accent",
-  assessment: "bg-brand-accent", 
-  intake: "bg-brand-gold", 
-  resolved: "bg-base-300",
-};
+import { STATUS_DOT } from "@/shared/lib/constants";
 
 interface LawyerMattersListProps {
   matters: Matter[];

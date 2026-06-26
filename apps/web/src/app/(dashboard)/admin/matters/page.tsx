@@ -6,15 +6,7 @@ import { apiClient } from "@/shared/lib/api/client";
 import { AdminMatter } from "@/entities/types";
 import { Spinner, Button } from "@/shared/components/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const STATUS_DOT: Record<string, string> = {
-  active: "bg-brand-teal",
-  intake: "bg-brand-gold",
-  assessment: "bg-brand-accent",
-  matching: "bg-brand-accent",
-  resolved: "bg-base-300",
-  archived: "bg-base-300",
-};
+import { STATUS_DOT } from "@/shared/lib/constants";
 
 export default function AdminMattersPage() {
   const [status, setStatus] = useState("");

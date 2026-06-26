@@ -8,13 +8,17 @@ const ROLE_HOME: Record<string, string> = {
 export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const supabaseWssUrl = supabaseUrl ? supabaseUrl.replace(/^http/, "ws") : "";
+
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""};
+    script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:8000 http://127.0.0.1:8000 http://localhost:3000 ${process.env.NEXT_PUBLIC_API_URL || ""};
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:8000 http://127.0.0.1:8000 http://localhost:3000 ${supabaseUrl} ${supabaseWssUrl} ${apiUrl};
     frame-ancestors 'none';
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, " ").trim();

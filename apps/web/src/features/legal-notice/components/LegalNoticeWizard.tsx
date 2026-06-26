@@ -7,6 +7,7 @@ import {
   FileText, Scale, Copy, Download, ArrowLeft, Check, Sparkles, X, Edit2
 } from "lucide-react";
 import { createClient } from "@/shared/lib/supabase/client";
+import { Field } from "@/shared/components/ui";
 
 // --- Schema definitions ---
 const legalNoticeSchema = z.object({
@@ -133,11 +134,13 @@ ${data.senderAddress}
   const handleDownload = () => {
     const element = document.createElement("a");
     const file = new Blob([draftContent], { type: "text/markdown" });
-    element.href = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    element.href = url;
     element.download = `Legal_Notice_${watch("recipientName").replace(/\s+/g, "_")}.md`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    URL.revokeObjectURL(url);
   };
 
   if (!isClient) return null;
@@ -179,48 +182,48 @@ ${data.senderAddress}
               {/* Sender Details */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-brand-gold">Sender (You)</h3>
-                <Field label="Your Full Name">
+                <Field label="Your Full Name" error={errors.senderName?.message} htmlFor="senderName">
                   <input
+                    id="senderName"
                     type="text"
                     {...register("senderName")}
                     className="form-input"
                     placeholder="e.g. Rahul Verma"
                   />
-                  {errors.senderName && <p className="mt-1 text-xs text-red-500">{errors.senderName.message}</p>}
                 </Field>
 
-                <Field label="Your Address">
+                <Field label="Your Address" error={errors.senderAddress?.message} htmlFor="senderAddress">
                   <textarea
+                    id="senderAddress"
                     {...register("senderAddress")}
                     rows={3}
                     className="form-input resize-none"
                     placeholder="Your complete mailing address"
                   />
-                  {errors.senderAddress && <p className="mt-1 text-xs text-red-500">{errors.senderAddress.message}</p>}
                 </Field>
               </div>
 
               {/* Recipient Details */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-brand-gold">Recipient (Noticee)</h3>
-                <Field label="Recipient Full Name">
+                <Field label="Recipient Full Name" error={errors.recipientName?.message} htmlFor="recipientName">
                   <input
+                    id="recipientName"
                     type="text"
                     {...register("recipientName")}
                     className="form-input"
                     placeholder="e.g. Suresh Kumar"
                   />
-                  {errors.recipientName && <p className="mt-1 text-xs text-red-500">{errors.recipientName.message}</p>}
                 </Field>
 
-                <Field label="Recipient Address">
+                <Field label="Recipient Address" error={errors.recipientAddress?.message} htmlFor="recipientAddress">
                   <textarea
+                    id="recipientAddress"
                     {...register("recipientAddress")}
                     rows={3}
                     className="form-input resize-none"
                     placeholder="Recipient's complete address"
                   />
-                  {errors.recipientAddress && <p className="mt-1 text-xs text-red-500">{errors.recipientAddress.message}</p>}
                 </Field>
               </div>
             </div>
@@ -232,8 +235,8 @@ ${data.senderAddress}
               <h3 className="text-xs font-bold uppercase tracking-wider text-brand-gold">Notice & Grievance Details</h3>
               
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Notice Type">
-                  <select {...register("noticeType")} className="form-input">
+                <Field label="Notice Type" htmlFor="noticeType">
+                  <select id="noticeType" {...register("noticeType")} className="form-input">
                     <option value="Demand for payment">Demand for payment</option>
                     <option value="Property">Property Dispute</option>
                     <option value="Consumer">Consumer Complaint</option>
@@ -244,8 +247,8 @@ ${data.senderAddress}
                   </select>
                 </Field>
 
-                <Field label="Response Deadline">
-                  <select {...register("responseDeadline")} className="form-input">
+                <Field label="Response Deadline" htmlFor="responseDeadline">
+                  <select id="responseDeadline" {...register("responseDeadline")} className="form-input">
                     <option value="7 days">7 Days</option>
                     <option value="15 days">15 Days (Recommended)</option>
                     <option value="30 days">30 Days</option>
@@ -254,18 +257,19 @@ ${data.senderAddress}
                 </Field>
               </div>
 
-              <Field label="Subject / Matter Summary">
+              <Field label="Subject / Matter Summary" error={errors.subject?.message} htmlFor="subject">
                 <input
+                  id="subject"
                   type="text"
                   {...register("subject")}
                   className="form-input"
                   placeholder="e.g. Non-payment of professional fees / Failure to deliver flat"
                 />
-                {errors.subject && <p className="mt-1 text-xs text-red-500">{errors.subject.message}</p>}
               </Field>
 
-              <Field label="Amount Demanded (₹, if applicable)">
+              <Field label="Amount Demanded (₹, if applicable)" htmlFor="amountDemanded">
                 <input
+                  id="amountDemanded"
                   type="number"
                   {...register("amountDemanded")}
                   className="form-input"
@@ -273,24 +277,24 @@ ${data.senderAddress}
                 />
               </Field>
 
-              <Field label="Detailed Grievance / Facts">
+              <Field label="Detailed Grievance / Facts" error={errors.grievance?.message} htmlFor="grievance">
                 <textarea
+                  id="grievance"
                   {...register("grievance")}
                   rows={4}
                   className="form-input resize-none"
                   placeholder="Describe the timeline, agreements, dates, and facts of the dispute clearly..."
                 />
-                {errors.grievance && <p className="mt-1 text-xs text-red-500">{errors.grievance.message}</p>}
               </Field>
 
-              <Field label="Relief / Action Demanded">
+              <Field label="Relief / Action Demanded" error={errors.reliefSought?.message} htmlFor="reliefSought">
                 <textarea
+                  id="reliefSought"
                   {...register("reliefSought")}
                   rows={3}
                   className="form-input resize-none"
                   placeholder="e.g. Immediate payment of outstanding dues, handing over flat key, or replacement of goods..."
                 />
-                {errors.reliefSought && <p className="mt-1 text-xs text-red-500">{errors.reliefSought.message}</p>}
               </Field>
             </div>
 
@@ -349,17 +353,6 @@ ${data.senderAddress}
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }

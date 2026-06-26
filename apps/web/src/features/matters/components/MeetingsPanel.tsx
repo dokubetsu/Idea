@@ -56,6 +56,7 @@ export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawy
         {showForm && (
           <form onSubmit={handleBook} className="bg-base-200/50 p-4 rounded-xl border border-brand-gold/10 grid gap-4 sm:grid-cols-2">
             <Input 
+              id="meeting_datetime"
               type="datetime-local" 
               label="Date & Time" 
               value={scheduledAt} 
@@ -63,15 +64,20 @@ export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawy
               required 
             />
             <Input 
+              id="meeting_duration"
               type="number" 
               label="Duration (minutes)" 
-              value={duration.toString()} 
-              onChange={e => setDuration(parseInt(e.target.value))} 
+              value={duration === 0 ? "" : duration.toString()} 
+              onChange={e => {
+                const val = parseInt(e.target.value, 10);
+                setDuration(Number.isNaN(val) ? 0 : val);
+              }} 
               required 
               min={15} max={120} step={15}
             />
             <div className="sm:col-span-2">
               <Input 
+                id="meeting_link"
                 label="Meeting Link (optional)" 
                 placeholder="https://meet.google.com/..." 
                 value={meetingLink} 
@@ -80,6 +86,7 @@ export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawy
             </div>
             <div className="sm:col-span-2">
               <Input 
+                id="meeting_notes"
                 label="Agenda / Notes" 
                 placeholder="What will be discussed?" 
                 value={notes} 

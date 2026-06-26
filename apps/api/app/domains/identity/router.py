@@ -61,10 +61,17 @@ async def register_profile(
 
     # Sync role to Supabase auth app_metadata (for client JWT security)
     try:
+        resolved_role = "user"
+        if profile:
+            if isinstance(profile, dict) and "role" in profile:
+                resolved_role = profile["role"]
+            elif isinstance(profile, list) and len(profile) > 0 and isinstance(profile[0], dict) and "role" in profile[0]:
+                resolved_role = profile[0]["role"]
+
         from gotrue import AdminUserAttributes
         db.auth.admin.update_user_by_id(
             user_id,
-            AdminUserAttributes(app_metadata={"role": "user"})
+            AdminUserAttributes(app_metadata={"role": resolved_role})
         )
     except Exception as e:
         log.warning("Failed to sync role to app_metadata: %s", e)

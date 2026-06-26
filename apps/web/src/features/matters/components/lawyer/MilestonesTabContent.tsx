@@ -25,12 +25,14 @@ export function MilestonesTabContent({ matter, refetchDetails }: MilestonesTabCo
     e.preventDefault();
     if (!milestoneTitle) return;
     const nextIndex = (milestones.length ?? 0) + 1;
+    const parsedAmount = milestoneAmount ? parseInt(milestoneAmount, 10) : undefined;
+    const finalAmount = parsedAmount !== undefined && !Number.isNaN(parsedAmount) ? parsedAmount : undefined;
     await createMilestone.mutateAsync({
       title: milestoneTitle,
       description: milestoneDesc || undefined,
       order_index: nextIndex,
       status: "pending",
-      amount_inr: milestoneAmount ? parseInt(milestoneAmount) : undefined
+      amount_inr: finalAmount
     });
     setMilestoneTitle("");
     setMilestoneDesc("");

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/shared/lib/supabase/client";
+import { Field } from "@/shared/components/ui";
 
 const schema = z.object({
   email:    z.string().email("Valid email required"),
@@ -63,12 +64,12 @@ function LoginForm() {
         </div>
       )}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
-        <Field label="Email" error={errors.email?.message}>
-          <input {...register("email")} type="email" placeholder="you@example.com" autoComplete="email" className={INPUT} />
+        <Field label="Email" error={errors.email?.message} htmlFor="email">
+          <input {...register("email")} id="email" type="email" placeholder="you@example.com" autoComplete="email" className={INPUT} />
         </Field>
-        <Field label="Password" error={errors.password?.message}>
+        <Field label="Password" error={errors.password?.message} htmlFor="password">
           <div className="relative">
-            <input {...register("password")} type={showPw ? "text" : "password"} placeholder="••••••••" autoComplete="current-password" className={INPUT} />
+            <input {...register("password")} id="password" type={showPw ? "text" : "password"} placeholder="••••••••" autoComplete="current-password" className={INPUT} />
             <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
               className="absolute right-3 top-3 text-brand-blue-light/40 hover:text-brand-blue-dark">
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -98,16 +99,6 @@ export default function LoginPage() {
 }
 
 const INPUT = "min-h-11 w-full rounded-xl border border-brand-gold/15 bg-base-100 px-3.5 text-[13px] outline-none transition-all placeholder:text-brand-blue-light/30 focus:border-brand-gold focus:bg-white focus:shadow-sm";
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">{label}</span>
-      {children}
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </label>
-  );
-}
 function ErrBox({ msg }: { msg: string }) {
   return <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{msg}</p>;
 }

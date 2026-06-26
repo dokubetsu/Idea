@@ -13,40 +13,7 @@ import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
 import { MilestoneBillingCard } from "@/features/matters/components/MilestoneBillingCard";
 import { Badge, Button, Card, Spinner } from "@/shared/components/ui";
 import { useFeatures } from "@/shared/hooks/useFeatures";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
-  intake: "Setting up",
-  assessment: "Being reviewed",
-  matching: "Finding a lawyer",
-  active: "Active",
-  resolved: "Resolved",
-  archived: "Archived",
-};
-
-const STATUS_TONE: Record<string, "gold" | "teal" | "blue" | "muted" | "red"> = {
-  draft: "muted",
-  intake: "gold",
-  assessment: "blue",
-  matching: "blue",
-  active: "teal",
-  resolved: "teal",
-  archived: "muted",
-};
-
-const HEALTH_CONFIG: Record<string, { label: string; icon: string; dot: string; bg: string }> = {
-  waiting_on_client:  { label: "Action needed from you",    icon: "🟡", dot: "bg-amber-400",  bg: "bg-amber-400/10 border-amber-400/30" },
-  waiting_on_lawyer:  { label: "Waiting on your lawyer",   icon: "🔵", dot: "bg-blue-400",   bg: "bg-blue-400/10 border-blue-400/30" },
-  waiting_on_court:   { label: "Waiting on court",          icon: "⚫", dot: "bg-slate-400",  bg: "bg-slate-400/10 border-slate-400/20" },
-  in_progress:        { label: "In progress",               icon: "🟢", dot: "bg-brand-teal", bg: "bg-brand-teal/8 border-brand-teal/20" },
-};
-
-const PRIORITY_TONE: Record<string, "gold" | "teal" | "blue" | "red" | "muted"> = {
-  low: "teal",
-  medium: "blue",
-  high: "gold",
-  urgent: "red",
-};
+import { STATUS_LABEL, STATUS_TONE, HEALTH_CONFIG, PRIORITY_TONE } from "@/shared/lib/constants";
 
 export default function UserMatterDetailPage() {
   const { id } = useParams() as { id: string };

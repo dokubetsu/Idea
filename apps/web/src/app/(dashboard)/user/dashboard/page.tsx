@@ -104,7 +104,8 @@ export default function UserDashboard() {
             { href: "/user/matters", icon: BookOpen, label: "My cases", desc: "Track your case progress, hearings, and messages" },
           ].map(({ href, icon: Icon, label, desc }, i) => (
             <Link key={label} href={href}
-              className={`animate-fade-in-up animate-stagger-${i+1} group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5`}>
+              style={{ animationDelay: `${(i + 1) * 0.06}s` }}
+              className="animate-fade-in-up group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/8 text-brand-gold group-hover:bg-brand-gold/15 transition-colors">
                 <Icon className="h-5 w-5" />
               </div>

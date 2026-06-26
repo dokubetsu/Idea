@@ -7,43 +7,7 @@ import { useMatters } from "@/features/matters/hooks/useMatters";
 import { IntakeWizard } from "@/features/intake/components/IntakeWizard";
 import type { Matter } from "@/entities/types";
 import { Button } from "@/shared/components/ui";
-
-const STATUS_LABEL: Record<string, string> = {
-  intake: "Setting up",
-  assessment: "Being reviewed",
-  matching: "Finding a lawyer",
-  active: "Active",
-  resolved: "Resolved",
-  archived: "Archived",
-  draft: "Draft",
-};
-
-const STATUS_DOT: Record<string, string> = {
-  intake: "bg-brand-gold",
-  assessment: "bg-brand-accent",
-  matching: "bg-brand-accent",
-  active: "bg-brand-teal",
-  resolved: "bg-brand-teal/60",
-  archived: "bg-base-300",
-  draft: "bg-base-300",
-};
-
-const HEALTH_CONFIG: Record<string, { label: string; dot: string; bg: string }> = {
-  waiting_on_client:  { label: "Waiting on you",       dot: "bg-amber-400",    bg: "bg-amber-400/10 border-amber-400/20" },
-  waiting_on_lawyer:  { label: "Waiting on your lawyer", dot: "bg-brand-teal", bg: "bg-brand-teal/10 border-brand-teal/20" },
-  waiting_on_court:   { label: "Waiting on court",      dot: "bg-slate-400",   bg: "bg-slate-400/10 border-slate-400/20" },
-  in_progress:        { label: "In progress",           dot: "bg-brand-gold",  bg: "bg-brand-gold/8 border-brand-gold/15" },
-};
-
-const PRIORITY_BAR: Record<string, string> = {
-  urgent: "bg-red-500", high: "bg-brand-gold", medium: "bg-brand-accent", low: "bg-brand-teal",
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  cheque_bounce: "Cheque Bounce", consumer: "Consumer", rera: "RERA / Builder",
-  property: "Property", family: "Family", labour: "Labour",
-  criminal: "Criminal", cyber: "Cyber", other: "Other",
-};
+import { STATUS_LABEL, STATUS_DOT, HEALTH_CONFIG, PRIORITY_BAR, CATEGORY_LABEL } from "@/shared/lib/constants";
 
 type FilterTab = "all" | "active" | "waiting" | "resolved";
 

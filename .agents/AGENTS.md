@@ -17,7 +17,7 @@ LeAd is an AI-powered legal workflow platform for India. It translates plain-lan
 ## 2. Directory Structure
 
 ```
-d:/Idea/nyay-merged/nyay-merged/
+./
 ├── apps/
 │   ├── api/                  # FastAPI Python backend (Domain-Driven Design)
 │   │   ├── app/
@@ -38,7 +38,8 @@ d:/Idea/nyay-merged/nyay-merged/
 │       │   └── entities/     # Domain models and shared types
 │       └── package.json
 └── supabase/                 # PostgreSQL migrations and schema definitions
-    └── migrations/           # 001_schema.sql to 007_notifications.sql
+    └── migrations/           # 001_schema.sql to 021_missing_infrastructure.sql
+
 ```
 
 ---
