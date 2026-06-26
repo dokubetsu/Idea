@@ -71,26 +71,28 @@ async def process_hearing_reminders(
         if matter.get("lawyer_id"):
             recipients.append(matter["lawyer_id"])
 
-        # Create notification for each recipient
+        # C4: Use create_notification() so preferences, delivery channels,
+        # and idempotency are applied (was a direct INSERT before).
+        from app.domains.notifications.service import create_notification
+
         for recipient_id in recipients:
-            db.table("notifications").insert(
-                {
-                    "user_id": recipient_id,
-                    "type": "hearing_scheduled",
-                    "data": {
-                        "matter_id": matter_id,
-                        "matter_title": matter["title"],
-                        "hearing_date": h["hearing_date"],
-                        "courtroom": h.get("courtroom", ""),
-                        "purpose": h.get("purpose", ""),
-                        "message": f"Reminder: Upcoming hearing for {matter['title']} tomorrow.",
-                    },
-                    "action": {
-                        "label": "View Details",
-                        "url": f"/matters/{matter_id}",
-                    },
-                }
-            ).execute()
+            create_notification(
+                db,
+                user_id=recipient_id,
+                type_name="hearing_scheduled",
+                data={
+                    "matter_id": matter_id,
+                    "matter_title": matter["title"],
+                    "hearing_date": h["hearing_date"],
+                    "courtroom": h.get("courtroom", ""),
+                    "purpose": h.get("purpose", ""),
+                    "message": f"Reminder: Upcoming hearing for {matter['title']} tomorrow.",
+                },
+                action={
+                    "label": "View Details",
+                    "url": f"/matters/{matter_id}",
+                },
+            )
 
         # Mark reminder as sent
         db.table("hearings").update({"reminder_sent": True}).eq("id", h["id"]).execute()
@@ -181,22 +183,24 @@ async def process_weekly_summaries(
                 "Please check your matter dashboard for details."
             )
 
-        # Send in-app notification
-        db.table("notifications").insert(
-            {
-                "user_id": m["user_id"],
-                "type": "weekly_summary",
-                "data": {
-                    "matter_id": m["id"],
-                    "matter_title": m["title"],
-                    "summary": summary_text,
-                },
-                "action": {
-                    "label": "View Matter",
-                    "url": f"/matters/{m['id']}",
-                },
-            }
-        ).execute()
+        # C4: Use create_notification() so preferences, delivery channels,
+        # and idempotency are applied (was a direct INSERT before).
+        from app.domains.notifications.service import create_notification
+
+        create_notification(
+            db,
+            user_id=m["user_id"],
+            type_name="weekly_summary",
+            data={
+                "matter_id": m["id"],
+                "matter_title": m["title"],
+                "summary": summary_text,
+            },
+            action={
+                "label": "View Matter",
+                "url": f"/matters/{m['id']}",
+            },
+        )
 
         sent_count += 1
 

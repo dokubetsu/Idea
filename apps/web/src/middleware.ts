@@ -23,9 +23,12 @@ export async function middleware(request: NextRequest) {
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, " ").trim();
 
+  const { pathname } = request.nextUrl;
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", cspHeader);
+  requestHeaders.set("x-pathname", pathname);
 
   let response = NextResponse.next({
     request: {
@@ -33,8 +36,6 @@ export async function middleware(request: NextRequest) {
     },
   });
   response.headers.set("Content-Security-Policy", cspHeader);
-
-  const { pathname } = request.nextUrl;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

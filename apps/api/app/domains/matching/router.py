@@ -109,7 +109,9 @@ async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
     res = db.rpc(
         "contact_lawyer_rpc",
         {
-            "p_user_id": user.id,
+            # C7: p_user_id removed — migration 026 rewrites contact_lawyer_rpc
+            # to derive the caller's identity from auth.uid() inside the DB function.
+            # The supabase-py client forwards the user's JWT automatically.
             "p_lawyer_id": lawyer_id,
             "p_matter_id": matter_id,
             "p_message": body.message,
