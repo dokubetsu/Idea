@@ -36,8 +36,6 @@ from app.domains.matters.service import (
 from app.shared.dependencies import UserRole
 from app.domains.matters.documents_router import router as documents_router
 
-from app.config import settings
-
 router = APIRouter(prefix="/matters", tags=["matters"])
 router.include_router(documents_router)
 

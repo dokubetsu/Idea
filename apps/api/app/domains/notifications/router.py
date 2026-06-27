@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import json
@@ -8,7 +8,7 @@ import uuid
 import time
 from sse_starlette.sse import EventSourceResponse
 
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole, _decode_jwt
+from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.shared.database import get_db
 from app.domains.notifications.models import NotificationOut, NotificationStatus
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
