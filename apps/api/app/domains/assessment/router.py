@@ -24,6 +24,8 @@ class StandaloneAssessRequest(BaseModel):
 
 @router.post("/run")
 @limiter.limit("5/minute")
-async def run(request: Request, body: StandaloneAssessRequest, user: Auth, response: Response):
+async def run(
+    request: Request, body: StandaloneAssessRequest, user: Auth, response: Response
+):
     result = await run_assessment(AssessmentInput(**body.model_dump()))
     return result

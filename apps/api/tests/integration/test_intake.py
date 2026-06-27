@@ -42,7 +42,9 @@ async def test_intake_workflow_integration(client: AsyncClient, mock_user):
     assert data["assessment_result"] is not None
 
     # 4. Commit Intake
-    res = await client.post(f"/api/v1/intake/{session_id}/commit", json={"confirmed_facts": facts_list})
+    res = await client.post(
+        f"/api/v1/intake/{session_id}/commit", json={"confirmed_facts": facts_list}
+    )
     assert res.status_code == 201
     commit_data = res.json()
     assert "matter_id" in commit_data

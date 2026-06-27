@@ -6,4 +6,6 @@ class GenericTemplate(BaseNotificationTemplate):
         return self.data.get("subject", "LeAd Update")
 
     def render_body(self) -> str:
-        return self.data.get("body", "You have a new notification from the LeAd platform.")
+        return self.data.get(
+            "body", "You have a new notification from the LeAd platform."
+        )

@@ -122,13 +122,17 @@ async def emit(
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):
-                    task = asyncio.create_task(sub(event_str, actor_id, matter_id, payload or {}))
+                    task = asyncio.create_task(
+                        sub(event_str, actor_id, matter_id, payload or {})
+                    )
                     BACKGROUND_TASKS.add(task)
                     task.add_done_callback(BACKGROUND_TASKS.discard)
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:
-                log.error("Subscriber callback failed for event %s: %s", event_str, sub_exc)
+                log.error(
+                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
+                )
 
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)
@@ -168,10 +172,14 @@ def sync_emit(
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):
-                    _run_coroutine_in_new_loop(sub(event_str, actor_id, matter_id, payload or {}))
+                    _run_coroutine_in_new_loop(
+                        sub(event_str, actor_id, matter_id, payload or {})
+                    )
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:
-                log.error("Subscriber callback failed for event %s: %s", event_str, sub_exc)
+                log.error(
+                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
+                )
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)

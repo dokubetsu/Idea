@@ -29,7 +29,10 @@ async def get_upload_url(matter_id: str, body: DocumentUploadRequest, user: Auth
     get_matter_or_403(db, matter_id, user)
 
     # Validate content type
-    if not body.content_type or body.content_type.strip().lower() not in ALLOWED_CONTENT_TYPES:
+    if (
+        not body.content_type
+        or body.content_type.strip().lower() not in ALLOWED_CONTENT_TYPES
+    ):
         raise HTTPException(
             status_code=400,
             detail="Invalid or unsupported file type. Only PDFs, images, text, and Word documents are allowed.",
@@ -52,7 +55,9 @@ async def get_upload_url(matter_id: str, body: DocumentUploadRequest, user: Auth
         )
 
 
-@router.get("/{matter_id}/documents/{filename:path}", response_model=PreSignedUrlResponse)
+@router.get(
+    "/{matter_id}/documents/{filename:path}", response_model=PreSignedUrlResponse
+)
 async def get_download_url(matter_id: str, filename: str, user: Auth):
     db = get_db()
     get_matter_or_403(db, matter_id, user)

@@ -42,7 +42,11 @@ class ContextBuilder:
         Aggregates matter metadata, verified facts, uploaded document summaries, and update history.
         """
         # Convert list of facts to key-value pairs
-        facts_dict = {f["key"]: f["value"] for f in facts if f.get("key") and f.get("value") is not None}
+        facts_dict = {
+            f["key"]: f["value"]
+            for f in facts
+            if f.get("key") and f.get("value") is not None
+        }
 
         return {
             "matter_id": matter.get("id"),

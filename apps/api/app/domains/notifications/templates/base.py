@@ -29,7 +29,11 @@ class BaseNotificationTemplate:
         content = self._html_content()
         action = self.data.get("action") or {}
         action_url = action.get("url", "") if isinstance(action, dict) else ""
-        action_label = action.get("label", "View Case") if isinstance(action, dict) else "View Case"
+        action_label = (
+            action.get("label", "View Case")
+            if isinstance(action, dict)
+            else "View Case"
+        )
         base_url = settings.APP_URL
         full_url = f"{base_url}{action_url}" if action_url else base_url
 
@@ -100,6 +104,8 @@ class BaseNotificationTemplate:
         """Override in subclasses to provide custom HTML body content."""
         body = self.render_body()
         lines = "".join(
-            f"<p style='margin:0 0 10px;'>{self.escape(line)}</p>" for line in body.split("\n") if line.strip()
+            f"<p style='margin:0 0 10px;'>{self.escape(line)}</p>"
+            for line in body.split("\n")
+            if line.strip()
         )
         return lines

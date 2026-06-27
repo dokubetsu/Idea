@@ -120,14 +120,21 @@ ___________________________
 
 class DocumentDraftService:
     @staticmethod
-    def generate(matter_id: str, document_type: str, current_user: Any) -> dict[str, Any]:
+    def generate(
+        matter_id: str, document_type: str, current_user: Any
+    ) -> dict[str, Any]:
         """
         Retrieves matter and verified facts, merges them into templates, and returns the markdown draft.
         """
         db = get_db()
 
         # 1. Fetch Matter details
-        m_res = db.table("matters").select("*, profiles!user_id(full_name, city, state)").eq("id", matter_id).execute()
+        m_res = (
+            db.table("matters")
+            .select("*, profiles!user_id(full_name, city, state)")
+            .eq("id", matter_id)
+            .execute()
+        )
         if not m_res.data:
             raise NotFound("Matter")
         matter = m_res.data[0]
@@ -137,7 +144,9 @@ class DocumentDraftService:
         is_lawyer = matter.get("lawyer_id") == current_user.id
         is_admin = getattr(current_user, "role", None) == "admin"
         if not (is_owner or is_lawyer or is_admin):
-            raise Forbidden("You are not authorized to view document drafts for this matter.")
+            raise Forbidden(
+                "You are not authorized to view document drafts for this matter."
+            )
 
         client_profile = matter.pop("profiles", {}) or {}
 
@@ -145,7 +154,12 @@ class DocumentDraftService:
         bar_council = "[Bar Council Registration Number]"
         lawyer_address = "[Advocate Office Address]"
         if matter.get("lawyer_id"):
-            l_res = db.table("profiles").select("full_name, city, state").eq("id", matter["lawyer_id"]).execute()
+            l_res = (
+                db.table("profiles")
+                .select("full_name, city, state")
+                .eq("id", matter["lawyer_id"])
+                .execute()
+            )
             if l_res.data:
                 lawyer_name = l_res.data[0]["full_name"]
                 city = l_res.data[0].get("city")
@@ -154,17 +168,26 @@ class DocumentDraftService:
                     lawyer_address = f"{city}, {state}"
                 elif city or state:
                     lawyer_address = city or state
-            lp_res = db.table("lawyer_profiles").select("bar_council_id").eq("id", matter["lawyer_id"]).execute()
+            lp_res = (
+                db.table("lawyer_profiles")
+                .select("bar_council_id")
+                .eq("id", matter["lawyer_id"])
+                .execute()
+            )
             if lp_res.data:
                 bar_council = lp_res.data[0].get("bar_council_id") or bar_council
 
         # 3. Fetch Matter Facts
-        f_res = db.table("facts").select("key, value").eq("matter_id", matter_id).execute()
+        f_res = (
+            db.table("facts").select("key, value").eq("matter_id", matter_id).execute()
+        )
 
         def _escape(val: str) -> str:
             return str(val).replace("{", "{{").replace("}", "}}")
 
-        facts_dict = {f["key"]: _escape(f["value"]) for f in f_res.data} if f_res.data else {}
+        facts_dict = (
+            {f["key"]: _escape(f["value"]) for f in f_res.data} if f_res.data else {}
+        )
 
         # 4. Process variables for templates
         today = date.today()
@@ -173,8 +196,14 @@ class DocumentDraftService:
         client_state = _escape(client_profile.get("state") or "[State]")
         client_address = f"{client_city}, {client_state}"
 
-        opponent_name = _escape(facts_dict.get("opponent_name") or facts_dict.get("builder_name") or "[Opponent Name]")
-        opponent_address = _escape(facts_dict.get("property_location") or "[Opponent Address]")
+        opponent_name = _escape(
+            facts_dict.get("opponent_name")
+            or facts_dict.get("builder_name")
+            or "[Opponent Name]"
+        )
+        opponent_address = _escape(
+            facts_dict.get("property_location") or "[Opponent Address]"
+        )
 
         lawyer_name = _escape(lawyer_name)
         bar_council = _escape(bar_council)
@@ -214,9 +243,11 @@ class DocumentDraftService:
                 bank_name=facts_dict.get("bank_name") or "[Bank Name]",
                 client_name=client_name,
                 client_address=client_address,
-                debt_type=facts_dict.get("underlying_debt_type") or "outstanding legal dues",
+                debt_type=facts_dict.get("underlying_debt_type")
+                or "outstanding legal dues",
                 dishonour_date=facts_dict.get("dishonour_date") or "[Dishonour Date]",
-                dishonour_reason=facts_dict.get("dishonour_reason") or "Funds Insufficient",
+                dishonour_reason=facts_dict.get("dishonour_reason")
+                or "Funds Insufficient",
                 lawyer_name=lawyer_name,
                 bar_council_number=bar_council,
                 lawyer_address=lawyer_address,
@@ -246,7 +277,9 @@ class DocumentDraftService:
                     )
                     delay_days = calc_res["delay_days"]
                     interest_rate = calc_res["interest_rate"]
-                    interest_accrued = calc_res["interest_accrued"] if total_paid > 0 else 0.0
+                    interest_accrued = (
+                        calc_res["interest_accrued"] if total_paid > 0 else 0.0
+                    )
                 except Exception:
                     pass
 

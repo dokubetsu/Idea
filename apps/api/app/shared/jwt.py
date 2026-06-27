@@ -24,7 +24,9 @@ def decode_token(token: str) -> dict:
         header = jwt.get_unverified_header(token)
         alg = header.get("alg")
         if alg not in ("HS256", "ES256"):
-            raise HTTPException(status_code=401, detail="Unsupported signature algorithm")
+            raise HTTPException(
+                status_code=401, detail="Unsupported signature algorithm"
+            )
 
         if alg == "ES256":
             signing_key = _get_jwk_client().get_signing_key_from_jwt(token)

@@ -1,7 +1,9 @@
 from app.shared.database import get_db
 from app.shared.exceptions import NotFound
 
-SELECT_CONSULTATIONS = "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"
+SELECT_CONSULTATIONS = (
+    "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"
+)
 
 
 def enrich_consultation(row: dict) -> dict:
@@ -16,7 +18,14 @@ def enrich_consultation(row: dict) -> dict:
 
 def get_consultation_or_404(consultation_id: str) -> dict:
     db = get_db()
-    row = db.table("consultations").select(SELECT_CONSULTATIONS).eq("id", consultation_id).single().execute().data
+    row = (
+        db.table("consultations")
+        .select(SELECT_CONSULTATIONS)
+        .eq("id", consultation_id)
+        .single()
+        .execute()
+        .data
+    )
     if not row:
         raise NotFound("Consultation not found")
     return enrich_consultation(row)
@@ -33,7 +42,9 @@ def assign_free_lawyer(consultation_id: str) -> str | None:
     silently bypassing the "no lawyer available" error path.
     """
     db = get_db()
-    res = db.rpc("assign_free_lawyer_rpc", {"p_consultation_id": consultation_id}).execute()
+    res = db.rpc(
+        "assign_free_lawyer_rpc", {"p_consultation_id": consultation_id}
+    ).execute()
 
     data = res.data
 

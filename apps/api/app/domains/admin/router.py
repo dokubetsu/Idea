@@ -32,7 +32,9 @@ async def verify_lawyer(lawyer_id: str, user: AdminAuth):
     db = get_db()
     db.rpc("verify_lawyer_rpc", {"p_lawyer_id": lawyer_id}).execute()
 
-    await emit("admin.lawyer_verified", actor_id=user.id, payload={"lawyer_id": lawyer_id})
+    await emit(
+        "admin.lawyer_verified", actor_id=user.id, payload={"lawyer_id": lawyer_id}
+    )
     return {"ok": True}
 
 
@@ -65,7 +67,10 @@ async def list_users(
         p = page or 1
         pp = per_page or limit
         off = (p - 1) * pp
-        return q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
+        return (
+            q.order("created_at", desc=True).range(off, off + pp - 1).execute().data
+            or []
+        )
 
 
 @router.get("/matters")
@@ -78,7 +83,9 @@ async def list_all_matters(
     per_page: int | None = Query(default=None, ge=1, le=100),
 ):
     db = get_db()
-    q = db.table("matters").select("*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)")
+    q = db.table("matters").select(
+        "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"
+    )
     if status:
         q = q.eq("status", status)
 
@@ -89,10 +96,21 @@ async def list_all_matters(
         p = page or 1
         pp = per_page or limit
         off = (p - 1) * pp
-        return q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
+        return (
+            q.order("created_at", desc=True).range(off, off + pp - 1).execute().data
+            or []
+        )
 
 
 @router.get("/events")
 async def recent_events(user: AdminAuth, limit: int = Query(default=50, le=200)):
     db = get_db()
-    return db.table("events").select("*").order("created_at", desc=True).limit(limit).execute().data or []
+    return (
+        db.table("events")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+        .data
+        or []
+    )

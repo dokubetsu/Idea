@@ -83,5 +83,7 @@ def _build_sms_text(subject: str, body: str) -> str:
     prefix = f"[LeAd] {subject}: "
     budget = 160 - len(prefix)
     first_sentence = body.split(".")[0].strip() if body else ""
-    truncated = first_sentence[:budget] if len(first_sentence) > budget else first_sentence
+    truncated = (
+        first_sentence[:budget] if len(first_sentence) > budget else first_sentence
+    )
     return f"{prefix}{truncated}"

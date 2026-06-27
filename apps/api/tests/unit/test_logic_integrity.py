@@ -69,7 +69,9 @@ async def test_contact_lawyer_idor(client: AsyncClient, mock_db):
 
         # Try to contact a lawyer attaching another user's matter
         payload = {"matter_id": "matter-other-user", "message": "Please help"}
-        res = await client.post("/api/v1/matching/lawyers/some-lawyer-id/contact", json=payload)
+        res = await client.post(
+            "/api/v1/matching/lawyers/some-lawyer-id/contact", json=payload
+        )
 
         # Must return 403 Forbidden
         assert res.status_code == 403
@@ -194,7 +196,9 @@ async def test_verify_fact_rejects_stale_updated_at(client: AsyncClient, mock_db
                 "updated_at": "2024-01-01T00:00:00+00:00",
             }
         ]
-        mock_db.table("lawyer_profiles").data = [{"id": "lawyer-id", "is_verified": True}]
+        mock_db.table("lawyer_profiles").data = [
+            {"id": "lawyer-id", "is_verified": True}
+        ]
 
         res = await client.patch(
             "/api/v1/matters/matter-1/facts/fact-1",

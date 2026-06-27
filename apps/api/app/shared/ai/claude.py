@@ -10,7 +10,9 @@ class ClaudeProvider(BaseAiProvider):
 
     def _get_client(self) -> anthropic.AsyncAnthropic:
         if self.client is None:
-            self.client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=30.0)
+            self.client = anthropic.AsyncAnthropic(
+                api_key=settings.ANTHROPIC_API_KEY, timeout=30.0
+            )
         return self.client
 
     @property
@@ -20,7 +22,9 @@ class ClaudeProvider(BaseAiProvider):
     async def health(self) -> bool:
         return bool(settings.ANTHROPIC_API_KEY)
 
-    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
+    async def generate(
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
+    ) -> str:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("Anthropic API key is not configured.")
 

@@ -18,7 +18,9 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
     """
     try:
         # 1. Fetch notification
-        notif_resp = db.table("notifications").select("*").eq("id", notification_id).execute()
+        notif_resp = (
+            db.table("notifications").select("*").eq("id", notification_id).execute()
+        )
         if not notif_resp.data:
             log.error("Notification %s not found for delivery", notification_id)
             return
@@ -47,7 +49,9 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
             if html_body is None:
                 html_body = template.render_html_body()
         except Exception as te:
-            log.error("Failed to render template for notification %s: %s", notification_id, te)
+            log.error(
+                "Failed to render template for notification %s: %s", notification_id, te
+            )
             subject = "LeAd Update"
             body = "You have a new update on your case."
             html_body = None

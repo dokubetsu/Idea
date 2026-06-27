@@ -159,7 +159,9 @@ class MockProvider(BaseAiProvider):
     async def health(self) -> bool:
         return True
 
-    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
+    async def generate(
+        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
+    ) -> str:
         text = (system_prompt + " " + user_prompt).lower()
 
         # 1. Detect category from text keywords
@@ -168,13 +170,21 @@ class MockProvider(BaseAiProvider):
             category = "cheque_bounce"
         elif any(w in text for w in ["consumer", "defective", "service deficiency"]):
             category = "consumer"
-        elif any(w in text for w in ["rera", "builder", "flat", "possession", "developer"]):
+        elif any(
+            w in text for w in ["rera", "builder", "flat", "possession", "developer"]
+        ):
             category = "rera"
-        elif any(w in text for w in ["accident", "injury", "mact", "insurer", "motor", "vehicle"]):
+        elif any(
+            w in text
+            for w in ["accident", "injury", "mact", "insurer", "motor", "vehicle"]
+        ):
             category = "motor_vehicles"
 
         # 2. Check if this is a Facts Extraction request based on the system prompt
-        if "detected_category" in system_prompt.lower() and "risk_level" not in system_prompt.lower():
+        if (
+            "detected_category" in system_prompt.lower()
+            and "risk_level" not in system_prompt.lower()
+        ):
             # Return Mock Facts JSON
             facts = [
                 {

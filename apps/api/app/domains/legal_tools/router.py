@@ -92,5 +92,9 @@ async def generate_document_draft(body: DocumentDraftRequest, user: Auth):
     except Exception as e:
         import logging
 
-        logging.getLogger(__name__).error("Failed to generate document draft: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to generate document draft.")
+        logging.getLogger(__name__).error(
+            "Failed to generate document draft: %s", e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail="Failed to generate document draft."
+        )

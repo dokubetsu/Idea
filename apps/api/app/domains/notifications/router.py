@@ -45,7 +45,12 @@ async def get_sse_user(
     if time.time() > ticket_data["expires_at"]:
         raise HTTPException(status_code=401, detail="Ticket expired")
 
-    result = db.table("profiles").select("id,role,full_name,is_active").eq("id", ticket_data["user_id"]).execute()
+    result = (
+        db.table("profiles")
+        .select("id,role,full_name,is_active")
+        .eq("id", ticket_data["user_id"])
+        .execute()
+    )
     if not result.data:
         raise HTTPException(status_code=401, detail="Profile not found")
 
@@ -136,12 +141,16 @@ async def create_sse_ticket(
 
     # 1. Cap total active tickets to prevent memory exhaustion DoS
     if len(SSE_TICKETS) >= MAX_TOTAL_TICKETS:
-        raise HTTPException(status_code=429, detail="Server is busy. Please try again later.")
+        raise HTTPException(
+            status_code=429, detail="Server is busy. Please try again later."
+        )
 
     # 2. Cap tickets per user. If limit exceeded, evict oldest to make room.
     user_tickets = [k for k, v in SSE_TICKETS.items() if v.get("user_id") == user.id]
     if len(user_tickets) >= MAX_TICKETS_PER_USER:
-        sorted_keys = sorted(user_tickets, key=lambda k: SSE_TICKETS[k].get("expires_at", 0))
+        sorted_keys = sorted(
+            user_tickets, key=lambda k: SSE_TICKETS[k].get("expires_at", 0)
+        )
         SSE_TICKETS.pop(sorted_keys[0], None)
 
     ticket_id = str(uuid.uuid4())

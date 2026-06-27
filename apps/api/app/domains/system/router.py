@@ -55,7 +55,12 @@ async def process_hearing_reminders(
     for h in hearings:
         matter_id = h["matter_id"]
         # Fetch matter to get user/lawyer to notify
-        matter_res = db.table("matters").select("user_id, lawyer_id, title").eq("id", matter_id).execute()
+        matter_res = (
+            db.table("matters")
+            .select("user_id, lawyer_id, title")
+            .eq("id", matter_id)
+            .execute()
+        )
         if not matter_res.data:
             continue
 
@@ -111,7 +116,12 @@ async def process_weekly_summaries(
     db = get_service_role_db()
 
     # 1. Fetch active matters
-    matters_res = db.table("matters").select("id, title, user_id").eq("status", "active").execute()
+    matters_res = (
+        db.table("matters")
+        .select("id, title, user_id")
+        .eq("status", "active")
+        .execute()
+    )
     matters = matters_res.data or []
 
     now = datetime.now(timezone.utc)
@@ -163,7 +173,9 @@ async def process_weekly_summaries(
 
         try:
             # BaseAiProvider.generate(system_prompt, user_prompt) -> str
-            summary_text = await ai_provider.generate(system_prompt, user_prompt, temperature=0.3)
+            summary_text = await ai_provider.generate(
+                system_prompt, user_prompt, temperature=0.3
+            )
         except Exception as e:
             log.error("Failed to generate weekly summary for matter %s: %s", m["id"], e)
             summary_text = (
@@ -214,7 +226,13 @@ async def cleanup_intake_sessions(
     db = get_service_role_db()
 
     now = datetime.now(timezone.utc).isoformat()
-    result = db.table("intake_sessions").delete().eq("is_committed", False).lt("expires_at", now).execute()
+    result = (
+        db.table("intake_sessions")
+        .delete()
+        .eq("is_committed", False)
+        .lt("expires_at", now)
+        .execute()
+    )
     deleted = len(result.data) if result.data else 0
     log.info("Session Cleanup Cron: Deleted %d expired sessions.", deleted)
     return {"status": "success", "sessions_deleted": deleted}

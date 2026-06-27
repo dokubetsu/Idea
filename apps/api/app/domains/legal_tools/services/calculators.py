@@ -27,9 +27,17 @@ class ChequeBounceCalculator:
         if notice_date and notice_date < dishonour_date:
             raise ValueError("Notice date cannot be earlier than dishonour date")
         if notice_receipt_date and notice_date and notice_receipt_date < notice_date:
-            raise ValueError("Notice receipt date cannot be earlier than notice sent date")
-        if complaint_filed_date and notice_receipt_date and complaint_filed_date < notice_receipt_date:
-            raise ValueError("Complaint filing date cannot be earlier than notice receipt date")
+            raise ValueError(
+                "Notice receipt date cannot be earlier than notice sent date"
+            )
+        if (
+            complaint_filed_date
+            and notice_receipt_date
+            and complaint_filed_date < notice_receipt_date
+        ):
+            raise ValueError(
+                "Complaint filing date cannot be earlier than notice receipt date"
+            )
 
         now = current_date or date.today()
 
@@ -62,7 +70,9 @@ class ChequeBounceCalculator:
             filing_deadline = wait_end_date + relativedelta(months=1)
 
             if complaint_filed_date:
-                filing_valid = filing_start_date <= complaint_filed_date <= filing_deadline
+                filing_valid = (
+                    filing_start_date <= complaint_filed_date <= filing_deadline
+                )
 
         # 5. Determine status and colors
         status = "safe"
@@ -98,9 +108,7 @@ class ChequeBounceCalculator:
             notice_max_wait = notice_date + timedelta(days=30)
             if now > notice_max_wait:
                 status = "action_required"
-                reason = (
-                    "Notice sent but delivery receipt date not recorded. Confirm receipt date to calculate wait window."
-                )
+                reason = "Notice sent but delivery receipt date not recorded. Confirm receipt date to calculate wait window."
                 color = "yellow"
             else:
                 status = "safe"
@@ -239,7 +247,9 @@ class SummarySuitCalculator:
         if days_left < 0:
             status = "expired"
             color = "red"
-            reason = f"Limitation period expired on {limitation_expiry}. Suit time-barred."
+            reason = (
+                f"Limitation period expired on {limitation_expiry}. Suit time-barred."
+            )
         elif days_left <= 30:
             status = "action_required"
             color = "yellow"

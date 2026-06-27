@@ -44,7 +44,10 @@ async def list_consultations(
     if status:
         q = q.eq("status", status)
 
-    rows = q.order("created_at", desc=True).range(off, off + per_page - 1).execute().data or []
+    rows = (
+        q.order("created_at", desc=True).range(off, off + per_page - 1).execute().data
+        or []
+    )
     return [enrich_consultation(r) for r in rows]
 
 
@@ -84,13 +87,20 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
         payload["idempotency_key"] = body.idempotency_key
 
     try:
-        res = db.table("consultations").insert(payload).select(SELECT_CONSULTATIONS).execute()
+        res = (
+            db.table("consultations")
+            .insert(payload)
+            .select(SELECT_CONSULTATIONS)
+            .execute()
+        )
         consultation = res.data[0]
 
         if needs_auto_assign:
             assigned_lawyer_id = assign_free_lawyer(consultation["id"])
             if not assigned_lawyer_id:
-                db.table("consultations").delete().eq("id", consultation["id"]).execute()
+                db.table("consultations").delete().eq(
+                    "id", consultation["id"]
+                ).execute()
                 raise HTTPException(
                     status_code=400,
                     detail="No lawyers currently available for free consultations",
@@ -118,7 +128,12 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
     db = get_db()
     # Ownership Check
     row = (
-        db.table("consultations").select("user_id, lawyer_id, status").eq("id", consultation_id).single().execute().data
+        db.table("consultations")
+        .select("user_id, lawyer_id, status")
+        .eq("id", consultation_id)
+        .single()
+        .execute()
+        .data
     )
     if not row:
         raise NotFound("Consultation not found")
@@ -140,7 +155,9 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
     except Exception as e:
         msg = str(e)
         if "must be pending" in msg:
-            raise HTTPException(status_code=400, detail="Consultation is no longer pending")
+            raise HTTPException(
+                status_code=400, detail="Consultation is no longer pending"
+            )
         raise e
 
 
@@ -153,7 +170,9 @@ async def cancel_consultation(consultation_id: str, user: Auth):
     row = get_consultation_or_404(consultation_id)
     check_consultation_ownership(row, user)
     if row["status"] != "pending":
-        raise HTTPException(status_code=400, detail="Can only cancel pending consultations")
+        raise HTTPException(
+            status_code=400, detail="Can only cancel pending consultations"
+        )
 
     res = (
         db.table("consultations")
@@ -172,13 +191,20 @@ async def cancel_consultation(consultation_id: str, user: Auth):
 async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
     db = get_db()
     row = (
-        db.table("consultations").select("user_id, lawyer_id, status").eq("id", consultation_id).single().execute().data
+        db.table("consultations")
+        .select("user_id, lawyer_id, status")
+        .eq("id", consultation_id)
+        .single()
+        .execute()
+        .data
     )
     if not row:
         raise NotFound("Consultation not found")
     check_consultation_ownership(row, user)
     if row.get("status") != "pending":
-        raise HTTPException(status_code=400, detail="Can only decline pending consultations")
+        raise HTTPException(
+            status_code=400, detail="Can only decline pending consultations"
+        )
 
     res = (
         db.table("consultations")
@@ -194,9 +220,18 @@ async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
 
 
 @router.patch("/{consultation_id}", response_model=ConsultationOut)
-async def patch_consultation(consultation_id: str, body: ConsultationPatch, user: LawyerOrAdmin):
+async def patch_consultation(
+    consultation_id: str, body: ConsultationPatch, user: LawyerOrAdmin
+):
     db = get_db()
-    row = db.table("consultations").select("user_id, lawyer_id").eq("id", consultation_id).single().execute().data
+    row = (
+        db.table("consultations")
+        .select("user_id, lawyer_id")
+        .eq("id", consultation_id)
+        .single()
+        .execute()
+        .data
+    )
     if not row:
         raise NotFound("Consultation not found")
     check_consultation_ownership(row, user)
@@ -205,5 +240,11 @@ async def patch_consultation(consultation_id: str, body: ConsultationPatch, user
     if not updates:
         return get_consultation_or_404(consultation_id)
 
-    res = db.table("consultations").update(updates).eq("id", consultation_id).select(SELECT_CONSULTATIONS).execute()
+    res = (
+        db.table("consultations")
+        .update(updates)
+        .eq("id", consultation_id)
+        .select(SELECT_CONSULTATIONS)
+        .execute()
+    )
     return enrich_consultation(res.data[0])

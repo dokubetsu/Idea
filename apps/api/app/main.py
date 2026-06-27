@@ -52,9 +52,16 @@ async def lifespan(app: FastAPI):
 
     log.info("Environment: %s", settings.APP_ENV)
 
-    if settings.SUPABASE_URL == "http://placeholder.supabase.co" or "placeholder" in settings.SUPABASE_JWT_SECRET:
-        log.error("❌ SUPABASE_URL or SUPABASE_JWT_SECRET is missing or using default placeholder values.")
-        raise ValueError("Invalid database configuration: environment variables must be populated.")
+    if (
+        settings.SUPABASE_URL == "http://placeholder.supabase.co"
+        or "placeholder" in settings.SUPABASE_JWT_SECRET
+    ):
+        log.error(
+            "❌ SUPABASE_URL or SUPABASE_JWT_SECRET is missing or using default placeholder values."
+        )
+        raise ValueError(
+            "Invalid database configuration: environment variables must be populated."
+        )
 
     try:
         get_db().table("profiles").select("id").limit(1).execute()

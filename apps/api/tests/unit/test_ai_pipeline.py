@@ -17,13 +17,17 @@ class DummyModel(BaseModel):
 
 def test_context_builder():
     # 1. Intake context
-    intake = ContextBuilder.build_intake_context("Salary dispute", "Employer terminated without notice")
+    intake = ContextBuilder.build_intake_context(
+        "Salary dispute", "Employer terminated without notice"
+    )
     assert intake["title"] == "Salary dispute"
     assert intake["raw_description"] == "Employer terminated without notice"
 
     # 2. Assessment context
     facts_dict = {"cheque_amount": "50000", "notice_sent": "true"}
-    assess = ContextBuilder.build_assessment_context("Cheque bounce", facts_dict, "My cheque was returned")
+    assess = ContextBuilder.build_assessment_context(
+        "Cheque bounce", facts_dict, "My cheque was returned"
+    )
     assert assess["title"] == "Cheque bounce"
     assert assess["facts"] == facts_dict
     assert assess["raw_description"] == "My cheque was returned"
@@ -80,7 +84,9 @@ def test_prompt_builder():
     assert "<title_base64>\nVGVzdCBjYXNl\n</title_base64>" in user_prompt
 
     # Assessment v1
-    sys_prompt_ass, user_prompt_ass = PromptBuilder.build("assessment", context, version="v1")
+    sys_prompt_ass, user_prompt_ass = PromptBuilder.build(
+        "assessment", context, version="v1"
+    )
     assert "risk_level" in sys_prompt_ass
     assert "amount: MTAw" in user_prompt_ass
 
@@ -106,7 +112,9 @@ def test_normalizer():
         timeline_max_months: int
         success_probability: int
 
-    validated = TestAssessment(timeline_min_months=-5, timeline_max_months=-12, success_probability=120)
+    validated = TestAssessment(
+        timeline_min_months=-5, timeline_max_months=-12, success_probability=120
+    )
     normalized = Normalizer.normalize_assessment(
         validated,
         provider_name="test_provider",
@@ -148,7 +156,9 @@ async def test_provider_registry_and_fallbacks():
         # It should raise RuntimeError since mock is opt-in only, not in the fallback chain
         with pytest.raises(RuntimeError) as exc_info:
             await ai_registry.resolve("gemini")
-        assert "All configured AI providers are unhealthy or unavailable" in str(exc_info.value)
+        assert "All configured AI providers are unhealthy or unavailable" in str(
+            exc_info.value
+        )
     finally:
         settings.GEMINI_API_KEY = old_gemini
         settings.ANTHROPIC_API_KEY = old_anthropic

@@ -43,7 +43,9 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
     )
 
     # 2. Build versioned prompt
-    system_prompt, user_prompt = PromptBuilder.build("assessment", context, version="v1")
+    system_prompt, user_prompt = PromptBuilder.build(
+        "assessment", context, version="v1"
+    )
 
     if settings.ai_provider == "mock":
         # Safe deterministic local mock
@@ -84,9 +86,15 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
             return AssessmentOutput(**normalized)
         except Exception as e:
             if attempt < retries:
-                log.warning("run_assessment attempt %d failed: %s. Retrying...", attempt + 1, e)
+                log.warning(
+                    "run_assessment attempt %d failed: %s. Retrying...", attempt + 1, e
+                )
                 continue
-            log.exception("run_assessment failed after %d retries, falling back to mock provider: %s", retries, e)
+            log.exception(
+                "run_assessment failed after %d retries, falling back to mock provider: %s",
+                retries,
+                e,
+            )
 
             # Safe deterministic local mock fallback
             mock = MockProvider()

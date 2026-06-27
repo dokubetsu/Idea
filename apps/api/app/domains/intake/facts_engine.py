@@ -302,7 +302,9 @@ async def extract_facts(title: str, description: str) -> FactsExtractionResult:
         try:
             return await _ai_extract(title, description)
         except Exception as e:
-            log.exception("AI facts extraction failed, falling back to keyword extraction: %s", e)
+            log.exception(
+                "AI facts extraction failed, falling back to keyword extraction: %s", e
+            )
 
     return _mock_extract(title, description)
 
@@ -321,7 +323,9 @@ async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
     context = ContextBuilder.build_intake_context(title, description)
 
     # 2. Build Prompts (Versioned)
-    system_prompt, user_prompt = PromptBuilder.build("extraction", context, version="v1")
+    system_prompt, user_prompt = PromptBuilder.build(
+        "extraction", context, version="v1"
+    )
 
     # 3. Resolve Provider via registry
     provider = await get_ai_provider()

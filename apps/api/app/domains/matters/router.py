@@ -84,7 +84,10 @@ async def list_matters(
         p = page or 1
         pp = per_page or limit
         off = (p - 1) * pp
-        rows = q.order("created_at", desc=True).range(off, off + pp - 1).execute().data or []
+        rows = (
+            q.order("created_at", desc=True).range(off, off + pp - 1).execute().data
+            or []
+        )
 
     return [MatterOut(**enrich(r)) for r in rows]
 
@@ -158,7 +161,13 @@ async def create_matter(body: MatterCreateRequest, user: LawyerOrAdmin):
     # Enrich & return
     full = db.table("matters").select(SELECT).eq("id", r["id"]).single().execute().data
     milestones = (
-        db.table("matter_milestones").select("*").eq("matter_id", r["id"]).order("order_index").execute().data or []
+        db.table("matter_milestones")
+        .select("*")
+        .eq("matter_id", r["id"])
+        .order("order_index")
+        .execute()
+        .data
+        or []
     )
 
     enriched = _matter_payload(full, with_facts=False)
@@ -182,12 +191,42 @@ async def get_matter(matter_id: str, user: Auth):
     row = get_matter_or_403(db, matter_id, user)
 
     # Attach facts, hearings, milestones, meetings
-    facts = db.table("facts").select("*").eq("matter_id", matter_id).order("created_at").execute().data or []
-    hearings = db.table("hearings").select("*").eq("matter_id", matter_id).order("hearing_date").execute().data or []
-    milestones = (
-        db.table("matter_milestones").select("*").eq("matter_id", matter_id).order("order_index").execute().data or []
+    facts = (
+        db.table("facts")
+        .select("*")
+        .eq("matter_id", matter_id)
+        .order("created_at")
+        .execute()
+        .data
+        or []
     )
-    meetings = db.table("meetings").select("*").eq("matter_id", matter_id).order("scheduled_at").execute().data or []
+    hearings = (
+        db.table("hearings")
+        .select("*")
+        .eq("matter_id", matter_id)
+        .order("hearing_date")
+        .execute()
+        .data
+        or []
+    )
+    milestones = (
+        db.table("matter_milestones")
+        .select("*")
+        .eq("matter_id", matter_id)
+        .order("order_index")
+        .execute()
+        .data
+        or []
+    )
+    meetings = (
+        db.table("meetings")
+        .select("*")
+        .eq("matter_id", matter_id)
+        .order("scheduled_at")
+        .execute()
+        .data
+        or []
+    )
 
     enriched = _matter_payload(row, with_facts=True)
     enriched["facts"] = facts
@@ -203,9 +242,17 @@ async def update_matter(matter_id: str, body: MatterUpdateRequest, user: Auth):
     get_matter_or_403(db, matter_id, user)
 
     data = body.model_dump(exclude_none=True)
-    restricted_fields = {"status", "priority", "court_name", "case_number", "next_hearing_at"}
+    restricted_fields = {
+        "status",
+        "priority",
+        "court_name",
+        "case_number",
+        "next_hearing_at",
+    }
     if user.role == UserRole.USER and restricted_fields.intersection(data.keys()):
-        raise Forbidden("Access denied: Only lawyers/admins can update matter case metadata")
+        raise Forbidden(
+            "Access denied: Only lawyers/admins can update matter case metadata"
+        )
 
     if "status" in data:
         transition_status(db, matter_id, data.pop("status"), user.id)
@@ -223,12 +270,22 @@ async def update_matter(matter_id: str, body: MatterUpdateRequest, user: Auth):
 async def get_facts(matter_id: str, user: Auth):
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    rows = db.table("facts").select("*").eq("matter_id", matter_id).order("key").execute().data or []
+    rows = (
+        db.table("facts")
+        .select("*")
+        .eq("matter_id", matter_id)
+        .order("key")
+        .execute()
+        .data
+        or []
+    )
     return rows
 
 
 @router.patch("/{matter_id}/facts/{fact_id}", response_model=FactOut)
-async def verify_fact(matter_id: str, fact_id: str, body: VerifyFactRequest, user: LawyerOrAdmin):
+async def verify_fact(
+    matter_id: str, fact_id: str, body: VerifyFactRequest, user: LawyerOrAdmin
+):
     """Lawyer or admin verifies (and optionally corrects) a fact."""
     db = get_db()
     get_matter_or_403(db, matter_id, user)
@@ -237,16 +294,30 @@ async def verify_fact(matter_id: str, fact_id: str, body: VerifyFactRequest, use
         update["value"] = body.value
 
     existing = (
-        db.table("facts").select("updated_at").eq("id", fact_id).eq("matter_id", matter_id).single().execute().data
+        db.table("facts")
+        .select("updated_at")
+        .eq("id", fact_id)
+        .eq("matter_id", matter_id)
+        .single()
+        .execute()
+        .data
     )
     if not existing:
         raise NotFound("Fact")
 
     if body.updated_at is not None and existing.get("updated_at") is not None:
         if str(body.updated_at) != str(existing.get("updated_at")):
-            raise HTTPException(status_code=409, detail="Fact was modified by another request")
+            raise HTTPException(
+                status_code=409, detail="Fact was modified by another request"
+            )
 
-    r = db.table("facts").update(update).eq("id", fact_id).eq("matter_id", matter_id).execute()
+    r = (
+        db.table("facts")
+        .update(update)
+        .eq("id", fact_id)
+        .eq("matter_id", matter_id)
+        .execute()
+    )
     if not r.data:
         raise NotFound("Fact")
 
@@ -266,7 +337,11 @@ async def verify_fact(matter_id: str, fact_id: str, body: VerifyFactRequest, use
 async def get_updates(matter_id: str, user: Auth):
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    q = db.table("matter_updates").select("*, profiles!author_id(full_name)").eq("matter_id", matter_id)
+    q = (
+        db.table("matter_updates")
+        .select("*, profiles!author_id(full_name)")
+        .eq("matter_id", matter_id)
+    )
     if user.role == UserRole.USER:
         q = q.eq("is_internal", False)
     rows = q.order("created_at", desc=False).execute().data or []
@@ -274,7 +349,9 @@ async def get_updates(matter_id: str, user: Auth):
     all_updates = []
     for r in rows:
         author_name = (r.pop("profiles", None) or {}).get("full_name")
-        all_updates.append(UpdateOut(**{**r, "author_name": author_name, "replies": []}))
+        all_updates.append(
+            UpdateOut(**{**r, "author_name": author_name, "replies": []})
+        )
 
     lookup = {u.id: u for u in all_updates}
     roots = []
@@ -302,14 +379,25 @@ async def post_update(matter_id: str, body: PostUpdateRequest, user: Auth):
         "is_internal": body.is_internal,
     }
     if body.parent_id:
-        parent = db.table("matter_updates").select("matter_id").eq("id", body.parent_id).execute().data
+        parent = (
+            db.table("matter_updates")
+            .select("matter_id")
+            .eq("id", body.parent_id)
+            .execute()
+            .data
+        )
         if not parent or parent[0]["matter_id"] != matter_id:
             raise BadRequest("Invalid parent update ID")
         insert_data["parent_id"] = body.parent_id
 
     r = db.table("matter_updates").insert(insert_data).execute().data[0]
     full = (
-        db.table("matter_updates").select("*, profiles!author_id(full_name)").eq("id", r["id"]).single().execute().data
+        db.table("matter_updates")
+        .select("*, profiles!author_id(full_name)")
+        .eq("id", r["id"])
+        .single()
+        .execute()
+        .data
     )
     author_name = (full.pop("profiles", None) or {}).get("full_name")
 
@@ -358,13 +446,21 @@ async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
     from fastapi import HTTPException
 
     if user.role == UserRole.LAWYER:
-        raise HTTPException(status_code=403, detail="Lawyers cannot initiate lawyer assignments")
+        raise HTTPException(
+            status_code=403, detail="Lawyers cannot initiate lawyer assignments"
+        )
 
     db = get_db()
     get_matter_or_403(db, matter_id, user)
 
     # Validate target lawyer exists and is active with lawyer role
-    lawyer_profile = db.table("profiles").select("role, is_active").eq("id", body.lawyer_id).execute().data
+    lawyer_profile = (
+        db.table("profiles")
+        .select("role, is_active")
+        .eq("id", body.lawyer_id)
+        .execute()
+        .data
+    )
     if not lawyer_profile:
         raise HTTPException(status_code=400, detail="Target user does not exist")
     if lawyer_profile[0]["role"] != "lawyer":
@@ -434,7 +530,11 @@ async def create_hearing(matter_id: str, body: HearingCreate, user: LawyerOrAdmi
     )
 
     await emit(
-        (EventType.HEARING_SCHEDULED if body.status == "scheduled" else EventType.HEARING_UPDATED),
+        (
+            EventType.HEARING_SCHEDULED
+            if body.status == "scheduled"
+            else EventType.HEARING_UPDATED
+        ),
         actor_id=user.id,
         matter_id=matter_id,
         payload={"hearing_id": r["id"]},
@@ -443,7 +543,9 @@ async def create_hearing(matter_id: str, body: HearingCreate, user: LawyerOrAdmi
 
 
 @router.patch("/{matter_id}/hearings/{hearing_id}", response_model=HearingOut)
-async def update_hearing(matter_id: str, hearing_id: str, body: HearingUpdate, user: LawyerOrAdmin):
+async def update_hearing(
+    matter_id: str, hearing_id: str, body: HearingUpdate, user: LawyerOrAdmin
+):
     if not settings.FEATURE_HEARINGS:
         raise HTTPException(status_code=404, detail="Hearings feature not available")
     db = get_db()
@@ -453,7 +555,13 @@ async def update_hearing(matter_id: str, hearing_id: str, body: HearingUpdate, u
     if "hearing_date" in data and data["hearing_date"]:
         data["hearing_date"] = data["hearing_date"].isoformat()
 
-    r = db.table("hearings").update(data).eq("id", hearing_id).eq("matter_id", matter_id).execute()
+    r = (
+        db.table("hearings")
+        .update(data)
+        .eq("id", hearing_id)
+        .eq("matter_id", matter_id)
+        .execute()
+    )
     if not r.data:
         raise NotFound("Hearing")
 
@@ -496,14 +604,20 @@ async def create_milestone(matter_id: str, body: MilestoneCreate, user: LawyerOr
 
 
 @router.patch("/{matter_id}/milestones/{milestone_id}", response_model=MilestoneOut)
-async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpdate, user: Auth):
+async def update_milestone(
+    matter_id: str, milestone_id: str, body: MilestoneUpdate, user: Auth
+):
     if not settings.FEATURE_MILESTONES:
         raise HTTPException(status_code=404, detail="Milestones feature not available")
 
     data = body.model_dump(exclude_none=True)
 
     # If client/user tries to pay bill
-    if "is_paid" in data or "payment_gateway_ref" in data or "payment_record_id" in data:
+    if (
+        "is_paid" in data
+        or "payment_gateway_ref" in data
+        or "payment_record_id" in data
+    ):
         if not settings.FEATURE_BILLING:
             raise HTTPException(status_code=404, detail="Billing feature not available")
 
@@ -528,7 +642,13 @@ async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpd
         data["completed_at"] = data["completed_at"].isoformat()
 
     try:
-        r = db.table("matter_milestones").update(data).eq("id", milestone_id).eq("matter_id", matter_id).execute()
+        r = (
+            db.table("matter_milestones")
+            .update(data)
+            .eq("id", milestone_id)
+            .eq("matter_id", matter_id)
+            .execute()
+        )
         if not r.data:
             raise NotFound("Milestone")
         milestone = r.data[0]
@@ -537,7 +657,12 @@ async def update_milestone(matter_id: str, milestone_id: str, body: MilestoneUpd
         if "duplicate" in msg or "already exists" in msg or "unique" in msg:
             pkey = data.get("payment_idempotency_key")
             if pkey:
-                existing = db.table("matter_milestones").select("*").eq("payment_idempotency_key", pkey).execute()
+                existing = (
+                    db.table("matter_milestones")
+                    .select("*")
+                    .eq("payment_idempotency_key", pkey)
+                    .execute()
+                )
                 if existing.data:
                     if existing.data[0]["id"] == milestone_id:
                         return existing.data[0]
@@ -600,13 +725,21 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
 
 
 @router.patch("/{matter_id}/meetings/{meeting_id}", response_model=MeetingOut)
-async def update_meeting(matter_id: str, meeting_id: str, body: MeetingUpdate, user: Auth):
+async def update_meeting(
+    matter_id: str, meeting_id: str, body: MeetingUpdate, user: Auth
+):
     db = get_db()
     get_matter_or_403(db, matter_id, user)
 
     # Check existing meeting status to prevent double-counting sessions_used
     existing = (
-        db.table("meetings").select("status").eq("id", meeting_id).eq("matter_id", matter_id).single().execute().data
+        db.table("meetings")
+        .select("status")
+        .eq("id", meeting_id)
+        .eq("matter_id", matter_id)
+        .single()
+        .execute()
+        .data
     )
     if not existing:
         raise NotFound("Meeting")
@@ -615,7 +748,13 @@ async def update_meeting(matter_id: str, meeting_id: str, body: MeetingUpdate, u
     if "scheduled_at" in data and data["scheduled_at"]:
         data["scheduled_at"] = data["scheduled_at"].isoformat()
 
-    r = db.table("meetings").update(data).eq("id", meeting_id).eq("matter_id", matter_id).execute()
+    r = (
+        db.table("meetings")
+        .update(data)
+        .eq("id", meeting_id)
+        .eq("matter_id", matter_id)
+        .execute()
+    )
     if not r.data:
         raise NotFound("Meeting")
 
@@ -646,9 +785,13 @@ async def payment_webhook(request: Request):
 
     if not is_mock:
         if not signature:
-            raise HTTPException(status_code=400, detail="Missing X-Razorpay-Signature header")
+            raise HTTPException(
+                status_code=400, detail="Missing X-Razorpay-Signature header"
+            )
 
-        expected_sig = hmac.new(settings.PAYMENT_WEBHOOK_SECRET.encode(), body_bytes, hashlib.sha256).hexdigest()
+        expected_sig = hmac.new(
+            settings.PAYMENT_WEBHOOK_SECRET.encode(), body_bytes, hashlib.sha256
+        ).hexdigest()
 
         if not hmac.compare_digest(signature, expected_sig):
             raise HTTPException(status_code=401, detail="Invalid signature")
@@ -674,14 +817,20 @@ async def payment_webhook(request: Request):
 
     # 4. Fetch milestone and verify existence
     db = get_service_role_db()
-    milestone_res = db.table("matter_milestones").select("*").eq("id", milestone_id).execute()
+    milestone_res = (
+        db.table("matter_milestones").select("*").eq("id", milestone_id).execute()
+    )
     if not milestone_res.data:
         raise HTTPException(status_code=404, detail="Milestone not found")
     milestone = milestone_res.data[0]
 
     # Idempotency check: if already paid
     if milestone.get("is_paid"):
-        return {"status": "success", "message": "Milestone already paid", "milestone_id": milestone_id}
+        return {
+            "status": "success",
+            "message": "Milestone already paid",
+            "milestone_id": milestone_id,
+        }
 
     if idemp_key:
         existing_key_res = (
@@ -693,9 +842,16 @@ async def payment_webhook(request: Request):
         if existing_key_res.data:
             existing = existing_key_res.data[0]
             if existing["id"] == milestone_id:
-                return {"status": "success", "message": "Milestone already paid", "milestone_id": milestone_id}
+                return {
+                    "status": "success",
+                    "message": "Milestone already paid",
+                    "milestone_id": milestone_id,
+                }
             else:
-                raise HTTPException(status_code=400, detail="Idempotency key already used for another milestone")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Idempotency key already used for another milestone",
+                )
 
     # 5. Get matter and user details
     matter_id = milestone["matter_id"]
@@ -718,7 +874,11 @@ async def payment_webhook(request: Request):
         payment_data = {
             "milestone_id": milestone_id,
             "user_id": user_id,
-            "amount_inr": float(milestone["amount_inr"]) if milestone.get("amount_inr") is not None else 0.0,
+            "amount_inr": (
+                float(milestone["amount_inr"])
+                if milestone.get("amount_inr") is not None
+                else 0.0
+            ),
             "status": "completed",
             "payment_id": payment_id,
             "payment_idempotency_key": idemp_key,

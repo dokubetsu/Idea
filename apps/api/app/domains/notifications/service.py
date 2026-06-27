@@ -11,7 +11,9 @@ BACKGROUND_TASKS: set[asyncio.Task] = set()
 
 def get_recipient_info(db, user_id: str) -> dict:
     try:
-        profile_resp = db.table("profiles").select("*").eq("id", user_id).single().execute()
+        profile_resp = (
+            db.table("profiles").select("*").eq("id", user_id).single().execute()
+        )
         profile = profile_resp.data if profile_resp else None
     except Exception:
         profile = None
@@ -71,7 +73,12 @@ def create_notification(
         msg = str(e).lower()
         if "duplicate" in msg or "already exists" in msg or "unique" in msg:
             if idempotency_key:
-                existing = db.table("notifications").select("*").eq("idempotency_key", idempotency_key).execute()
+                existing = (
+                    db.table("notifications")
+                    .select("*")
+                    .eq("idempotency_key", idempotency_key)
+                    .execute()
+                )
                 if existing.data:
                     return existing.data[0]
         raise e
@@ -97,7 +104,10 @@ def create_notification(
     notification["_html_body"] = html_body
 
     # 4. Insert delivery records (one per enabled channel)
-    deliveries = [{"notification_id": notif_id, "channel": ch, "status": "pending"} for ch in channels]
+    deliveries = [
+        {"notification_id": notif_id, "channel": ch, "status": "pending"}
+        for ch in channels
+    ]
     if deliveries:
         db.table("notification_deliveries").insert(deliveries).execute()
 
@@ -121,13 +131,19 @@ def get_notifications(
     query = db.table("notifications").select("*").eq("user_id", user_id)
     if status:
         query = query.eq("status", status)
-    resp = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    resp = (
+        query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    )
     return resp.data or []
 
 
 def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
     resp = (
-        db.table("notifications").update({"status": "read"}).eq("id", notification_id).eq("user_id", user_id).execute()
+        db.table("notifications")
+        .update({"status": "read"})
+        .eq("id", notification_id)
+        .eq("user_id", user_id)
+        .execute()
     )
     if not resp.data:
         from app.shared.exceptions import NotFound
@@ -137,5 +153,11 @@ def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
 
 
 def mark_all_as_read(db, user_id: str) -> List[Dict[str, Any]]:
-    resp = db.table("notifications").update({"status": "read"}).eq("user_id", user_id).eq("status", "unread").execute()
+    resp = (
+        db.table("notifications")
+        .update({"status": "read"})
+        .eq("user_id", user_id)
+        .eq("status", "unread")
+        .execute()
+    )
     return resp.data or []
