@@ -11,11 +11,29 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
+
+
 @router.post("/{matter_id}/documents/upload-url", response_model=PreSignedUrlResponse)
 async def get_upload_url(matter_id: str, body: DocumentUploadRequest, user: Auth):
     db = get_db()
     # Check matter access (user owns it or lawyer assigned to it)
     get_matter_or_403(db, matter_id, user)
+
+    # Validate content type
+    if not body.content_type or body.content_type.strip().lower() not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or unsupported file type. Only PDFs, images, text, and Word documents are allowed."
+        )
 
     # Path will be matter_id/filename
     # Note: we need to sanitize the filename to prevent path traversal

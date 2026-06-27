@@ -47,9 +47,21 @@ function LoginForm() {
     }
 
     const redirectUrl = params.get("redirect");
-    const safeRedirect = redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//")
-      ? redirectUrl
-      : `/${role}/dashboard`;
+    let safeRedirect = `/${role}/dashboard`;
+    if (redirectUrl) {
+      try {
+        const parsed = new URL(redirectUrl, window.location.origin);
+        if (
+          parsed.origin === window.location.origin &&
+          !redirectUrl.startsWith("//") &&
+          !redirectUrl.startsWith("/\\")
+        ) {
+          safeRedirect = parsed.pathname + parsed.search + parsed.hash;
+        }
+      } catch (e) {
+        // Fall back to default
+      }
+    }
     router.replace(safeRedirect);
   }
 

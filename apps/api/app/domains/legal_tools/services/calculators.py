@@ -63,9 +63,10 @@ class ChequeBounceCalculator:
         filing_valid = None
 
         if notice_receipt_date:
+            from dateutil.relativedelta import relativedelta
             wait_end_date = notice_receipt_date + timedelta(days=15)
             filing_start_date = wait_end_date + timedelta(days=1)
-            filing_deadline = wait_end_date + timedelta(days=30)
+            filing_deadline = wait_end_date + relativedelta(months=1)
 
             if complaint_filed_date:
                 filing_valid = (
@@ -232,11 +233,8 @@ class SummarySuitCalculator:
 
         # 1. Limitation Check (3 years from due date)
         # A leap year safe calculation adds 3 years
-        try:
-            limitation_expiry = due_date.replace(year=due_date.year + 3)
-        except ValueError:
-            # Handles Feb 29 leap day edge case
-            limitation_expiry = due_date + timedelta(days=3 * 365 + 1)
+        from dateutil.relativedelta import relativedelta
+        limitation_expiry = due_date + relativedelta(years=3)
 
         days_left = (limitation_expiry - now).days
 

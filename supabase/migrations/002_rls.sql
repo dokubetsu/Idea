@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Row Level Security
 -- ================================================================
@@ -169,3 +171,5 @@ CREATE POLICY "requests:insert_user"
 CREATE POLICY "requests:update_lawyer_admin"
   ON lawyer_requests FOR UPDATE TO authenticated
   USING (lawyer_id = auth.uid() OR auth_role() = 'admin');
+
+COMMIT;

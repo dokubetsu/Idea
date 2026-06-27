@@ -48,7 +48,7 @@ class FactsExtractionResult(BaseModel):
 
 class StartIntakeRequest(BaseModel):
     title: str = Field(min_length=5, max_length=200)
-    description: str = Field(default="")
+    description: str = Field(default="", max_length=5000)
 
 
 class UpdateFactsRequest(BaseModel):

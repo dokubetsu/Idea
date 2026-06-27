@@ -79,6 +79,26 @@ class Normalizer:
         if data.get("timeline_max_months", 0) < 0:
             data["timeline_max_months"] = 0
 
+        if (
+            "timeline_min_months" in data
+            and "timeline_max_months" in data
+            and data["timeline_min_months"] > data["timeline_max_months"]
+        ):
+            data["timeline_min_months"], data["timeline_max_months"] = (
+                data["timeline_max_months"],
+                data["timeline_min_months"],
+            )
+
+        if (
+            "budget_min_inr" in data
+            and "budget_max_inr" in data
+            and data["budget_min_inr"] > data["budget_max_inr"]
+        ):
+            data["budget_min_inr"], data["budget_max_inr"] = (
+                data["budget_max_inr"],
+                data["budget_min_inr"],
+            )
+
         # Check success probability is within 0-100
         prob = data.get("success_probability", 50)
         data["success_probability"] = max(0, min(100, prob))

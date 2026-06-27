@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Missing Infrastructure Tables v1 (Migration 021)
 -- ================================================================
@@ -169,3 +171,5 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql;
+
+COMMIT;

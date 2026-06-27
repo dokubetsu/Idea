@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Migration v6 (Hearings, Milestones, Threading)
 -- ================================================================
@@ -129,3 +131,5 @@ CREATE INDEX IF NOT EXISTS idx_hearings_matter_id ON public.hearings(matter_id);
 CREATE INDEX IF NOT EXISTS idx_hearings_date ON public.hearings(hearing_date);
 CREATE INDEX IF NOT EXISTS idx_milestones_matter_id ON public.matter_milestones(matter_id);
 CREATE INDEX IF NOT EXISTS idx_matter_updates_parent_id ON public.matter_updates(parent_id);
+
+COMMIT;

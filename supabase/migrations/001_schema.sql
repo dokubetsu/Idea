@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Production Schema v1
 --  Run in order in Supabase SQL Editor
@@ -243,3 +245,5 @@ DO $$ BEGIN
   CREATE TRIGGER trg_intake_sessions_updated_at BEFORE UPDATE ON intake_sessions FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
   EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+COMMIT;

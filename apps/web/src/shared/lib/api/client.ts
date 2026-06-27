@@ -14,9 +14,48 @@ export class ApiError extends Error {
   }
 }
 
-async function token() {
-  const { data } = await createClient().auth.getSession();
-  return data.session?.access_token ?? null;
+let refreshPromise: Promise<string | null> | null = null;
+
+async function token(forceRefresh = false): Promise<string | null> {
+  const sb = createClient();
+  if (forceRefresh) {
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        try {
+          const { data: { session } } = await sb.auth.refreshSession();
+          return session?.access_token ?? null;
+        } catch {
+          return null;
+        } finally {
+          refreshPromise = null;
+        }
+      })();
+    }
+    return refreshPromise;
+  }
+
+  const { data } = await sb.auth.getSession();
+  const session = data.session;
+  if (!session) return null;
+
+  const expiresAt = session.expires_at;
+  const now = Math.floor(Date.now() / 1000);
+  if (expiresAt && expiresAt - now < 10) {
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        try {
+          const { data: { session: newSession } } = await sb.auth.refreshSession();
+          return newSession?.access_token ?? null;
+        } catch {
+          return null;
+        } finally {
+          refreshPromise = null;
+        }
+      })();
+    }
+    return refreshPromise;
+  }
+  return session.access_token;
 }
 
 async function request<T>(path: string, init: RequestInit = {}, retries = 2): Promise<T> {
@@ -38,6 +77,30 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
     });
     
     clearTimeout(timeoutId);
+
+    if (res.status === 401) {
+      const newToken = await token(true);
+      if (newToken) {
+        const retryRes = await fetch(`${BASE}${V}${path}`, {
+          ...init,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${newToken}`,
+            ...init.headers,
+          },
+        });
+        if (retryRes.ok) {
+          if (retryRes.status === 204) return undefined as T;
+          return retryRes.json();
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        await createClient().auth.signOut();
+        window.location.href = "/login?notice=session-expired";
+      }
+      throw new ApiError(401, "Session expired. Please sign in again.");
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -72,7 +135,6 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
     
     throw error;
   }
-
 }
 
 export const apiClient = {

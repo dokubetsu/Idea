@@ -269,13 +269,15 @@ def _mock_extract(title: str, description: str) -> FactsExtractionResult:
         )
 
     schema = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
-    found_keys = {f.key for f in facts}
+    schema_keys = set(schema)
+    found_keys = {f.key for f in facts if f.key in schema_keys}
     missing = [v for k, v in schema.items() if k not in found_keys]
+    completeness_score = min(1.0, len(found_keys) / max(len(schema), 1))
 
     return FactsExtractionResult(
         facts=facts,
         detected_category=category,
-        completeness_score=len(found_keys) / max(len(schema), 1),
+        completeness_score=completeness_score,
         missing_keys=missing[:4],
         provider="mock",
     )
@@ -297,9 +299,13 @@ async def extract_facts(title: str, description: str) -> FactsExtractionResult:
     from app.config import settings
 
     if settings.ai_provider != "mock":
-        return await _ai_extract(title, description)
+        try:
+            return await _ai_extract(title, description)
+        except Exception as e:
+            log.exception("AI facts extraction failed, falling back to keyword extraction: %s", e)
 
     return _mock_extract(title, description)
+
 
 
 async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
@@ -342,13 +348,15 @@ async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
     category = normalized.get("detected_category", "other")
     facts = [ExtractedFact(**f) for f in normalized.get("facts", [])]
     schema = FACT_SCHEMAS.get(category, FACT_SCHEMAS["other"])
-    found = {f.key for f in facts}
+    schema_keys = set(schema)
+    found = {f.key for f in facts if f.key in schema_keys}
     missing = [v for k, v in schema.items() if k not in found]
+    completeness_score = min(1.0, len(found) / max(len(schema), 1))
 
     return FactsExtractionResult(
         facts=facts,
         detected_category=category,
-        completeness_score=len(found) / max(len(schema), 1),
+        completeness_score=completeness_score,
         missing_keys=missing[:4],
         provider=provider.name,
     )

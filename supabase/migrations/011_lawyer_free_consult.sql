@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 011: Lawyer Consultation Opt-In
 -- ================================================================
@@ -12,3 +14,5 @@ ALTER TABLE lawyer_profiles
 -- Empty array = lawyer accepts no paid packages.
 -- Card state: if offers_free_consultation=false AND offered_packages='{}'
 --             → show "Not currently accepting consultations" (no booking button)
+
+COMMIT;

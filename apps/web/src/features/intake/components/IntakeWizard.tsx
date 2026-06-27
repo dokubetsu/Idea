@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -139,6 +139,69 @@ export function IntakeWizard({
 
   const coreForm = useForm<CoreForm>({ resolver: zodResolver(coreSchema) });
   const descForm = useForm<DescribeForm>({ resolver: zodResolver(describeSchema) });
+
+  const wizardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = wizardRef.current;
+    if (!element) return;
+
+    const focusable = Array.from(
+      element.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => {
+      const style = window.getComputedStyle(el);
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        !(el as any).disabled
+      );
+    });
+
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+
+      const currentFocusable = Array.from(
+        element.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => {
+        const style = window.getComputedStyle(el);
+        return (
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          !(el as any).disabled
+        );
+      });
+
+      if (currentFocusable.length === 0) return;
+
+      const first = currentFocusable[0];
+      const last = currentFocusable[currentFocusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        }
+      } else {
+        if (document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [step]);
 
   // Load draft from sessionStorage on mount
   useEffect(() => {
@@ -300,7 +363,13 @@ export function IntakeWizard({
   const a = session?.assessment_result as Assessment | undefined;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand-gold/15 bg-white shadow-2xl transition-all duration-300">
+    <div
+      ref={wizardRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-title"
+      className="overflow-hidden rounded-2xl border border-brand-gold/15 bg-white shadow-2xl transition-all duration-300"
+    >
       {/* Progress bar */}
       <div className="h-1 bg-base-300">
         <div className="h-full bg-brand-gold transition-all duration-500" style={{ width: `${PROGRESS[step]}%` }} />
@@ -313,7 +382,7 @@ export function IntakeWizard({
             <Scale className="h-4 w-4 text-brand-gold animate-scale-tilt" />
           </div>
           <div>
-            <h2 className="font-serif text-xl font-bold">
+            <h2 id="wizard-title" className="font-serif text-xl font-bold">
               {step === "domain"         && "Choose a legal domain"}
               {step === "subtype"        && "Select the type of dispute"}
               {step === "core_facts"     && "A few quick details"}

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM -- Migration 022: Secure confirm_consultation RPC (H3)
 -- ================================================================
@@ -100,3 +102,5 @@ BEGIN
   RETURN QUERY SELECT v_matter_id, FALSE;
 END;
 $$;
+
+COMMIT;

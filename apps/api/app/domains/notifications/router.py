@@ -20,6 +20,8 @@ bearer = HTTPBearer(auto_error=False)
 # Dictionary mapping ticket_id -> {"user_id": str, "expires_at": float}
 SSE_TICKETS: Dict[str, dict] = {}
 TICKET_EXPIRY_SECONDS = 30
+MAX_TOTAL_TICKETS = 5000
+MAX_TICKETS_PER_USER = 5
 
 
 def _clean_expired_tickets():
@@ -29,71 +31,36 @@ def _clean_expired_tickets():
         SSE_TICKETS.pop(k, None)
 
 
-# ── SSE auth helper (query-param token for native EventSource) ────────────────
+# ── SSE auth helper (native EventSource with short-lived tickets) ─────────────
 async def get_sse_user(
     ticket: Optional[str] = Query(None),
-    token: Optional[str] = Query(None),
-    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db=Depends(get_db),
 ) -> CurrentUser:
-    raw_token = None
-    if creds:
-        raw_token = creds.credentials
-    elif token:
-        raw_token = token
+    if not ticket:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-    if raw_token:
-        try:
-            payload = _decode_jwt(raw_token)
-        except Exception:
-            raise HTTPException(status_code=401, detail="Invalid token")
+    ticket_data = SSE_TICKETS.pop(ticket, None)
+    if not ticket_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired ticket")
+    if time.time() > ticket_data["expires_at"]:
+        raise HTTPException(status_code=401, detail="Ticket expired")
 
-        user_id = payload.get("sub", "")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+    result = (
+        db.table("profiles")
+        .select("id,role,full_name,is_active")
+        .eq("id", ticket_data["user_id"])
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=401, detail="Profile not found")
 
-        result = (
-            db.table("profiles")
-            .select("id,role,full_name,is_active")
-            .eq("id", user_id)
-            .execute()
-        )
-        if not result.data:
-            raise HTTPException(status_code=401, detail="Profile not found")
+    p = result.data[0]
+    if not p["is_active"]:
+        raise HTTPException(status_code=403, detail="Account suspended")
 
-        p = result.data[0]
-        if not p["is_active"]:
-            raise HTTPException(status_code=403, detail="Account suspended")
-
-        return CurrentUser(
-            id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"]
-        )
-
-    if ticket:
-        ticket_data = SSE_TICKETS.pop(ticket, None)
-        if not ticket_data:
-            raise HTTPException(status_code=401, detail="Invalid or expired ticket")
-        if time.time() > ticket_data["expires_at"]:
-            raise HTTPException(status_code=401, detail="Ticket expired")
-
-        result = (
-            db.table("profiles")
-            .select("id,role,full_name,is_active")
-            .eq("id", ticket_data["user_id"])
-            .execute()
-        )
-        if not result.data:
-            raise HTTPException(status_code=401, detail="Profile not found")
-
-        p = result.data[0]
-        if not p["is_active"]:
-            raise HTTPException(status_code=403, detail="Account suspended")
-
-        return CurrentUser(
-            id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"]
-        )
-
-    raise HTTPException(status_code=401, detail="Not authenticated")
+    return CurrentUser(
+        id=p["id"], role=UserRole(p["role"]), full_name=p["full_name"]
+    )
 
 
 # ── Preference request/response models ───────────────────────────────────────
@@ -173,6 +140,20 @@ async def create_sse_ticket(
 ) -> dict:
     """Generate a short-lived SSE connection ticket for the current user."""
     _clean_expired_tickets()
+
+    # 1. Cap total active tickets to prevent memory exhaustion DoS
+    if len(SSE_TICKETS) >= MAX_TOTAL_TICKETS:
+        raise HTTPException(
+            status_code=429,
+            detail="Server is busy. Please try again later."
+        )
+
+    # 2. Cap tickets per user. If limit exceeded, evict oldest to make room.
+    user_tickets = [k for k, v in SSE_TICKETS.items() if v.get("user_id") == user.id]
+    if len(user_tickets) >= MAX_TICKETS_PER_USER:
+        sorted_keys = sorted(user_tickets, key=lambda k: SSE_TICKETS[k].get("expires_at", 0))
+        SSE_TICKETS.pop(sorted_keys[0], None)
+
     ticket_id = str(uuid.uuid4())
     SSE_TICKETS[ticket_id] = {
         "user_id": user.id,

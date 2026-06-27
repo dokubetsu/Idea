@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Soft-Delete Migration
 -- ================================================================
@@ -73,3 +75,5 @@ CREATE POLICY "updates:read_participant_gated" ON matter_updates FOR SELECT TO a
      AND (is_internal = false OR auth_role() IN ('lawyer','admin')))
     OR auth_role() = 'admin'
   );
+
+COMMIT;

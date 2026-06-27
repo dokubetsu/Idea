@@ -16,9 +16,9 @@ class CommentAddedTemplate(BaseNotificationTemplate):
         return body
 
     def _html_content(self) -> str:
-        title = self.data.get("matter_title", "your case")
-        author = self.data.get("author_name", "Someone")
-        preview = self.data.get("preview", "")
+        title = self.escape(self.data.get("matter_title", "your case"))
+        author = self.escape(self.data.get("author_name", "Someone"))
+        preview = self.escape(self.data.get("preview", ""))
         preview_block = (
             f"""<tr>
               <td style="padding:0 20px 16px;">

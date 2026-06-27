@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ============================================================
 -- Migration 008: Notification Delivery Preferences
 -- Allows users to opt-out of specific channels per notification type
@@ -46,3 +48,5 @@ CREATE POLICY "users_delete_own_prefs"
 CREATE POLICY "service_role_all_prefs"
     ON notification_preferences FOR ALL
     USING (auth.role() = 'service_role');
+
+COMMIT;

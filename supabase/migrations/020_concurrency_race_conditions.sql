@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 020: Concurrency & Race Conditions
 -- ================================================================
@@ -224,3 +226,5 @@ BEGIN
   RETURN json_build_object('ok', true, 'message', 'Request sent to lawyer', 'already_exists', false);
 END;
 $$;
+
+COMMIT;

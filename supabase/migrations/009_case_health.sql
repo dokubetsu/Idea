@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 009: Case Health Status
 -- ================================================================
@@ -16,3 +18,5 @@ COMMENT ON COLUMN matters.matter_health IS
   'Signals who has the ball: waiting_on_client = action needed from client,
    waiting_on_lawyer = lawyer is working, waiting_on_court = next step is a hearing,
    in_progress = actively being worked on. Set by lawyer via PATCH /matters/{id}.';
+
+COMMIT;

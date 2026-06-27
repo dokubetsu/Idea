@@ -141,13 +141,19 @@ class MockSupabaseClient:
     def __init__(self):
         self.tables = {}
         self.auth = MockAuth()
+        self.rpc_calls = []
 
     def table(self, name: str):
         if name not in self.tables:
             self.tables[name] = MockSupabaseTable(name)
         return self.tables[name]
 
-    def rpc(self, name: str, params: dict):
+    def rpc(self, name: str, params: dict = None):
+        self.rpc_calls.append((name, params))
+        if name == "verify_lawyer_rpc":
+            return MockRpcBuilder([])
+        if name == "suspend_lawyer_rpc":
+            return MockRpcBuilder([])
         if name == "commit_intake":
             return MockRpcBuilder(
                 [{"matter_id": "mock-matter-id", "already_committed": False}]

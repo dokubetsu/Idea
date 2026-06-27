@@ -16,10 +16,10 @@ class HearingScheduledTemplate(BaseNotificationTemplate):
         )
 
     def _html_content(self) -> str:
-        title = self.data.get("matter_title", "your case")
-        hearing_date = self.data.get("hearing_date", "TBD")
-        courtroom = self.data.get("courtroom", "TBD")
-        purpose = self.data.get("purpose", "")
+        title = self.escape(self.data.get("matter_title", "your case"))
+        hearing_date = self.escape(self.data.get("hearing_date", "TBD"))
+        courtroom = self.escape(self.data.get("courtroom", "TBD"))
+        purpose = self.escape(self.data.get("purpose", ""))
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">
   A new court hearing has been scheduled for your case. Please mark your calendar.

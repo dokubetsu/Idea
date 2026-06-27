@@ -138,6 +138,19 @@ async def emit(
         log.error("Event emit failed [%s]: %s", event_type, exc)
 
 
+def _run_coroutine_in_new_loop(coro):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 def sync_emit(
     event_type: EventType | str,
     *,
@@ -159,15 +172,9 @@ def sync_emit(
         for sub in list(_subscribers):
             try:
                 if asyncio.iscoroutinefunction(sub):
-                    try:
-                        loop = asyncio.get_running_loop()
-                        task = loop.create_task(
-                            sub(event_str, actor_id, matter_id, payload or {})
-                        )
-                        BACKGROUND_TASKS.add(task)
-                        task.add_done_callback(BACKGROUND_TASKS.discard)
-                    except RuntimeError:
-                        asyncio.run(sub(event_str, actor_id, matter_id, payload or {}))
+                    _run_coroutine_in_new_loop(
+                        sub(event_str, actor_id, matter_id, payload or {})
+                    )
                 else:
                     sub(event_str, actor_id, matter_id, payload or {})
             except Exception as sub_exc:

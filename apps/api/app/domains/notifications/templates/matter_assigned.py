@@ -15,8 +15,8 @@ class MatterAssignedTemplate(BaseNotificationTemplate):
         )
 
     def _html_content(self) -> str:
-        title = self.data.get("matter_title", "your case")
-        lawyer_name = self.data.get("lawyer_name", "a lawyer")
+        title = self.escape(self.data.get("matter_title", "your case"))
+        lawyer_name = self.escape(self.data.get("lawyer_name", "a lawyer"))
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">
   Great news — your case has been assigned to an advocate who will represent you.

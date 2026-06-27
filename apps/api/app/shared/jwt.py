@@ -34,16 +34,15 @@ def decode_token(token: str) -> dict:
         else:
             key = settings.SUPABASE_JWT_SECRET
 
+        issuer = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
         payload = jwt.decode(
-            token, key, algorithms=["HS256", "ES256"], options={"verify_aud": False}
+            token,
+            key,
+            algorithms=[alg],
+            audience="authenticated",
+            issuer=issuer,
+            options={"verify_aud": True, "verify_iss": True},
         )
-
-        aud = payload.get("aud")
-        if isinstance(aud, list):
-            if "authenticated" not in aud:
-                raise HTTPException(status_code=401, detail="Invalid token audience")
-        elif aud != "authenticated":
-            raise HTTPException(status_code=401, detail="Invalid token audience")
 
         return payload
     except jwt.ExpiredSignatureError:

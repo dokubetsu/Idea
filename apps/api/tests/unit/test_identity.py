@@ -55,17 +55,10 @@ async def test_admin_verify_lawyer_promotes_role(client: AsyncClient, mock_db):
         assert res.status_code == 200
         assert res.json() == {"ok": True}
 
-        # Check profiles update query was issued to change role to 'lawyer'
-        p_table = mock_db.table("profiles")
-        updates = [q for q in p_table.queries if q[0] == "update"]
-        assert len(updates) == 1
-        assert updates[0][1] == {"role": "lawyer"}
-
-        # Check lawyer_profiles update query set is_verified to True
-        lp_table = mock_db.table("lawyer_profiles")
-        lp_updates = [q for q in lp_table.queries if q[0] == "update"]
-        assert len(lp_updates) == 1
-        assert lp_updates[0][1] == {"is_verified": True}
+        # Check verify_lawyer_rpc was called to verify lawyer atomically
+        verify_calls = [c for c in mock_db.rpc_calls if c[0] == "verify_lawyer_rpc"]
+        assert len(verify_calls) == 1
+        assert verify_calls[0][1] == {"p_lawyer_id": "test-lawyer-id"}
 
     finally:
         # Clean up dependency overrides

@@ -81,14 +81,14 @@ def test_prompt_builder():
     # Extraction v1
     sys_prompt, user_prompt = PromptBuilder.build("extraction", context, version="v1")
     assert "detected_category" in sys_prompt
-    assert "<title>\nTest case\n</title>" in user_prompt
+    assert "<title_base64>\nVGVzdCBjYXNl\n</title_base64>" in user_prompt
 
     # Assessment v1
     sys_prompt_ass, user_prompt_ass = PromptBuilder.build(
         "assessment", context, version="v1"
     )
     assert "risk_level" in sys_prompt_ass
-    assert "amount: 100" in user_prompt_ass
+    assert "amount: MTAw" in user_prompt_ass
 
     # Unknown
     with pytest.raises(ValueError):

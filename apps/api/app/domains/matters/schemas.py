@@ -192,6 +192,7 @@ class FactOut(BaseModel):
 class VerifyFactRequest(BaseModel):
     value: str | None = None  # optionally correct the value
     is_verified: bool = True
+    updated_at: datetime | None = None
 
 
 class AssignLawyerRequest(BaseModel):

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM -- Migration 028: Prevent Lawyer Double-Booking
 -- ================================================================
@@ -48,3 +50,5 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Register this migration
 INSERT INTO schema_migrations (version) VALUES ('028_prevent_meeting_overlaps') ON CONFLICT (version) DO NOTHING;
+
+COMMIT;

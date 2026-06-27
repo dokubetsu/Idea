@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Migration v24 (Fix Notification Status Enum)
 -- ================================================================
@@ -19,3 +21,5 @@ UPDATE public.notifications SET status = 'dismissed' WHERE LOWER(status) = 'dism
 -- 5. Alter the status column type back to the new enum, with default 'unread'
 ALTER TABLE public.notifications ALTER COLUMN status TYPE public.notification_status USING status::public.notification_status;
 ALTER TABLE public.notifications ALTER COLUMN status SET DEFAULT 'unread';
+
+COMMIT;

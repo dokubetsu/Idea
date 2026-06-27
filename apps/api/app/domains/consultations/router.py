@@ -4,6 +4,7 @@ from app.shared.dependencies import (
     LawyerOrAdmin,
     UserRole,
     ensure_lawyer_verified,
+    check_consultation_ownership,
 )
 from app.shared.database import get_db
 from app.shared.exceptions import Forbidden, NotFound
@@ -53,12 +54,7 @@ async def list_consultations(
 @router.get("/{consultation_id}", response_model=ConsultationOut)
 async def get_consultation(consultation_id: str, user: Auth):
     row = get_consultation_or_404(consultation_id)
-    if user.role == UserRole.USER and row["user_id"] != str(user.id):
-        raise Forbidden("Not your consultation")
-    if user.role == UserRole.LAWYER:
-        ensure_lawyer_verified(user)
-        if row["lawyer_id"] != str(user.id):
-            raise Forbidden("Not your assigned consultation")
+    check_consultation_ownership(row, user)
     return row
 
 
@@ -133,7 +129,7 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
     # Ownership Check
     row = (
         db.table("consultations")
-        .select("lawyer_id, status")
+        .select("user_id, lawyer_id, status")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -141,12 +137,7 @@ async def confirm_consultation(consultation_id: str, user: LawyerOrAdmin):
     )
     if not row:
         raise NotFound("Consultation not found")
-    if (
-        row.get("lawyer_id") is not None
-        and row["lawyer_id"] != str(user.id)
-        and user.role != UserRole.ADMIN
-    ):
-        raise Forbidden("This consultation is not assigned to you")
+    check_consultation_ownership(row, user, allow_unassigned_lawyer=True)
 
     try:
         # H3 security fix: p_lawyer_id is no longer passed to the RPC.
@@ -176,18 +167,8 @@ async def cancel_consultation(consultation_id: str, user: Auth):
         raise Forbidden("Only users can cancel consultations via this endpoint")
 
     db = get_db()
-    row = (
-        db.table("consultations")
-        .select("user_id, status")
-        .eq("id", consultation_id)
-        .single()
-        .execute()
-        .data
-    )
-    if not row:
-        raise NotFound("Consultation not found")
-    if row["user_id"] != str(user.id):
-        raise Forbidden("This consultation is not yours to cancel")
+    row = get_consultation_or_404(consultation_id)
+    check_consultation_ownership(row, user)
     if row["status"] != "pending":
         raise HTTPException(
             status_code=400, detail="Can only cancel pending consultations"
@@ -197,9 +178,12 @@ async def cancel_consultation(consultation_id: str, user: Auth):
         db.table("consultations")
         .update({"status": "cancelled"})
         .eq("id", consultation_id)
+        .eq("status", "pending")
         .select(SELECT_CONSULTATIONS)
         .execute()
     )
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Consultation is no longer pending")
     return enrich_consultation(res.data[0])
 
 
@@ -208,7 +192,7 @@ async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
     db = get_db()
     row = (
         db.table("consultations")
-        .select("lawyer_id, status")
+        .select("user_id, lawyer_id, status")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -216,10 +200,7 @@ async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
     )
     if not row:
         raise NotFound("Consultation not found")
-    if (
-        row.get("lawyer_id") is None or row["lawyer_id"] != str(user.id)
-    ) and user.role != UserRole.ADMIN:
-        raise Forbidden("This consultation is not assigned to you")
+    check_consultation_ownership(row, user)
     if row.get("status") != "pending":
         raise HTTPException(
             status_code=400, detail="Can only decline pending consultations"
@@ -229,9 +210,12 @@ async def decline_consultation(consultation_id: str, user: LawyerOrAdmin):
         db.table("consultations")
         .update({"status": "declined"})
         .eq("id", consultation_id)
+        .eq("status", "pending")
         .select(SELECT_CONSULTATIONS)
         .execute()
     )
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Consultation is no longer pending")
     return enrich_consultation(res.data[0])
 
 
@@ -242,7 +226,7 @@ async def patch_consultation(
     db = get_db()
     row = (
         db.table("consultations")
-        .select("lawyer_id")
+        .select("user_id, lawyer_id")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -250,10 +234,7 @@ async def patch_consultation(
     )
     if not row:
         raise NotFound("Consultation not found")
-    if (
-        row.get("lawyer_id") is None or row["lawyer_id"] != str(user.id)
-    ) and user.role != UserRole.ADMIN:
-        raise Forbidden("This consultation is not assigned to you")
+    check_consultation_ownership(row, user)
 
     updates = body.model_dump(exclude_unset=True)
     if not updates:

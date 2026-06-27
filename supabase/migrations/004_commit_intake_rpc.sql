@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Transaction-Safe commit_intake RPC
 -- ================================================================
@@ -86,3 +88,5 @@ BEGIN
   RETURN QUERY SELECT v_matter_id, FALSE;
 END;
 $$;
+
+COMMIT;

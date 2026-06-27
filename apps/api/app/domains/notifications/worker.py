@@ -60,30 +60,52 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
         notification["_html_body"] = html_body
 
         # 4. Dispatch to channels
+        import asyncio
         for deliv in deliveries:
             channel_name = deliv["channel"]
-            try:
-                channel = get_channel(channel_name)
-                channel.send(notification, recipient, subject, body)
+            max_retries = 3
+            backoff_base = 2
+            success = False
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    channel = get_channel(channel_name)
+                    channel.send(notification, recipient, subject, body)
+                    success = True
+                    break
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries:
+                        sleep_time = backoff_base ** attempt
+                        log.warning(
+                            "Delivery attempt %d failed for notification %s via %s: %s. Retrying in %ds...",
+                            attempt + 1,
+                            notification_id,
+                            channel_name,
+                            e,
+                            sleep_time,
+                        )
+                        await asyncio.sleep(sleep_time)
 
+            if success:
                 db.table("notification_deliveries").update(
                     {
                         "status": "sent",
                         "delivered_at": datetime.now(timezone.utc).isoformat(),
                     }
                 ).eq("id", deliv["id"]).execute()
-
-            except Exception as e:
+            else:
                 log.exception(
-                    "Failed to deliver notification %s via %s: %s",
+                    "Failed to deliver notification %s via %s after %d retries: %s",
                     notification_id,
                     channel_name,
-                    e,
+                    max_retries,
+                    last_error,
                 )
                 db.table("notification_deliveries").update(
                     {
                         "status": "failed",
-                        "error_msg": str(e),
+                        "error_msg": str(last_error),
                     }
                 ).eq("id", deliv["id"]).execute()
 

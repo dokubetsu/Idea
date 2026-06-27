@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query, HTTPException, Request
 from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified
 from app.shared.database import get_db, get_service_role_db
 from app.shared.events import emit, EventType
-from app.shared.exceptions import NotFound
+from app.shared.exceptions import NotFound, Forbidden
 from app.config import settings
 import hmac
 import hashlib
@@ -40,6 +40,16 @@ from app.config import settings
 
 router = APIRouter(prefix="/matters", tags=["matters"])
 router.include_router(documents_router)
+
+
+def _matter_payload(row: dict, *, with_facts: bool = False) -> dict:
+    payload = enrich(row, with_facts=with_facts)
+    payload.setdefault("lawyer_id", row.get("lawyer_id"))
+    payload.setdefault("assigned_at", None)
+    payload.setdefault("resolved_at", None)
+    payload.setdefault("created_at", datetime.utcnow())
+    payload.setdefault("updated_at", datetime.utcnow())
+    return payload
 
 
 @router.get("", response_model=list[MatterOut])
@@ -160,11 +170,18 @@ async def create_matter(body: MatterCreateRequest, user: LawyerOrAdmin):
         or []
     )
 
-    enriched = enrich(full, with_facts=False)
+    enriched = _matter_payload(full, with_facts=False)
     enriched["facts"] = []
     enriched["hearings"] = []
     enriched["milestones"] = milestones
     enriched["meetings"] = []
+
+    await emit(
+        EventType.MATTER_CREATED,
+        actor_id=user.id,
+        matter_id=r["id"],
+        payload={"title": body.title, "category": body.category},
+    )
     return MatterOut(**enriched)
 
 
@@ -211,7 +228,7 @@ async def get_matter(matter_id: str, user: Auth):
         or []
     )
 
-    enriched = enrich(row, with_facts=True)
+    enriched = _matter_payload(row, with_facts=True)
     enriched["facts"] = facts
     enriched["hearings"] = hearings
     enriched["milestones"] = milestones
@@ -225,13 +242,17 @@ async def update_matter(matter_id: str, body: MatterUpdateRequest, user: Auth):
     get_matter_or_403(db, matter_id, user)
 
     data = body.model_dump(exclude_none=True)
+    restricted_fields = {"status", "priority", "court_name", "case_number", "next_hearing_at"}
+    if user.role == UserRole.USER and restricted_fields.intersection(data.keys()):
+        raise Forbidden("Access denied: Only lawyers/admins can update matter case metadata")
+
     if "status" in data:
         transition_status(db, matter_id, data.pop("status"), user.id)
     if data:
         db.table("matters").update(data).eq("id", matter_id).execute()
 
     row = db.table("matters").select(SELECT).eq("id", matter_id).single().execute().data
-    return MatterOut(**enrich(row))
+    return MatterOut(**_matter_payload(row))
 
 
 # ── Facts ─────────────────────────────────────────────────────────
@@ -259,9 +280,26 @@ async def verify_fact(
 ):
     """Lawyer or admin verifies (and optionally corrects) a fact."""
     db = get_db()
+    get_matter_or_403(db, matter_id, user)
     update: dict = {"is_verified": body.is_verified, "source": "lawyer"}
     if body.value is not None:
         update["value"] = body.value
+
+    existing = (
+        db.table("facts")
+        .select("updated_at")
+        .eq("id", fact_id)
+        .eq("matter_id", matter_id)
+        .single()
+        .execute()
+        .data
+    )
+    if not existing:
+        raise NotFound("Fact")
+
+    if body.updated_at is not None and existing.get("updated_at") is not None:
+        if str(body.updated_at) != str(existing.get("updated_at")):
+            raise HTTPException(status_code=409, detail="Fact was modified by another request")
 
     r = (
         db.table("facts")
@@ -707,6 +745,8 @@ async def update_meeting(
         .eq("matter_id", matter_id)
         .execute()
     )
+    if not r.data:
+        raise NotFound("Meeting")
 
     # If transitioning to completed, atomically increment sessions_used via RPC.
     # Using an RPC avoids the read-then-write race where two concurrent completions

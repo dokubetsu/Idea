@@ -191,13 +191,12 @@ async def commit_intake(
     if session["is_committed"]:
         return {"matter_id": session["matter_id"], "already_committed": True}
 
+    p_extracted_facts = None
     if body and body.confirmed_facts:
-        facts_data = session["extracted_facts"]
+        facts_data = session["extracted_facts"].copy()
         facts_data["facts"] = body.confirmed_facts
-        db.table("intake_sessions").update({"extracted_facts": facts_data}).eq(
-            "id", session_id
-        ).execute()
         session["extracted_facts"] = facts_data
+        p_extracted_facts = facts_data
 
     facts_data = session["extracted_facts"]
     assessment = session.get("assessment_result") or {}
@@ -269,6 +268,7 @@ async def commit_intake(
                 "p_assessment_summary": (
                     _format_assessment_update(assessment) if assessment else None
                 ),
+                "p_extracted_facts": p_extracted_facts,
             },
         ).execute()
     except Exception as e:

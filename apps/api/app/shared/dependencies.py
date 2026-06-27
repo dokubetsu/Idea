@@ -106,6 +106,29 @@ async def require_lawyer_or_admin(
     raise HTTPException(status_code=403, detail="Requires: ['lawyer', 'admin']")
 
 
+def check_consultation_ownership(consultation: dict, user: CurrentUser, allow_unassigned_lawyer: bool = False) -> None:
+    if user.role == UserRole.ADMIN:
+        return
+    if user.role == UserRole.USER:
+        if str(consultation.get("user_id")) != str(user.id):
+            raise HTTPException(status_code=403, detail="This consultation is not yours to cancel")
+    elif user.role == UserRole.LAWYER:
+        ensure_lawyer_verified(user)
+        c_lawyer_id = consultation.get("lawyer_id")
+        if c_lawyer_id is None:
+            if not allow_unassigned_lawyer:
+                raise HTTPException(status_code=403, detail="This consultation is not assigned to you")
+        elif str(c_lawyer_id) != str(user.id):
+            raise HTTPException(status_code=403, detail="This consultation is not assigned to you")
+
+
+def check_notification_ownership(notification: dict, user: CurrentUser) -> None:
+    if user.role == UserRole.ADMIN:
+        return
+    if str(notification.get("user_id")) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not your notification")
+
+
 # Type aliases — use these in route signatures
 Auth = Annotated[CurrentUser, Depends(get_current_user)]
 AdminAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]

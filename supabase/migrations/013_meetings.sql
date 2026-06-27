@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 013: Meeting Scheduler
 -- ================================================================
@@ -79,3 +81,5 @@ CREATE POLICY "meetings:user_lawyer_update"
       AND (m.user_id = auth.uid() OR m.lawyer_id = auth.uid())
     )
   );
+
+COMMIT;

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 010: Consultations
 -- ================================================================
@@ -160,3 +162,5 @@ BEGIN
   RETURN QUERY SELECT v_matter_id, FALSE;
 END;
 $$;
+
+COMMIT;

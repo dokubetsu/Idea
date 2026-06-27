@@ -202,3 +202,54 @@ def test_document_draft_generation(mock_db):
     assert "250,000" in res_n["draft_content"]
     assert "ICICI Bank" in res_n["draft_content"]
     assert "Account Closed" in res_n["draft_content"]
+
+
+def test_leap_year_suit_limitation():
+    # Leap year: Feb 29, 2024. 3 years later should be Feb 28, 2027.
+    due = date(2024, 2, 29)
+    res = SummarySuitCalculator.calculate(
+        claim_amount=500000.0, due_date=due, state="delhi", current_date=date(2027, 2, 28)
+    )
+    assert res["limitation_expiry"] == "2027-02-28"
+    assert res["days_remaining"] == 0
+    assert res["status"] == "action_required"
+
+    # One day later should be expired
+    res_expired = SummarySuitCalculator.calculate(
+        claim_amount=500000.0, due_date=due, state="delhi", current_date=date(2027, 3, 1)
+    )
+    assert res_expired["days_remaining"] < 0
+    assert res_expired["status"] == "expired"
+
+
+def test_cheque_bounce_calendar_month():
+    # Test calendar month calculation under Section 142(b) NI Act.
+    # Cause of action arises after 15 days of notice receipt.
+    # e.g., notice received Jan 16, 2026 -> wait ends Jan 31, 2026.
+    # Under calendar month, Jan 31 + 1 month = Feb 28 (non-leap year).
+    cheque = date(2026, 1, 1)
+    dishonour = date(2026, 1, 5)
+    notice = date(2026, 1, 15)
+    receipt = date(2026, 1, 16) # wait ends Jan 31
+    
+    res = ChequeBounceCalculator.calculate(
+        cheque_date=cheque,
+        dishonour_date=dishonour,
+        notice_date=notice,
+        notice_receipt_date=receipt,
+        complaint_filed_date=date(2026, 2, 28),
+        current_date=date(2026, 2, 28)
+    )
+    assert res["filing_valid"] is True
+    
+    # Mar 1 should be invalid (expired)
+    res_expired = ChequeBounceCalculator.calculate(
+        cheque_date=cheque,
+        dishonour_date=dishonour,
+        notice_date=notice,
+        notice_receipt_date=receipt,
+        complaint_filed_date=date(2026, 3, 1),
+        current_date=date(2026, 3, 1)
+    )
+    assert res_expired["filing_valid"] is False
+

@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Migration from lead-crm schema
 --
@@ -319,3 +321,5 @@ CREATE POLICY "requests:update_lawyer_admin" ON lawyer_requests FOR UPDATE TO au
 -- ── Done ──────────────────────────────────────────────────────────
 -- Verify with:
 -- SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;
+
+COMMIT;

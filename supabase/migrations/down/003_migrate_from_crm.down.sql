@@ -1,0 +1,8 @@
+BEGIN;
+
+DROP TABLE IF EXISTS public.events CASCADE;
+DROP TABLE IF EXISTS public.facts CASCADE;
+DROP TABLE IF EXISTS public.intake_sessions CASCADE;
+DROP TABLE IF EXISTS public.lawyer_requests CASCADE;
+
+COMMIT;

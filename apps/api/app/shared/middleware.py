@@ -66,6 +66,12 @@ class RequestTracingMiddleware:
                 # Add X-Request-ID header to response
                 headers_list = list(message.get("headers", []))
                 headers_list.append((b"x-request-id", req_id.encode("utf-8")))
+                headers_list.append((b"strict-transport-security", b"max-age=63072000; includeSubDomains; preload"))
+                headers_list.append((b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'"))
+                headers_list.append((b"x-frame-options", b"DENY"))
+                headers_list.append((b"x-content-type-options", b"nosniff"))
+                headers_list.append((b"x-xss-protection", b"0"))
+                headers_list.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
                 message["headers"] = headers_list
 
                 # Log completion on response start

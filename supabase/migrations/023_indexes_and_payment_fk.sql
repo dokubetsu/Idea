@@ -9,33 +9,33 @@
 -- most common query patterns for the new tables.
 
 -- payments
-CREATE INDEX IF NOT EXISTS idx_payments_milestone_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payments_milestone_id
   ON public.payments(milestone_id);
 
-CREATE INDEX IF NOT EXISTS idx_payments_user_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payments_user_id
   ON public.payments(user_id);
 
 -- audit_logs
-CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_actor_id
   ON public.audit_logs(actor_id);
 
 -- Composite index on (target_type, target_id) covers all "show me logs for X" queries
-CREATE INDEX IF NOT EXISTS idx_audit_logs_target
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_target
   ON public.audit_logs(target_type, target_id);
 
 -- lawyer_availability
-CREATE INDEX IF NOT EXISTS idx_lawyer_availability_lawyer_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lawyer_availability_lawyer_id
   ON public.lawyer_availability(lawyer_id);
 
 -- time_slots
-CREATE INDEX IF NOT EXISTS idx_time_slots_lawyer_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_slots_lawyer_id
   ON public.time_slots(lawyer_id);
 
-CREATE INDEX IF NOT EXISTS idx_time_slots_consultation_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_slots_consultation_id
   ON public.time_slots(consultation_id);
 
 -- Partial index on available slots only (the most common lookup pattern)
-CREATE INDEX IF NOT EXISTS idx_time_slots_available
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_slots_available
   ON public.time_slots(lawyer_id, start_at)
   WHERE status = 'available';
 
@@ -65,5 +65,5 @@ ALTER TABLE matter_milestones
   ADD COLUMN IF NOT EXISTS payment_record_id UUID REFERENCES payments(id) ON DELETE SET NULL;
 
 -- Step 3: Index the new FK column
-CREATE INDEX IF NOT EXISTS idx_matter_milestones_payment_record_id
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_matter_milestones_payment_record_id
   ON public.matter_milestones(payment_record_id);

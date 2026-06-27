@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Migration v7 (Notifications)
 -- ================================================================
@@ -67,3 +69,5 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_status ON public.notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deliveries_notification_id ON public.notification_deliveries(notification_id);
 CREATE INDEX IF NOT EXISTS idx_deliveries_status ON public.notification_deliveries(status);
+
+COMMIT;

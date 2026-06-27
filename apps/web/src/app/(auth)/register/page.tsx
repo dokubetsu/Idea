@@ -61,6 +61,7 @@ export default function RegisterPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err: any) {
+      await sb.auth.signOut();
       setApiErr(err.detail ?? "Profile setup failed. Please try signing in.");
       return;
     }

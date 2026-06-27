@@ -93,7 +93,19 @@ async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
     db = get_db()
 
     matter_id = body.matter_id
-    if not matter_id:
+    if matter_id:
+        from app.shared.exceptions import Forbidden
+        matter_resp = (
+            db.table("matters")
+            .select("user_id")
+            .eq("id", matter_id)
+            .execute()
+        )
+        if not matter_resp.data:
+            raise NotFound("Matter")
+        if str(matter_resp.data[0]["user_id"]) != str(user.id):
+            raise Forbidden("Matter does not belong to you")
+    else:
         latest_matter = (
             db.table("matters")
             .select("id")
@@ -167,15 +179,41 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
         .update({"status": status})
         .eq("id", request_id)
         .eq("lawyer_id", user.id)
+        .eq("status", "pending")
         .execute()
     )
     if not r.data:
-        raise NotFound("Request")
+        exists_resp = (
+            db.table("lawyer_requests")
+            .select("status")
+            .eq("id", request_id)
+            .eq("lawyer_id", user.id)
+            .execute()
+        )
+        if not exists_resp.data:
+            raise NotFound("Request")
+        else:
+            from app.shared.exceptions import BadRequest
+            raise BadRequest("Request has already been processed")
     req = r.data[0]
 
     if body.accept and req.get("matter_id"):
         from datetime import datetime, timezone
         from fastapi import HTTPException
+
+        matter_row = (
+            db.table("matters")
+            .select("status")
+            .eq("id", req["matter_id"])
+            .single()
+            .execute()
+            .data
+        )
+        if not matter_row or matter_row.get("status") != "matching":
+            raise HTTPException(
+                status_code=409,
+                detail="This matter is no longer in the matching state.",
+            )
 
         # H2: Optimistic locking — only assign if lawyer_id is still NULL.
         # If two lawyers accept the same pending matter concurrently, the second

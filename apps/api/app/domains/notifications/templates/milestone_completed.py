@@ -15,8 +15,8 @@ class MilestoneCompletedTemplate(BaseNotificationTemplate):
         )
 
     def _html_content(self) -> str:
-        title = self.data.get("matter_title", "your case")
-        milestone = self.data.get("milestone_title", "a milestone")
+        title = self.escape(self.data.get("matter_title", "your case"))
+        milestone = self.escape(self.data.get("milestone_title", "a milestone"))
         return f"""
 <p style="margin:0 0 16px;color:#D1D5DB;">
   Your case has progressed — a milestone has been marked complete by your advocate.

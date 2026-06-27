@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM — Migration 018: Sprint 3 Idempotency & Versioning
 -- ================================================================
@@ -10,3 +12,5 @@ ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS idempotency_key TEXT U
 
 -- 3. Add payment_idempotency_key to matter_milestones
 ALTER TABLE public.matter_milestones ADD COLUMN IF NOT EXISTS payment_idempotency_key TEXT UNIQUE;
+
+COMMIT;

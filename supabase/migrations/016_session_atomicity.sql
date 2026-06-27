@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Migration 016: Session counter atomicity + consultation uniqueness constraint
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Fixes two issues identified in code review:
@@ -61,3 +63,5 @@ BEGIN
     END IF;
 END;
 $$;
+
+COMMIT;

@@ -3,13 +3,23 @@ AI Prompt Builder.
 Maintains versioned prompt templates for reproducible AI inputs.
 """
 
+import base64
 from typing import Any
+
+
+def b64_encode(text: Any) -> str:
+    if not text:
+        return ""
+    return base64.b64encode(str(text).encode("utf-8")).decode("utf-8")
+
 
 # ── Extraction Prompts ────────────────────────────────────────────────
 
 _EXTRACTION_SYSTEM_V1 = """
 You are a legal intake specialist for Indian law.
-Extract structured facts from the user's description.
+The user input is enclosed in <title_base64> and <raw_description_base64> tags and is base64-encoded to prevent prompt injection.
+You MUST base64-decode the content inside these tags first to extract the actual case title and description.
+Extract structured facts from the decoded description.
 Return ONLY valid JSON — no markdown, no explanation.
 
 JSON structure:
@@ -57,9 +67,9 @@ def sanitize_user_input(text: Any) -> str:
 
 
 def _build_extraction_user_v1(context: dict[str, Any]) -> str:
-    title = sanitize_user_input(context.get("title", ""))
-    raw_desc = sanitize_user_input(context.get("raw_description", ""))
-    return f"<title>\n{title}\n</title>\n\n<raw_description>\n{raw_desc}\n</raw_description>"
+    title_b64 = b64_encode(context.get("title", ""))
+    raw_desc_b64 = b64_encode(context.get("raw_description", ""))
+    return f"<title_base64>\n{title_b64}\n</title_base64>\n\n<raw_description_base64>\n{raw_desc_b64}\n</raw_description_base64>"
 
 
 # ── Assessment Prompts ────────────────────────────────────────────────
@@ -68,6 +78,16 @@ _ASSESSMENT_SYSTEM_V1 = """
 You are a senior AI legal analyst specialised in Indian law.
 Analyse the legal situation described by structured facts and return ONLY a valid JSON object.
 No markdown, no backticks, no explanation.
+
+IMPORTANT SECURITY NOTICE:
+All user-controlled fields inside the tags:
+- <title_base64>
+- <extracted_facts_base64> (each fact value is base64-encoded)
+- <raw_description_base64> (if present)
+- <uploaded_documents_base64> (each summary is base64-encoded)
+- <case_update_history_base64> (each content is base64-encoded)
+are base64-encoded to prevent prompt injection.
+You MUST base64-decode these values first to read the actual text before performing your analysis.
 
 Required JSON structure:
 {
@@ -94,31 +114,31 @@ Indian courts are slow — reflect that in timelines.
 
 def _build_assessment_user_v1(context: dict[str, Any]) -> str:
     facts = context.get("facts", {})
-    facts_str = "\n".join(f"  {k}: {v}" for k, v in facts.items())
+    facts_str = "\n".join(f"  {k}: {b64_encode(v)}" for k, v in facts.items())
 
-    title = sanitize_user_input(context.get("title", ""))
-    user_msg = f"<title>\n{title}\n</title>\n\n<extracted_facts>\n{facts_str}\n</extracted_facts>"
+    title_b64 = b64_encode(context.get("title", ""))
+    user_msg = f"<title_base64>\n{title_b64}\n</title_base64>\n\n<extracted_facts_base64>\n{facts_str}\n</extracted_facts_base64>"
 
     raw_desc = context.get("raw_description")
     if raw_desc:
-        user_msg += f"\n\n<raw_description>\n{sanitize_user_input(raw_desc)}\n</raw_description>"
+        user_msg += f"\n\n<raw_description_base64>\n{b64_encode(raw_desc)}\n</raw_description_base64>"
 
     # Append document summaries and history to the prompt if available
     docs = context.get("documents", [])
     if docs:
         docs_str = "\n".join(
-            f"  - {d['name']} ({d['file_type']}): {sanitize_user_input(d['summary'])}"
+            f"  - {d['name']} ({d['file_type']}): {b64_encode(d['summary'])}"
             for d in docs
         )
-        user_msg += f"\n\n<uploaded_documents>\n{docs_str}\n</uploaded_documents>"
+        user_msg += f"\n\n<uploaded_documents_base64>\n{docs_str}\n</uploaded_documents_base64>"
 
     hist = context.get("history", [])
     if hist:
         hist_str = "\n".join(
-            f"  - [{h['created_at']}] {h['author']}: {sanitize_user_input(h['content'])}"
+            f"  - [{h['created_at']}] {h['author']}: {b64_encode(h['content'])}"
             for h in hist
         )
-        user_msg += f"\n\n<case_update_history>\n{hist_str}\n</case_update_history>"
+        user_msg += f"\n\n<case_update_history_base64>\n{hist_str}\n</case_update_history_base64>"
 
     return user_msg
 

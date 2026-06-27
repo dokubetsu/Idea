@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 --  LEAD PLATFORM — Migration v25 (Add motor_vehicles Category)
 -- ================================================================
@@ -103,3 +105,5 @@ BEGIN
   RETURN QUERY SELECT v_matter_id, FALSE;
 END;
 $$;
+
+COMMIT;

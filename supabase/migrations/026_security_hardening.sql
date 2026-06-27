@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ================================================================
 -- LEAD PLATFORM -- Migration 026: Security Hardening (C2, C6, C7)
 -- ================================================================
@@ -117,3 +119,5 @@ BEGIN
   RETURN json_build_object('ok', true, 'message', 'Request sent to lawyer', 'already_exists', false);
 END;
 $$;
+
+COMMIT;

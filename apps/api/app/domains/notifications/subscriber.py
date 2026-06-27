@@ -12,7 +12,8 @@ async def handle_domain_event(
     matter_id: str | None,
     payload: dict,
 ) -> None:
-    if not matter_id:
+    event_str = event_type.value if isinstance(event_type, EventType) else str(event_type)
+    if not matter_id and event_str != "lawyer.suspended":
         return
 
     if isinstance(event_type, str):
@@ -22,6 +23,58 @@ async def handle_domain_event(
             pass
 
     db = database.get_service_role_db()
+
+    if event_str == "lawyer.suspended":
+        lawyer_id = payload.get("lawyer_id")
+        if not lawyer_id:
+            return
+        try:
+            matters_resp = (
+                db.table("matters")
+                .select("id, title, user_id")
+                .eq("lawyer_id", lawyer_id)
+                .not_.in_("status", ["resolved", "archived"])
+                .execute()
+            )
+            affected_matters = matters_resp.data or []
+        except Exception as e:
+            log.error("Failed to query matters for suspended lawyer %s: %s", lawyer_id, e)
+            return
+
+        for m in affected_matters:
+            m_id = m["id"]
+            m_title = m["title"]
+            c_id = m["user_id"]
+            try:
+                db.table("matters").update({
+                    "lawyer_id": None,
+                    "status": "matching"
+                }).eq("id", m_id).execute()
+
+                await emit(
+                    EventType.MATTER_STATUS_CHANGED,
+                    actor_id=actor_id,
+                    matter_id=m_id,
+                    payload={"old_status": "active", "new_status": "matching", "reason": "Lawyer suspended"}
+                )
+
+                if c_id:
+                    create_notification(
+                        db,
+                        user_id=c_id,
+                        type_name="lawyer_suspended",
+                        data={
+                            "subject": "Case Update: Advocate Suspended",
+                            "body": f"The advocate assigned to your case '{m_title}' has been suspended. Your case has been moved back to the matching pool.",
+                            "matter_title": m_title,
+                            "matter_id": m_id,
+                        },
+                        action={"label": "View Case", "url": f"/user/matters/{m_id}"},
+                    )
+            except Exception as e:
+                log.error("Failed to reassign/notify for matter %s: %s", m_id, e)
+        return
+
     # NOTE: The subscriber runs in a background asyncio task where the request-scoped
     # ContextVar has been cleared by middleware. Using get_service_role_db() explicitly
     # here is correct — we need full access to look up matters and create notifications.
@@ -74,8 +127,25 @@ async def handle_domain_event(
             )
 
     elif event_type in (EventType.HEARING_SCHEDULED, EventType.HEARING_UPDATED):
-        hearing_date = payload.get("hearing_date", "TBD")
-        courtroom = payload.get("courtroom", "TBD")
+        hearing_date = payload.get("hearing_date") or "TBD"
+        courtroom = payload.get("courtroom") or "TBD"
+
+        if hearing_date == "TBD" or courtroom == "TBD":
+            hearing_id = payload.get("hearing_id")
+            if hearing_id:
+                try:
+                    hearing_resp = (
+                        db.table("hearings")
+                        .select("hearing_date, courtroom")
+                        .eq("id", hearing_id)
+                        .single()
+                        .execute()
+                    )
+                    if hearing_resp.data:
+                        hearing_date = hearing_resp.data.get("hearing_date") or hearing_date
+                        courtroom = hearing_resp.data.get("courtroom") or courtroom
+                except Exception:
+                    pass
 
         if client_id:
             create_notification(
@@ -119,6 +189,20 @@ async def handle_domain_event(
                     },
                     action={"label": "View Case", "url": f"/user/matters/{matter_id}"},
                 )
+
+    elif event_type in (EventType.LAWYER_ACCEPTED, EventType.LAWYER_DECLINED):
+        decision_type = "lawyer_accepted" if event_type == EventType.LAWYER_ACCEPTED else "lawyer_declined"
+        if client_id:
+            create_notification(
+                db,
+                user_id=client_id,
+                type_name=decision_type,
+                data={
+                    "matter_title": matter_title,
+                    "matter_id": matter_id,
+                },
+                action={"label": "View Case", "url": f"/user/matters/{matter_id}"},
+            )
 
     elif event_type == EventType.UPDATE_POSTED:
         author_name = payload.get("author_name", "Someone")

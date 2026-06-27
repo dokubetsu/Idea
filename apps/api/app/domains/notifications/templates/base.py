@@ -6,6 +6,12 @@ class BaseNotificationTemplate:
     def __init__(self, data: Dict[str, Any]):
         self.data = data
 
+    def escape(self, val: Any) -> str:
+        import html
+        if val is None:
+            return ""
+        return html.escape(str(val))
+
     def render_subject(self) -> str:
         raise NotImplementedError()
 
@@ -18,7 +24,7 @@ class BaseNotificationTemplate:
         Subclasses override _html_content() to inject custom body markup.
         The outer layout (header, footer, wrapper) is shared.
         """
-        subject = self.render_subject()
+        subject = self.escape(self.render_subject())
         content = self._html_content()
         action = self.data.get("action") or {}
         action_url = action.get("url", "") if isinstance(action, dict) else ""
@@ -97,7 +103,7 @@ class BaseNotificationTemplate:
         """Override in subclasses to provide custom HTML body content."""
         body = self.render_body()
         lines = "".join(
-            f"<p style='margin:0 0 10px;'>{line}</p>"
+            f"<p style='margin:0 0 10px;'>{self.escape(line)}</p>"
             for line in body.split("\n")
             if line.strip()
         )

@@ -62,22 +62,44 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
         return AssessmentOutput(**normalized_mock)
 
     # 3. Resolve active provider (handles fallback if unhealthy)
-    provider = await get_ai_provider()
+    retries = 2
+    for attempt in range(retries + 1):
+        try:
+            provider = await get_ai_provider()
 
-    # 4. Generate raw response
-    raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
+            # 4. Generate raw response
+            raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
 
-    # 5. Validate against Pydantic schema
-    validated = ResponseValidator.validate(raw, AssessmentOutput)
+            # 5. Validate against Pydantic schema
+            validated = ResponseValidator.validate(raw, AssessmentOutput)
 
-    # 6. Normalize and flat-map metadata
-    model_name = settings.AI_MODEL_NAME or provider.name
-    normalized = Normalizer.normalize_assessment(
-        validated,
-        provider_name=provider.name,
-        model_name=model_name,
-        prompt_version="assessment_v1",
-        temperature=0.1,
-    )
+            # 6. Normalize and flat-map metadata
+            model_name = settings.AI_MODEL_NAME or provider.name
+            normalized = Normalizer.normalize_assessment(
+                validated,
+                provider_name=provider.name,
+                model_name=model_name,
+                prompt_version="assessment_v1",
+                temperature=0.1,
+            )
 
-    return AssessmentOutput(**normalized)
+            return AssessmentOutput(**normalized)
+        except Exception as e:
+            if attempt < retries:
+                log.warning("run_assessment attempt %d failed: %s. Retrying...", attempt + 1, e)
+                continue
+            log.exception("run_assessment failed after %d retries, falling back to mock provider: %s", retries, e)
+
+            # Safe deterministic local mock fallback
+            mock = MockProvider()
+            raw_mock = await mock.generate(system_prompt, user_prompt)
+            validated_mock = ResponseValidator.validate(raw_mock, AssessmentOutput)
+            normalized_mock = Normalizer.normalize_assessment(
+                validated_mock,
+                provider_name="mock",
+                model_name="mock_fallback",
+                prompt_version="assessment_v1",
+                temperature=0.1,
+            )
+            return AssessmentOutput(**normalized_mock)
+

@@ -11,10 +11,10 @@ interface CoreFactsStepProps {
   onBack: () => void;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
         {label}
       </label>
       {children}
@@ -50,13 +50,14 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
         These few questions apply to every case. No legal jargon — just tell us what happened.
       </p>
 
-      <Field label="When did this happen?">
-        <input type="date" {...register("incident_date")} className="form-input" />
+      <Field label="When did this happen?" htmlFor="incident_date">
+        <input id="incident_date" type="date" {...register("incident_date")} className="form-input" />
         <Err msg={errors.incident_date?.message} />
       </Field>
 
-      <Field label="Where did this happen? (city and state)">
+      <Field label="Where did this happen? (city and state)" htmlFor="incident_location">
         <input
+          id="incident_location"
           type="text"
           placeholder="e.g. Bangalore, Karnataka"
           {...register("incident_location")}
@@ -65,8 +66,9 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
         <Err msg={errors.incident_location?.message} />
       </Field>
 
-      <Field label="Who is on the other side? (person or company name)">
+      <Field label="Who is on the other side? (person or company name)" htmlFor="opponent_name">
         <input
+          id="opponent_name"
           type="text"
           placeholder="e.g. Rakesh Sharma or HDFC Bank"
           {...register("opponent_name")}
@@ -75,7 +77,10 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
         <Err msg={errors.opponent_name?.message} />
       </Field>
 
-      <Field label="How urgent is this?">
+      <div role="group" aria-labelledby="urgency-label" className="space-y-1.5">
+        <label id="urgency-label" className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+          How urgent is this?
+        </label>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {(["exploring", "need_help_soon", "court_date_coming"] as const).map((v) => (
             <button
@@ -93,10 +98,10 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
           ))}
         </div>
         <Err msg={errors.urgency_level?.message} />
-      </Field>
+      </div>
 
-      <Field label="Preferred language for communication">
-        <select {...register("preferred_language")} className="form-input">
+      <Field label="Preferred language for communication" htmlFor="preferred_language">
+        <select id="preferred_language" {...register("preferred_language")} className="form-input">
           {["English", "Hindi", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali"].map((l) => (
             <option key={l} value={l}>
               {l}
@@ -105,7 +110,10 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
         </select>
       </Field>
 
-      <Field label="Has any FIR or court case been filed about this?">
+      <div role="group" aria-labelledby="prior-legal-label" className="space-y-1.5">
+        <label id="prior-legal-label" className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
+          Has any FIR or court case been filed about this?
+        </label>
         <div className="flex flex-col sm:flex-row gap-3">
           {(["no", "yes"] as const).map((v) => (
             <button
@@ -130,10 +138,10 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
             className="form-input mt-2"
           />
         )}
-      </Field>
+      </div>
 
-      <Field label="Who is filing this complaint? (Complainant Type)">
-        <select {...register("complainant_type")} className="form-input">
+      <Field label="Who is filing this complaint? (Complainant Type)" htmlFor="complainant_type">
+        <select id="complainant_type" {...register("complainant_type")} className="form-input">
           <option value="">— Select Type —</option>
           {["Individual", "Proprietorship", "Partnership", "Company"].map((t) => (
             <option key={t} value={t}>
@@ -144,8 +152,8 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
         <Err msg={errors.complainant_type?.message} />
       </Field>
 
-      <Field label="Do you have key documents for this case?">
-        <select {...register("has_documents")} className="form-input">
+      <Field label="Do you have key documents for this case?" htmlFor="has_documents">
+        <select id="has_documents" {...register("has_documents")} className="form-input">
           <option value="">— Select Option —</option>
           {["Yes, I have key documents", "Some documents, not all", "No documents"].map((o) => (
             <option key={o} value={o}>

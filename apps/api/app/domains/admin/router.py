@@ -30,23 +30,7 @@ async def pending_lawyers(user: AdminAuth):
 @router.patch("/lawyers/{lawyer_id}/verify")
 async def verify_lawyer(lawyer_id: str, user: AdminAuth):
     db = get_db()
-    db.table("lawyer_profiles").update({"is_verified": True}).eq(
-        "id", lawyer_id
-    ).execute()
-    db.table("profiles").update({"role": "lawyer"}).eq("id", lawyer_id).execute()
-
-    try:
-        from gotrue import AdminUserAttributes
-
-        db.auth.admin.update_user_by_id(
-            lawyer_id, AdminUserAttributes(app_metadata={"role": "lawyer"})
-        )
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Failed to sync lawyer role to app_metadata: %s", e
-        )
+    db.rpc("verify_lawyer_rpc", {"p_lawyer_id": lawyer_id}).execute()
 
     await emit(
         "admin.lawyer_verified", actor_id=user.id, payload={"lawyer_id": lawyer_id}
@@ -57,10 +41,10 @@ async def verify_lawyer(lawyer_id: str, user: AdminAuth):
 @router.patch("/lawyers/{lawyer_id}/suspend")
 async def suspend_lawyer(lawyer_id: str, user: AdminAuth):
     db = get_db()
-    db.table("profiles").update({"is_active": False}).eq("id", lawyer_id).execute()
-    db.table("lawyer_profiles").update({"is_available": False}).eq(
-        "id", lawyer_id
-    ).execute()
+    db.rpc("suspend_lawyer_rpc", {"p_lawyer_id": lawyer_id}).execute()
+    await emit(
+        "lawyer.suspended", actor_id=user.id, payload={"lawyer_id": lawyer_id}
+    )
     return {"ok": True}
 
 
