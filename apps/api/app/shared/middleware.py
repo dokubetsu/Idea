@@ -47,9 +47,7 @@ class RequestTracingMiddleware:
 
             user_client = get_service_role_db()
         else:
-            user_client = create_client(
-                settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY
-            )
+            user_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             if token:
                 user_client.postgrest.auth(token)
 

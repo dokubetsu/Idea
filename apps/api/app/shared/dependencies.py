@@ -38,12 +38,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     db = get_db()
-    result = (
-        db.table("profiles")
-        .select("id,role,full_name,is_active")
-        .eq("id", user_id)
-        .execute()
-    )
+    result = db.table("profiles").select("id,role,full_name,is_active").eq("id", user_id).execute()
     if not result.data:
         raise HTTPException(status_code=401, detail="Profile not found")
 
@@ -59,9 +54,7 @@ def require_roles(*roles: UserRole):
         user: Annotated[CurrentUser, Depends(get_current_user)],
     ) -> CurrentUser:
         if user.role not in roles:
-            raise HTTPException(
-                status_code=403, detail=f"Requires: {[r.value for r in roles]}"
-            )
+            raise HTTPException(status_code=403, detail=f"Requires: {[r.value for r in roles]}")
         return user
 
     return _guard
@@ -69,9 +62,7 @@ def require_roles(*roles: UserRole):
 
 def lawyer_is_verified(user_id: str) -> bool:
     db = get_db()
-    result = (
-        db.table("lawyer_profiles").select("is_verified").eq("id", user_id).execute()
-    )
+    result = db.table("lawyer_profiles").select("is_verified").eq("id", user_id).execute()
     if not result.data:
         return False
     row = result.data[0] if isinstance(result.data, list) else result.data
@@ -134,8 +125,6 @@ Auth = Annotated[CurrentUser, Depends(get_current_user)]
 AdminAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.ADMIN))]
 LawyerVerifiedAuth = Annotated[CurrentUser, Depends(require_verified_lawyer)]
 LawyerAuth = LawyerVerifiedAuth
-UserAuth = Annotated[
-    CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))
-]
+UserAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.USER, UserRole.LAWYER, UserRole.ADMIN))]
 PetitionerAuth = Annotated[CurrentUser, Depends(require_roles(UserRole.USER))]
 LawyerOrAdmin = Annotated[CurrentUser, Depends(require_lawyer_or_admin)]

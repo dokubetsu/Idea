@@ -74,9 +74,7 @@ class ProviderRegistry:
             try:
                 if await requested.health():
                     return requested
-                log.warning(
-                    "AI provider '%s' is unhealthy. Initiating fallback...", name
-                )
+                log.warning("AI provider '%s' is unhealthy. Initiating fallback...", name)
             except Exception as e:
                 log.error(
                     "AI provider '%s' health check threw exception: %s. Initiating fallback...",

@@ -19,7 +19,5 @@ def test_openapi_schema_intake_payload():
     # Check that it either references ExtractedFactsPayload directly or via $ref
     extracted_facts_prop = properties["extracted_facts"]
     assert "$ref" in extracted_facts_prop or "anyOf" in extracted_facts_prop
-    ref_val = extracted_facts_prop.get("$ref") or str(
-        extracted_facts_prop.get("anyOf", [])
-    )
+    ref_val = extracted_facts_prop.get("$ref") or str(extracted_facts_prop.get("anyOf", []))
     assert "ExtractedFactsPayload" in ref_val

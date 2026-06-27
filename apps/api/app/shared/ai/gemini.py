@@ -33,16 +33,12 @@ class GeminiProvider(BaseAiProvider):
         except Exception:
             return False
 
-    async def generate(
-        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
-    ) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
         if not settings.GEMINI_API_KEY:
             raise ValueError("Gemini API key is not configured.")
 
         self._ensure_configured()
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash-lite", system_instruction=system_prompt
-        )
+        model = genai.GenerativeModel(model_name="gemini-2.5-flash-lite", system_instruction=system_prompt)
 
         try:
             response = await asyncio.wait_for(

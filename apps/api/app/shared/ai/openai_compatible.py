@@ -36,9 +36,7 @@ class OpenAiCompatibleProvider(BaseAiProvider):
         except Exception:
             return False
 
-    async def generate(
-        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
-    ) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
         client = self._get_client()
 
         # Fallback default model if not configured

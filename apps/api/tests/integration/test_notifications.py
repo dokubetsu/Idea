@@ -49,12 +49,7 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
         assert event["id"] == notif_id
 
         # 6. Verify that a delivery row is created in notification_deliveries
-        deliv_res = (
-            db.table("notification_deliveries")
-            .select("*")
-            .eq("notification_id", notif_id)
-            .execute()
-        )
+        deliv_res = db.table("notification_deliveries").select("*").eq("notification_id", notif_id).execute()
         assert len(deliv_res.data) > 0
 
         # 7. Check status transitions via endpoint
@@ -74,9 +69,7 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
         sse_broadcaster.unsubscribe(mock_user.id, queue)
         if notif_id:
             try:
-                db.table("notification_deliveries").delete().eq(
-                    "notification_id", notif_id
-                ).execute()
+                db.table("notification_deliveries").delete().eq("notification_id", notif_id).execute()
                 db.table("notifications").delete().eq("id", notif_id).execute()
                 db.table("profiles").delete().eq("id", mock_user.id).execute()
             except Exception:
@@ -129,20 +122,13 @@ async def test_notification_idempotency(mock_user):
         assert notif_id1 == notif_id2
 
         # Assert database contains exactly one row with this key
-        res = (
-            db.table("notifications")
-            .select("*")
-            .eq("idempotency_key", idemp_key)
-            .execute()
-        )
+        res = db.table("notifications").select("*").eq("idempotency_key", idemp_key).execute()
         assert len(res.data) == 1
 
     finally:
         if notif_id1:
             try:
-                db.table("notification_deliveries").delete().eq(
-                    "notification_id", notif_id1
-                ).execute()
+                db.table("notification_deliveries").delete().eq("notification_id", notif_id1).execute()
                 db.table("notifications").delete().eq("id", notif_id1).execute()
             except Exception:
                 pass

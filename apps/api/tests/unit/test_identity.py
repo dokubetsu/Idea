@@ -5,9 +5,7 @@ from app.main import app
 
 
 @pytest.mark.asyncio
-async def test_lawyer_registration_defaults_to_user(
-    client: AsyncClient, mock_db, monkeypatch
-):
+async def test_lawyer_registration_defaults_to_user(client: AsyncClient, mock_db, monkeypatch):
     # Mock JWT decoding for profile registration
     monkeypatch.setattr(
         "app.domains.identity.router._decode_signup_jwt",
@@ -66,9 +64,7 @@ async def test_admin_verify_lawyer_promotes_role(client: AsyncClient, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_register_profile_preserves_existing_role(
-    client: AsyncClient, mock_db, monkeypatch
-):
+async def test_register_profile_preserves_existing_role(client: AsyncClient, mock_db, monkeypatch):
     # Seed an existing lawyer profile in the mock database
     lawyer_id = "existing-lawyer-uuid"
     mock_db.table("profiles").data.append(

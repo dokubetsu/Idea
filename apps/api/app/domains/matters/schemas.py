@@ -3,9 +3,7 @@ from datetime import date, datetime
 from typing import Literal
 from pydantic import BaseModel, Field
 
-MatterStatus = Literal[
-    "draft", "intake", "assessment", "matching", "active", "resolved", "archived"
-]
+MatterStatus = Literal["draft", "intake", "assessment", "matching", "active", "resolved", "archived"]
 MatterPriority = Literal["low", "medium", "high", "urgent"]
 
 

@@ -85,21 +85,13 @@ class Settings(BaseSettings):
             self.SUPABASE_PUBLISHABLE_KEY = self.SUPABASE_ANON_KEY
 
         if not self.SUPABASE_SERVICE_ROLE_KEY:
-            raise ValueError(
-                "Either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY must be provided."
-            )
+            raise ValueError("Either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY must be provided.")
         if not self.SUPABASE_ANON_KEY:
-            raise ValueError(
-                "Either SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY must be provided."
-            )
+            raise ValueError("Either SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY must be provided.")
         if self.APP_ENV == "production" and (
-            not self.APP_URL
-            or "localhost" in self.APP_URL
-            or "127.0.0.1" in self.APP_URL
+            not self.APP_URL or "localhost" in self.APP_URL or "127.0.0.1" in self.APP_URL
         ):
-            raise ValueError(
-                "APP_URL must be set to a valid non-localhost production URL when APP_ENV is production."
-            )
+            raise ValueError("APP_URL must be set to a valid non-localhost production URL when APP_ENV is production.")
         return self
 
     @property

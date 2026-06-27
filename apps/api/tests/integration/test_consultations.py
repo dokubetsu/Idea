@@ -61,12 +61,7 @@ async def test_consultations_idempotency_integration(client: AsyncClient, mock_u
         assert data2["id"] == consultation_id
 
         # 4. Verify in database that only ONE consultation was created
-        db_res = (
-            db.table("consultations")
-            .select("id")
-            .eq("idempotency_key", idem_key)
-            .execute()
-        )
+        db_res = db.table("consultations").select("id").eq("idempotency_key", idem_key).execute()
         assert len(db_res.data) == 1
 
     finally:

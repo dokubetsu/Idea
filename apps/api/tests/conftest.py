@@ -8,9 +8,7 @@ from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 
 
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "integration: run integration tests against test Supabase"
-    )
+    config.addinivalue_line("markers", "integration: run integration tests against test Supabase")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -19,19 +17,14 @@ def configure_test_database():
 
     # Override Supabase credentials with dedicated test credentials if present
     if settings.SUPABASE_TEST_PROJECT_URL and settings.SUPABASE_TEST_SERVICE_ROLE_KEY:
-        if (
-            "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL
-            and settings.SUPABASE_TEST_PROJECT_URL != "null"
-        ):
+        if "placeholder" not in settings.SUPABASE_TEST_PROJECT_URL and settings.SUPABASE_TEST_PROJECT_URL != "null":
             settings.SUPABASE_URL = settings.SUPABASE_TEST_PROJECT_URL
             settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
 
 
 @pytest.fixture(autouse=True)
 def skip_if_no_test_database(request):
-    is_integration = (
-        "integration" in request.node.keywords or "integration" in request.node.nodeid
-    )
+    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
     if is_integration:
         from app.config import settings
 
@@ -155,9 +148,7 @@ class MockSupabaseClient:
         if name == "suspend_lawyer_rpc":
             return MockRpcBuilder([])
         if name == "commit_intake":
-            return MockRpcBuilder(
-                [{"matter_id": "mock-matter-id", "already_committed": False}]
-            )
+            return MockRpcBuilder([{"matter_id": "mock-matter-id", "already_committed": False}])
         if name == "register_profile":
             # Add to mock profiles table
             uid = params.get("p_user_id")
@@ -180,9 +171,7 @@ class MockSupabaseClient:
 
                 # If role is lawyer, add to lawyer_profiles
                 if params.get("p_role") == "lawyer":
-                    self.table("lawyer_profiles").data.append(
-                        {"id": uid, "is_verified": False, "is_available": True}
-                    )
+                    self.table("lawyer_profiles").data.append({"id": uid, "is_verified": False, "is_available": True})
             return MockRpcBuilder(found)
 
         if name == "schedule_meeting":
@@ -198,12 +187,9 @@ class MockSupabaseClient:
                 scheduled_count = sum(
                     1
                     for m in self.table("meetings").data
-                    if m.get("matter_id") == matter_id
-                    and m.get("status") == "scheduled"
+                    if m.get("matter_id") == matter_id and m.get("status") == "scheduled"
                 )
-                if (c.get("sessions_used", 0) + scheduled_count) >= c.get(
-                    "sessions_total", 1
-                ):
+                if (c.get("sessions_used", 0) + scheduled_count) >= c.get("sessions_total", 1):
                     raise Exception("Session limit reached")
 
             # Insert meeting
@@ -311,9 +297,7 @@ def event_loop():
 
 @pytest.fixture
 def mock_db(request, monkeypatch):
-    is_integration = (
-        "integration" in request.node.keywords or "integration" in request.node.nodeid
-    )
+    is_integration = "integration" in request.node.keywords or "integration" in request.node.nodeid
     if is_integration:
         return None
 
@@ -342,17 +326,13 @@ def mock_db(request, monkeypatch):
 
 @pytest.fixture
 def mock_user():
-    return CurrentUser(
-        id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
-    )
+    return CurrentUser(id="test-user-id", role=UserRole.USER, full_name="Test Petitioner")
 
 
 @pytest_asyncio.fixture
 async def client(mock_user) -> AsyncGenerator[AsyncClient, None]:
     # Override authentication dependency to use mock user
     app.dependency_overrides[get_current_user] = lambda: mock_user
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()

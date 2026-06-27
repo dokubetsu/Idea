@@ -14,9 +14,7 @@ class BaseAiProvider(ABC):
         pass
 
     @abstractmethod
-    async def generate(
-        self, system_prompt: str, user_prompt: str, temperature: float = 0.1
-    ) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str, temperature: float = 0.1) -> str:
         """
         Sends prompts to the LLM and returns the raw string output.
         Validation, parsing, and normalization are handled by separate wrapper services.

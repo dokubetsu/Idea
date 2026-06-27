@@ -71,13 +71,7 @@ async def list_lawyers(
 @router.get("/lawyers/{lawyer_id}")
 async def get_lawyer(lawyer_id: str, user: Auth):
     db = get_db()
-    r = (
-        db.table("lawyer_profiles")
-        .select(LP_SELECT)
-        .eq("id", lawyer_id)
-        .single()
-        .execute()
-    )
+    r = db.table("lawyer_profiles").select(LP_SELECT).eq("id", lawyer_id).single().execute()
     if not r.data:
         raise NotFound("Lawyer")
     return _build_lawyer_out(r.data)
@@ -95,12 +89,8 @@ async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
     matter_id = body.matter_id
     if matter_id:
         from app.shared.exceptions import Forbidden
-        matter_resp = (
-            db.table("matters")
-            .select("user_id")
-            .eq("id", matter_id)
-            .execute()
-        )
+
+        matter_resp = db.table("matters").select("user_id").eq("id", matter_id).execute()
         if not matter_resp.data:
             raise NotFound("Matter")
         if str(matter_resp.data[0]["user_id"]) != str(user.id):
@@ -153,9 +143,7 @@ async def incoming_requests(
     off = (page - 1) * per_page
     rows = (
         db.table("lawyer_requests")
-        .select(
-            "*, requester:profiles!user_id(full_name,city,phone), matters(title,category,status)"
-        )
+        .select("*, requester:profiles!user_id(full_name,city,phone), matters(title,category,status)")
         .eq("lawyer_id", user.id)
         .order("created_at", desc=True)
         .range(off, off + per_page - 1)
@@ -184,16 +172,13 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
     )
     if not r.data:
         exists_resp = (
-            db.table("lawyer_requests")
-            .select("status")
-            .eq("id", request_id)
-            .eq("lawyer_id", user.id)
-            .execute()
+            db.table("lawyer_requests").select("status").eq("id", request_id).eq("lawyer_id", user.id).execute()
         )
         if not exists_resp.data:
             raise NotFound("Request")
         else:
             from app.shared.exceptions import BadRequest
+
             raise BadRequest("Request has already been processed")
     req = r.data[0]
 
@@ -201,14 +186,7 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
         from datetime import datetime, timezone
         from fastapi import HTTPException
 
-        matter_row = (
-            db.table("matters")
-            .select("status")
-            .eq("id", req["matter_id"])
-            .single()
-            .execute()
-            .data
-        )
+        matter_row = db.table("matters").select("status").eq("id", req["matter_id"]).single().execute().data
         if not matter_row or matter_row.get("status") != "matching":
             raise HTTPException(
                 status_code=409,
@@ -252,7 +230,5 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
 @router.patch("/me/availability")
 async def toggle_availability(available: bool, user: LawyerAuth):
     db = get_db()
-    db.table("lawyer_profiles").update({"is_available": available}).eq(
-        "id", user.id
-    ).execute()
+    db.table("lawyer_profiles").update({"is_available": available}).eq("id", user.id).execute()
     return {"ok": True, "is_available": available}

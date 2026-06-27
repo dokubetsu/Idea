@@ -32,9 +32,7 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 
 @router.post("/start", response_model=IntakeSessionOut, status_code=201)
 @limiter.limit("5/minute")
-async def start_intake(
-    request: Request, body: StartIntakeRequest, user: Auth, response: Response
-):
+async def start_intake(request: Request, body: StartIntakeRequest, user: Auth, response: Response):
     """Step 1: Extract facts from description."""
     result = await extract_facts(body.title, body.description)
     response.headers["X-AI-Provider"] = result.provider or "unknown"
@@ -112,9 +110,7 @@ async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
 
 @router.post("/{session_id}/assess", response_model=IntakeSessionOut)
 @limiter.limit("5/minute")
-async def run_intake_assessment(
-    request: Request, session_id: str, user: Auth, response: Response
-):
+async def run_intake_assessment(request: Request, session_id: str, user: Auth, response: Response):
     """Step 3: Run assessment on current facts."""
     db = get_db()
     session = _get_session(db, session_id, user.id)
@@ -184,9 +180,7 @@ async def commit_intake(
     session = _get_session(db, session_id, user.id)
 
     if session["step"] != "confirm":
-        raise BadRequest(
-            f"Cannot commit. Expected session step to be 'confirm', but got '{session['step']}'"
-        )
+        raise BadRequest(f"Cannot commit. Expected session step to be 'confirm', but got '{session['step']}'")
 
     if session["is_committed"]:
         return {"matter_id": session["matter_id"], "already_committed": True}
@@ -201,9 +195,7 @@ async def commit_intake(
     facts_data = session["extracted_facts"]
     assessment = session.get("assessment_result") or {}
 
-    category = assessment.get("category") or facts_data.get(
-        "detected_category", "other"
-    )
+    category = assessment.get("category") or facts_data.get("detected_category", "other")
     db_category = {
         "cheque_bounce": "cheque_bounce",
         "bank_fraud": "cyber",
@@ -258,24 +250,18 @@ async def commit_intake(
                 "p_session_id": session_id,
                 "p_user_id": user.id,
                 "p_title": facts_data.get("title", "Untitled matter"),
-                "p_summary": assessment.get(
-                    "success_rationale", facts_data.get("title", "")
-                ),
+                "p_summary": assessment.get("success_rationale", facts_data.get("title", "")),
                 "p_category": db_category,
                 "p_status": "intake" if not assessment else "assessment",
                 "p_priority": priority,
                 "p_facts": fact_rows,
-                "p_assessment_summary": (
-                    _format_assessment_update(assessment) if assessment else None
-                ),
+                "p_assessment_summary": (_format_assessment_update(assessment) if assessment else None),
                 "p_extracted_facts": p_extracted_facts,
             },
         ).execute()
     except Exception as e:
         log.error("RPC commit_intake failed: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Database transaction failed during commit."
-        )
+        raise HTTPException(status_code=500, detail="Database transaction failed during commit.")
 
     if not rpc_res.data:
         raise HTTPException(status_code=500, detail="Failed to commit intake session")
@@ -285,9 +271,7 @@ async def commit_intake(
     already_committed = commit_data["already_committed"]
 
     if already_committed:
-        existing = (
-            db.table("matters").select("status").eq("id", matter_id).execute().data
-        )
+        existing = db.table("matters").select("status").eq("id", matter_id).execute().data
         existing_status = existing[0]["status"] if existing else "intake"
         return {
             "matter_id": matter_id,
@@ -376,9 +360,7 @@ def migrate_extracted_facts(ef: dict, row: dict) -> dict:
             )
 
         migrated = {
-            "title": ef.get("title")
-            or row.get("raw_description", "Migrated Case")[:50]
-            or "Migrated Case",
+            "title": ef.get("title") or row.get("raw_description", "Migrated Case")[:50] or "Migrated Case",
             "detected_category": ef.get("detected_category") or "other",
             "completeness_score": ef.get("completeness_score") or 1.0,
             "missing_keys": ef.get("missing_keys") or row.get("missing_keys") or [],
@@ -403,9 +385,7 @@ def _get_session(db, session_id: str, user_id: str) -> dict:
         raise Forbidden()
 
     row = r.data
-    row["extracted_facts"] = migrate_extracted_facts(
-        row.get("extracted_facts", {}), row
-    )
+    row["extracted_facts"] = migrate_extracted_facts(row.get("extracted_facts", {}), row)
     return row
 
 
@@ -427,9 +407,7 @@ def _session_out(row: dict) -> IntakeSessionOut:
 
 
 def _risk_to_priority(risk: str) -> str:
-    return {"urgent": "urgent", "high": "high", "medium": "medium", "low": "low"}.get(
-        risk, "medium"
-    )
+    return {"urgent": "urgent", "high": "high", "medium": "medium", "low": "low"}.get(risk, "medium")
 
 
 def _format_assessment_update(a: dict) -> str:

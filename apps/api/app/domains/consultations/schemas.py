@@ -4,9 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, model_validator
 
 ConsultationPackage = Literal["free", "starter", "full"]
-ConsultationStatus = Literal[
-    "pending", "confirmed", "completed", "cancelled", "declined"
-]
+ConsultationStatus = Literal["pending", "confirmed", "completed", "cancelled", "declined"]
 ConsultationPaymentStatus = Literal["unpaid", "paid", "waived"]
 
 

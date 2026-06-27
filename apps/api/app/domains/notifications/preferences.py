@@ -24,18 +24,11 @@ DEFAULT_CHANNELS: Dict[str, List[DeliveryChannel]] = {
 
 def get_preferences(db, user_id: str) -> List[dict]:
     """Return all preference rows for a user."""
-    resp = (
-        db.table("notification_preferences")
-        .select("*")
-        .eq("user_id", user_id)
-        .execute()
-    )
+    resp = db.table("notification_preferences").select("*").eq("user_id", user_id).execute()
     return resp.data or []
 
 
-def upsert_preference(
-    db, user_id: str, type_name: str, channel: str, enabled: bool
-) -> dict:
+def upsert_preference(db, user_id: str, type_name: str, channel: str, enabled: bool) -> dict:
     """Create or update a single preference row."""
     resp = (
         db.table("notification_preferences")
@@ -69,11 +62,7 @@ def bulk_upsert_preferences(db, user_id: str, updates: List[Dict]) -> List[dict]
         }
         for u in updates
     ]
-    resp = (
-        db.table("notification_preferences")
-        .upsert(rows, on_conflict="user_id,type,channel")
-        .execute()
-    )
+    resp = db.table("notification_preferences").upsert(rows, on_conflict="user_id,type,channel").execute()
     return resp.data or []
 
 
@@ -99,9 +88,7 @@ def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryCha
         .eq("type", type_name)
         .execute()
     )
-    prefs: Dict[str, bool] = {
-        row["channel"]: row["enabled"] for row in (resp.data or [])
-    }
+    prefs: Dict[str, bool] = {row["channel"]: row["enabled"] for row in (resp.data or [])}
 
     effective: List[DeliveryChannel] = []
     for ch in defaults:

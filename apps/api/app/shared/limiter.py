@@ -3,6 +3,7 @@ from slowapi.util import get_remote_address
 from fastapi import Request
 import jwt
 
+
 def get_user_or_ip_address(request: Request) -> str:
     auth = request.headers.get("Authorization")
     if auth and auth.lower().startswith("bearer "):
@@ -16,6 +17,7 @@ def get_user_or_ip_address(request: Request) -> str:
         except Exception:
             pass
     return f"ip:{get_remote_address(request)}"
+
 
 # Define rate limiter with user/IP key function and default limit
 limiter = Limiter(key_func=get_user_or_ip_address, default_limits=["100/minute"])

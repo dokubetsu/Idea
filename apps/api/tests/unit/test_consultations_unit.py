@@ -25,9 +25,7 @@ def make_mock_consultation(overrides: dict) -> dict:
 
 @pytest.mark.asyncio
 async def test_cancel_consultation_success(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"user_id": "test-user-id"})
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "test-user-id"})]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
@@ -43,9 +41,7 @@ async def test_cancel_consultation_success(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_cancel_consultation_not_owner(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"user_id": "owner-user-id"})
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "owner-user-id"})]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="malicious-user-id", role=UserRole.USER, full_name="Malicious User"
@@ -61,9 +57,7 @@ async def test_cancel_consultation_not_owner(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_cancel_consultation_not_pending(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"user_id": "test-user-id", "status": "confirmed"})
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"user_id": "test-user-id", "status": "confirmed"})]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
@@ -79,12 +73,8 @@ async def test_cancel_consultation_not_pending(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_decline_consultation_success(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
-    ]
-    mock_db.table("lawyer_profiles").data = [
-        {"id": "test-lawyer-id", "is_verified": True}
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"lawyer_id": "test-lawyer-id"})]
+    mock_db.table("lawyer_profiles").data = [{"id": "test-lawyer-id", "is_verified": True}]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="test-lawyer-id", role=UserRole.LAWYER, full_name="Test Lawyer"
@@ -100,12 +90,8 @@ async def test_decline_consultation_success(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_decline_consultation_unverified_lawyer(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
-    ]
-    mock_db.table("lawyer_profiles").data = [
-        {"id": "test-lawyer-id", "is_verified": False}
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"lawyer_id": "test-lawyer-id"})]
+    mock_db.table("lawyer_profiles").data = [{"id": "test-lawyer-id", "is_verified": False}]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="test-lawyer-id", role=UserRole.LAWYER, full_name="Test Lawyer"
@@ -121,12 +107,8 @@ async def test_decline_consultation_unverified_lawyer(client: AsyncClient, mock_
 
 @pytest.mark.asyncio
 async def test_decline_consultation_not_assigned(client: AsyncClient, mock_db):
-    mock_db.table("consultations").data = [
-        make_mock_consultation({"lawyer_id": "test-lawyer-id"})
-    ]
-    mock_db.table("lawyer_profiles").data = [
-        {"id": "other-lawyer-id", "is_verified": True}
-    ]
+    mock_db.table("consultations").data = [make_mock_consultation({"lawyer_id": "test-lawyer-id"})]
+    mock_db.table("lawyer_profiles").data = [{"id": "other-lawyer-id", "is_verified": True}]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id="other-lawyer-id", role=UserRole.LAWYER, full_name="Other Lawyer"

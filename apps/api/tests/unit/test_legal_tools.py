@@ -63,9 +63,7 @@ def test_cheque_bounce_leap_year():
     # Leap year edge case: cheque written Feb 28, 2028 (leap year), dishonoured Feb 29, 2028
     cheque = date(2028, 2, 28)
     dishonour = date(2028, 2, 29)
-    res = ChequeBounceCalculator.calculate(
-        cheque_date=cheque, dishonour_date=dishonour, current_date=date(2028, 3, 1)
-    )
+    res = ChequeBounceCalculator.calculate(cheque_date=cheque, dishonour_date=dishonour, current_date=date(2028, 3, 1))
     assert res["presentation_valid"] is True
     assert res["status"] == "safe"
 
@@ -74,12 +72,8 @@ def test_cheque_bounce_validation_safety():
     # Dates out of order checks
     cheque = date(2026, 3, 1)
     dishonour_earlier = date(2026, 2, 28)
-    with pytest.raises(
-        ValueError, match="Dishonour date cannot be earlier than cheque date"
-    ):
-        ChequeBounceCalculator.calculate(
-            cheque_date=cheque, dishonour_date=dishonour_earlier
-        )
+    with pytest.raises(ValueError, match="Dishonour date cannot be earlier than cheque date"):
+        ChequeBounceCalculator.calculate(cheque_date=cheque, dishonour_date=dishonour_earlier)
 
 
 def test_rera_calculator_delay_interest():
@@ -110,9 +104,7 @@ def test_summary_suit_calculator_cpc():
     due = date(2024, 6, 1)
     filed = date(2026, 6, 1)
 
-    res = SummarySuitCalculator.calculate(
-        claim_amount=500000.0, due_date=due, state="delhi", current_date=filed
-    )
+    res = SummarySuitCalculator.calculate(claim_amount=500000.0, due_date=due, state="delhi", current_date=filed)
     # Expiry date should be June 1, 2027 (3 years)
     assert res["limitation_expiry"] == "2027-06-01"
     assert res["days_remaining"] == 365
@@ -160,9 +152,7 @@ def test_document_draft_generation(mock_db):
         }
     ]
 
-    mock_db.table("lawyer_profiles").data = [
-        {"id": "lawyer-123", "bar_council_id": "MAH/9988/2020"}
-    ]
+    mock_db.table("lawyer_profiles").data = [{"id": "lawyer-123", "bar_council_id": "MAH/9988/2020"}]
 
     mock_db.table("facts").data = [
         {"matter_id": "matter-123", "key": "cheque_number", "value": "123456"},
@@ -194,9 +184,7 @@ def test_document_draft_generation(mock_db):
     assert "MAH/9988/2020" in res_v["draft_content"]
 
     # 3. Generate Section 138 Notice
-    res_n = DocumentDraftService.generate(
-        "matter-123", "legal_notice_138", current_user
-    )
+    res_n = DocumentDraftService.generate("matter-123", "legal_notice_138", current_user)
     assert "LEGAL NOTICE (SECTION 138 NI ACT)" in res_n["draft_content"]
     assert "123456" in res_n["draft_content"]
     assert "250,000" in res_n["draft_content"]
@@ -230,18 +218,18 @@ def test_cheque_bounce_calendar_month():
     cheque = date(2026, 1, 1)
     dishonour = date(2026, 1, 5)
     notice = date(2026, 1, 15)
-    receipt = date(2026, 1, 16) # wait ends Jan 31
-    
+    receipt = date(2026, 1, 16)  # wait ends Jan 31
+
     res = ChequeBounceCalculator.calculate(
         cheque_date=cheque,
         dishonour_date=dishonour,
         notice_date=notice,
         notice_receipt_date=receipt,
         complaint_filed_date=date(2026, 2, 28),
-        current_date=date(2026, 2, 28)
+        current_date=date(2026, 2, 28),
     )
     assert res["filing_valid"] is True
-    
+
     # Mar 1 should be invalid (expired)
     res_expired = ChequeBounceCalculator.calculate(
         cheque_date=cheque,
@@ -249,7 +237,6 @@ def test_cheque_bounce_calendar_month():
         notice_date=notice,
         notice_receipt_date=receipt,
         complaint_filed_date=date(2026, 3, 1),
-        current_date=date(2026, 3, 1)
+        current_date=date(2026, 3, 1),
     )
     assert res_expired["filing_valid"] is False
-

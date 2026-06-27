@@ -126,18 +126,12 @@ def _build_assessment_user_v1(context: dict[str, Any]) -> str:
     # Append document summaries and history to the prompt if available
     docs = context.get("documents", [])
     if docs:
-        docs_str = "\n".join(
-            f"  - {d['name']} ({d['file_type']}): {b64_encode(d['summary'])}"
-            for d in docs
-        )
+        docs_str = "\n".join(f"  - {d['name']} ({d['file_type']}): {b64_encode(d['summary'])}" for d in docs)
         user_msg += f"\n\n<uploaded_documents_base64>\n{docs_str}\n</uploaded_documents_base64>"
 
     hist = context.get("history", [])
     if hist:
-        hist_str = "\n".join(
-            f"  - [{h['created_at']}] {h['author']}: {b64_encode(h['content'])}"
-            for h in hist
-        )
+        hist_str = "\n".join(f"  - [{h['created_at']}] {h['author']}: {b64_encode(h['content'])}" for h in hist)
         user_msg += f"\n\n<case_update_history_base64>\n{hist_str}\n</case_update_history_base64>"
 
     return user_msg
@@ -148,9 +142,7 @@ def _build_assessment_user_v1(context: dict[str, Any]) -> str:
 
 class PromptBuilder:
     @staticmethod
-    def build(
-        template_name: str, context: dict[str, Any], version: str = "v1"
-    ) -> tuple[str, str]:
+    def build(template_name: str, context: dict[str, Any], version: str = "v1") -> tuple[str, str]:
         """
         Builds and returns (system_prompt, user_prompt) based on the template, context, and version.
         """

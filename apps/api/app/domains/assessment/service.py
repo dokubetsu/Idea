@@ -43,9 +43,7 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
     )
 
     # 2. Build versioned prompt
-    system_prompt, user_prompt = PromptBuilder.build(
-        "assessment", context, version="v1"
-    )
+    system_prompt, user_prompt = PromptBuilder.build("assessment", context, version="v1")
 
     if settings.ai_provider == "mock":
         # Safe deterministic local mock
@@ -102,4 +100,3 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
                 temperature=0.1,
             )
             return AssessmentOutput(**normalized_mock)
-

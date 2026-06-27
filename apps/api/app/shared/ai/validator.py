@@ -50,9 +50,7 @@ class ResponseValidator:
             # It may contain sensitive prompt content or user data. Log it server-side only.
             import logging
 
-            logging.getLogger(__name__).debug(
-                "AI JSON parse failure. Raw response (first 200 chars): %.200s", raw
-            )
+            logging.getLogger(__name__).debug("AI JSON parse failure. Raw response (first 200 chars): %.200s", raw)
             raise ValueError(f"AI response is not valid JSON: {e}")
 
         # Pydantic validation and coercion
@@ -89,11 +87,7 @@ class Normalizer:
                 data["timeline_min_months"],
             )
 
-        if (
-            "budget_min_inr" in data
-            and "budget_max_inr" in data
-            and data["budget_min_inr"] > data["budget_max_inr"]
-        ):
+        if "budget_min_inr" in data and "budget_max_inr" in data and data["budget_min_inr"] > data["budget_max_inr"]:
             data["budget_min_inr"], data["budget_max_inr"] = (
                 data["budget_max_inr"],
                 data["budget_min_inr"],

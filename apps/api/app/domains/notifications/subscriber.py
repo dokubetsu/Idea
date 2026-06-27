@@ -46,16 +46,13 @@ async def handle_domain_event(
             m_title = m["title"]
             c_id = m["user_id"]
             try:
-                db.table("matters").update({
-                    "lawyer_id": None,
-                    "status": "matching"
-                }).eq("id", m_id).execute()
+                db.table("matters").update({"lawyer_id": None, "status": "matching"}).eq("id", m_id).execute()
 
                 await emit(
                     EventType.MATTER_STATUS_CHANGED,
                     actor_id=actor_id,
                     matter_id=m_id,
-                    payload={"old_status": "active", "new_status": "matching", "reason": "Lawyer suspended"}
+                    payload={"old_status": "active", "new_status": "matching", "reason": "Lawyer suspended"},
                 )
 
                 if c_id:
@@ -79,13 +76,7 @@ async def handle_domain_event(
     # ContextVar has been cleared by middleware. Using get_service_role_db() explicitly
     # here is correct — we need full access to look up matters and create notifications.
     try:
-        m_row = (
-            db.table("matters")
-            .select("title, user_id, lawyer_id, client_email")
-            .eq("id", matter_id)
-            .execute()
-            .data
-        )
+        m_row = db.table("matters").select("title, user_id, lawyer_id, client_email").eq("id", matter_id).execute().data
         if not m_row:
             return
         matter = m_row[0]
@@ -103,13 +94,7 @@ async def handle_domain_event(
             lawyer_name = "an advocate"
             if lawyer_id:
                 try:
-                    prof_resp = (
-                        db.table("profiles")
-                        .select("full_name")
-                        .eq("id", lawyer_id)
-                        .single()
-                        .execute()
-                    )
+                    prof_resp = db.table("profiles").select("full_name").eq("id", lawyer_id).single().execute()
                     if prof_resp.data:
                         lawyer_name = prof_resp.data["full_name"]
                 except Exception:
@@ -135,11 +120,7 @@ async def handle_domain_event(
             if hearing_id:
                 try:
                     hearing_resp = (
-                        db.table("hearings")
-                        .select("hearing_date, courtroom")
-                        .eq("id", hearing_id)
-                        .single()
-                        .execute()
+                        db.table("hearings").select("hearing_date, courtroom").eq("id", hearing_id).single().execute()
                     )
                     if hearing_resp.data:
                         hearing_date = hearing_resp.data.get("hearing_date") or hearing_date

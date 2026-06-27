@@ -7,6 +7,7 @@ from app.shared.ai.validator import Normalizer
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.main import app
 
+
 @pytest.mark.asyncio
 async def test_respond_to_request_status_guard(client: AsyncClient, mock_db):
     # Set current user as a verified lawyer
@@ -37,7 +38,7 @@ async def test_respond_to_request_status_guard(client: AsyncClient, mock_db):
         # Try to accept it
         payload = {"accept": True}
         res = await client.patch("/api/v1/matching/requests/req-1", json=payload)
-        
+
         # Must return 400 Bad Request
         assert res.status_code == 400
         assert "already been processed" in res.json()["detail"]
@@ -67,12 +68,9 @@ async def test_contact_lawyer_idor(client: AsyncClient, mock_db):
         ]
 
         # Try to contact a lawyer attaching another user's matter
-        payload = {
-            "matter_id": "matter-other-user",
-            "message": "Please help"
-        }
+        payload = {"matter_id": "matter-other-user", "message": "Please help"}
         res = await client.post("/api/v1/matching/lawyers/some-lawyer-id/contact", json=payload)
-        
+
         # Must return 403 Forbidden
         assert res.status_code == 403
         assert "does not belong to you" in res.json()["detail"]
@@ -100,7 +98,7 @@ async def test_verify_fact_idor(client: AsyncClient, mock_db):
                 "category": "other",
                 "status": "active",
                 "up": {"full_name": "Client Name"},
-                "lp": {"full_name": "Assigned Lawyer Name"}
+                "lp": {"full_name": "Assigned Lawyer Name"},
             }
         ]
         # Seed a fact for this matter
@@ -126,7 +124,7 @@ async def test_verify_fact_idor(client: AsyncClient, mock_db):
         # Try to verify the fact on this matter
         payload = {"is_verified": True, "value": "new value"}
         res = await client.patch("/api/v1/matters/matter-1/facts/fact-1", json=payload)
-        
+
         # Must return 403 Forbidden
         assert res.status_code == 403
 

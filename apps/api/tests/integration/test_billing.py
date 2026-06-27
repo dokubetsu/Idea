@@ -9,9 +9,7 @@ from app.shared.database import get_db
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_payment_capture_idempotency_integration(
-    client: AsyncClient, mock_user, monkeypatch
-):
+async def test_payment_capture_idempotency_integration(client: AsyncClient, mock_user, monkeypatch):
     # Enable FEATURE_BILLING and FEATURE_MILESTONES for test
     from app.config import settings
 
@@ -81,37 +79,24 @@ async def test_payment_capture_idempotency_integration(
                         "entity": {
                             "id": pay_id,
                             "amount": 2500000,
-                            "notes": {
-                                "milestone_id": m_id,
-                                "payment_idempotency_key": key
-                            }
+                            "notes": {"milestone_id": m_id, "payment_idempotency_key": key},
                         }
                     }
-                }
+                },
             }
             body_bytes = json.dumps(body).encode()
-            sig = hmac.new(
-                "test_webhook_secret".encode(),
-                body_bytes,
-                hashlib.sha256
-            ).hexdigest()
+            sig = hmac.new("test_webhook_secret".encode(), body_bytes, hashlib.sha256).hexdigest()
             return body, sig
 
         # 5. Test Webhook Signature verification failure
         body, sig = make_webhook_req("pay_tx_123", milestone_id, idemp_key)
         res_bad_sig = await client.post(
-            "/api/v1/matters/webhook/payment",
-            json=body,
-            headers={"X-Razorpay-Signature": "invalid_signature"}
+            "/api/v1/matters/webhook/payment", json=body, headers={"X-Razorpay-Signature": "invalid_signature"}
         )
         assert res_bad_sig.status_code == 401
 
         # 6. Pay the milestone via verified webhook (first time)
-        res1 = await client.post(
-            "/api/v1/matters/webhook/payment",
-            json=body,
-            headers={"X-Razorpay-Signature": sig}
-        )
+        res1 = await client.post("/api/v1/matters/webhook/payment", json=body, headers={"X-Razorpay-Signature": sig})
         assert res1.status_code == 200
         data1 = res1.json()
         assert data1["status"] == "success"
@@ -124,11 +109,7 @@ async def test_payment_capture_idempotency_integration(
 
         # 7. Pay the milestone (second time, retrying with same key but different payment_gateway_ref)
         body2, sig2 = make_webhook_req("pay_tx_456", milestone_id, idemp_key)
-        res2 = await client.post(
-            "/api/v1/matters/webhook/payment",
-            json=body2,
-            headers={"X-Razorpay-Signature": sig2}
-        )
+        res2 = await client.post("/api/v1/matters/webhook/payment", json=body2, headers={"X-Razorpay-Signature": sig2})
         assert res2.status_code == 200
         data2 = res2.json()
         assert data2["status"] == "success"
@@ -154,9 +135,7 @@ async def test_payment_capture_idempotency_integration(
         try:
             body3, sig3 = make_webhook_req("pay_tx_789", milestone_id2, idemp_key)
             res3 = await client.post(
-                "/api/v1/matters/webhook/payment",
-                json=body3,
-                headers={"X-Razorpay-Signature": sig3}
+                "/api/v1/matters/webhook/payment", json=body3, headers={"X-Razorpay-Signature": sig3}
             )
             # Should fail because idempotency key is already used for milestone 1
             assert res3.status_code == 400
