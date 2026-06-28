@@ -116,6 +116,7 @@ class ChequeBounceCalculator:
                 reason = "Notice sent. Confirm delivery/receipt date to trigger grace period timer."
                 color = "green"
         elif notice_receipt_date:
+            assert filing_deadline is not None
             days_since_receipt = (now - notice_receipt_date).days
             total_window_days = (filing_deadline - notice_receipt_date).days
 
