@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     CRON_SECRET: str
 
     # ── Payment Webhook security ──────────────────────────
-    PAYMENT_WEBHOOK_SECRET: str = "test_webhook_secret"
+    PAYMENT_WEBHOOK_SECRET: str
 
     FEATURE_CONSULTATIONS: bool = True
     FEATURE_BILLING: bool = False
@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     API_VERSION: str = "v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    REDIS_URL: str = "memory://"
+    TRUST_PROXY: bool = True
 
     @model_validator(mode="after")
     def validate_keys(self) -> "Settings":
@@ -99,6 +101,19 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "APP_URL must be set to a valid non-localhost production URL when APP_ENV is production."
+            )
+        if self.APP_ENV == "production" and (
+            not self.PAYMENT_WEBHOOK_SECRET
+            or self.PAYMENT_WEBHOOK_SECRET in ("", "test_webhook_secret")
+        ):
+            raise ValueError(
+                "PAYMENT_WEBHOOK_SECRET must be set to a valid production secret when APP_ENV is production."
+            )
+        if self.APP_ENV == "production" and (
+            not self.REDIS_URL or self.REDIS_URL.startswith("memory://")
+        ):
+            raise ValueError(
+                "REDIS_URL must be set to a valid Redis URL when APP_ENV is production."
             )
         return self
 

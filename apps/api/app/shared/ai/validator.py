@@ -74,10 +74,28 @@ class Normalizer:
         data = validated_data.model_dump()
 
         # Enforce calendar and numeric safety constraints
-        if data.get("timeline_min_months", 0) < 0:
-            data["timeline_min_months"] = 0
-        if data.get("timeline_max_months", 0) < 0:
-            data["timeline_max_months"] = 0
+        t_min = data.get("timeline_min_months", 0)
+        t_max = data.get("timeline_max_months", 0)
+        if t_min < 0:
+            t_min = 0
+        if t_max < 0:
+            t_max = 0
+        if t_min > t_max:
+            t_min, t_max = t_max, t_min
+        data["timeline_min_months"] = t_min
+        data["timeline_max_months"] = t_max
+
+        # Enforce budget range safety
+        b_min = data.get("budget_min_inr", 0)
+        b_max = data.get("budget_max_inr", 0)
+        if b_min < 0:
+            b_min = 0
+        if b_max < 0:
+            b_max = 0
+        if b_min > b_max:
+            b_min, b_max = b_max, b_min
+        data["budget_min_inr"] = b_min
+        data["budget_max_inr"] = b_max
 
         if (
             "timeline_min_months" in data

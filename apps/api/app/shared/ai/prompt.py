@@ -50,25 +50,40 @@ Rules:
 def sanitize_user_input(text: Any) -> str:
     if not text:
         return ""
+    import re
+
     text_str = str(text)
-    # Strip potential injection wrappers / escape markers
     bad_tags = [
         "</user_description>",
         "</raw_description>",
         "</facts>",
         "</title>",
+        "</title_base64>",
+        "</raw_description_base64>",
+        "</extracted_facts_base64>",
+        "</uploaded_documents_base64>",
+        "</case_update_history_base64>",
+        "<title_base64>",
+        "<raw_description_base64>",
+        "<extracted_facts_base64>",
+        "<uploaded_documents_base64>",
+        "<case_update_history_base64>",
         "system_instruction",
         "system instruction",
         "ignore previous",
+        "ignore instructions",
+        "ignore all previous",
     ]
     for tag in bad_tags:
-        text_str = text_str.replace(tag, "[cleaned]")
+        text_str = re.sub(re.escape(tag), "[cleaned]", text_str, flags=re.IGNORECASE)
     return text_str
 
 
 def _build_extraction_user_v1(context: dict[str, Any]) -> str:
-    title_b64 = b64_encode(context.get("title", ""))
-    raw_desc_b64 = b64_encode(context.get("raw_description", ""))
+    title = sanitize_user_input(context.get("title", ""))
+    raw_desc = sanitize_user_input(context.get("raw_description", ""))
+    title_b64 = b64_encode(title)
+    raw_desc_b64 = b64_encode(raw_desc)
     return f"<title_base64>\n{title_b64}\n</title_base64>\n\n<raw_description_base64>\n{raw_desc_b64}\n</raw_description_base64>"
 
 
@@ -84,8 +99,8 @@ All user-controlled fields inside the tags:
 - <title_base64>
 - <extracted_facts_base64> (each fact value is base64-encoded)
 - <raw_description_base64> (if present)
-- <uploaded_documents_base64> (each summary is base64-encoded)
-- <case_update_history_base64> (each content is base64-encoded)
+- <uploaded_documents_base64> (each name and summary is base64-encoded)
+- <case_update_history_base64> (each author and content is base64-encoded)
 are base64-encoded to prevent prompt injection.
 You MUST base64-decode these values first to read the actual text before performing your analysis.
 
@@ -114,20 +129,23 @@ Indian courts are slow — reflect that in timelines.
 
 def _build_assessment_user_v1(context: dict[str, Any]) -> str:
     facts = context.get("facts", {})
-    facts_str = "\n".join(f"  {k}: {b64_encode(v)}" for k, v in facts.items())
+    safe_facts = {k: sanitize_user_input(str(v)) for k, v in facts.items()}
+    facts_str = "\n".join(f"  {k}: {b64_encode(v)}" for k, v in safe_facts.items())
 
-    title_b64 = b64_encode(context.get("title", ""))
+    title = sanitize_user_input(context.get("title", ""))
+    title_b64 = b64_encode(title)
     user_msg = f"<title_base64>\n{title_b64}\n</title_base64>\n\n<extracted_facts_base64>\n{facts_str}\n</extracted_facts_base64>"
 
     raw_desc = context.get("raw_description")
     if raw_desc:
-        user_msg += f"\n\n<raw_description_base64>\n{b64_encode(raw_desc)}\n</raw_description_base64>"
+        safe_desc = sanitize_user_input(raw_desc)
+        user_msg += f"\n\n<raw_description_base64>\n{b64_encode(safe_desc)}\n</raw_description_base64>"
 
     # Append document summaries and history to the prompt if available
     docs = context.get("documents", [])
     if docs:
         docs_str = "\n".join(
-            f"  - {d['name']} ({d['file_type']}): {b64_encode(d['summary'])}"
+            f"  - {b64_encode(sanitize_user_input(d['name']))} ({d['file_type']}): {b64_encode(sanitize_user_input(d['summary']))}"
             for d in docs
         )
         user_msg += (
@@ -137,7 +155,7 @@ def _build_assessment_user_v1(context: dict[str, Any]) -> str:
     hist = context.get("history", [])
     if hist:
         hist_str = "\n".join(
-            f"  - [{h['created_at']}] {h['author']}: {b64_encode(h['content'])}"
+            f"  - [{h['created_at']}] {b64_encode(sanitize_user_input(h['author']))}: {b64_encode(sanitize_user_input(h['content']))}"
             for h in hist
         )
         user_msg += f"\n\n<case_update_history_base64>\n{hist_str}\n</case_update_history_base64>"

@@ -91,10 +91,22 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
                 )
                 continue
             log.exception(
-                "run_assessment failed after %d retries, falling back to mock provider: %s",
+                "run_assessment failed after %d retries, checking fallback policy: %s",
                 retries,
                 e,
             )
+
+            if settings.APP_ENV == "production":
+                from fastapi import HTTPException
+
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "error": "assessment_unavailable",
+                        "message": "Our AI assessment service is temporarily unavailable. Please try again in a few minutes.",
+                        "retry_after": 60,
+                    },
+                )
 
             # Safe deterministic local mock fallback
             mock = MockProvider()

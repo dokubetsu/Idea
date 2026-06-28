@@ -57,7 +57,7 @@ class UpdateFactsRequest(BaseModel):
 
 class CommitIntakeRequest(BaseModel):
     session_id: str | None = None
-    confirmed_facts: list[dict] = Field(default_factory=list)
+    confirmed_facts: list[ExtractedFact] = Field(default_factory=list)
 
 
 class ExtractedFactsPayload(BaseModel):

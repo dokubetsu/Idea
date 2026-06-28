@@ -203,6 +203,8 @@ export function IntakeWizard({
     };
   }, [step]);
 
+  const hasMounted = useRef(false);
+
   // Load draft from sessionStorage on mount
   useEffect(() => {
     const draftJson = sessionStorage.getItem("lead_intake_wizard_draft");
@@ -227,10 +229,13 @@ export function IntakeWizard({
         console.error("Failed to restore intake wizard draft:", e);
       }
     }
+    hasMounted.current = true;
   }, []);
 
   // Save draft to sessionStorage on changes
   useEffect(() => {
+    if (!hasMounted.current) return;
+
     if (step === "done") {
       sessionStorage.removeItem("lead_intake_wizard_draft");
       return;

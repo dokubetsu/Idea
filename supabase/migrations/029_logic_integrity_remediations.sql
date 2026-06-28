@@ -110,6 +110,14 @@ SECURITY DEFINER
 SET search_path = public, pg_temp, auth
 AS $$
 BEGIN
+  -- Authorization: caller must be admin
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'::public.user_role AND is_active = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: admin role required' USING ERRCODE = '42501';
+  END IF;
+
   -- Update lawyer_profiles
   UPDATE public.lawyer_profiles
   SET is_verified = TRUE,
@@ -129,15 +137,26 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION verify_lawyer_rpc(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION verify_lawyer_rpc(UUID) TO authenticated, service_role;
+
 
 -- ── 3. Atomic lawyer suspension RPC ──
 CREATE OR REPLACE FUNCTION suspend_lawyer_rpc(p_lawyer_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, pg_temp, auth
 AS $$
 BEGIN
+  -- Authorization: caller must be admin
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'::public.user_role AND is_active = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized: admin role required' USING ERRCODE = '42501';
+  END IF;
+
   -- Update profiles table
   UPDATE public.profiles
   SET is_active = FALSE,
@@ -149,8 +168,16 @@ BEGIN
   SET is_available = FALSE,
       updated_at = NOW()
   WHERE id = p_lawyer_id;
+
+  -- Clear the elevated role from JWT claims
+  UPDATE auth.users
+  SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || '{"role": "suspended"}'::jsonb
+  WHERE id = p_lawyer_id;
 END;
 $$;
+
+REVOKE EXECUTE ON FUNCTION suspend_lawyer_rpc(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION suspend_lawyer_rpc(UUID) TO authenticated, service_role;
 
 
 -- Register migration

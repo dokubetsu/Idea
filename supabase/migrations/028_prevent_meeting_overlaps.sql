@@ -18,6 +18,9 @@ BEGIN
     WHERE id = NEW.matter_id;
 
     IF v_lawyer_id IS NOT NULL THEN
+      -- Serialize concurrent inserts for the same lawyer
+      PERFORM pg_advisory_xact_lock(hashtext('meeting_overlap' || v_lawyer_id::text));
+
       -- Check if another scheduled meeting exists for the same lawyer that overlaps
       SELECT EXISTS (
         SELECT 1

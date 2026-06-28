@@ -136,14 +136,15 @@ async def handle_domain_event(
     elif event_type in (EventType.HEARING_SCHEDULED, EventType.HEARING_UPDATED):
         hearing_date = payload.get("hearing_date") or "TBD"
         courtroom = payload.get("courtroom") or "TBD"
+        purpose = payload.get("purpose") or ""
 
-        if hearing_date == "TBD" or courtroom == "TBD":
+        if hearing_date == "TBD" or courtroom == "TBD" or not purpose:
             hearing_id = payload.get("hearing_id")
             if hearing_id:
                 try:
                     hearing_resp = (
                         db.table("hearings")
-                        .select("hearing_date, courtroom")
+                        .select("hearing_date, courtroom, purpose")
                         .eq("id", hearing_id)
                         .single()
                         .execute()
@@ -153,8 +154,19 @@ async def handle_domain_event(
                             hearing_resp.data.get("hearing_date") or hearing_date
                         )
                         courtroom = hearing_resp.data.get("courtroom") or courtroom
+                        purpose = hearing_resp.data.get("purpose") or purpose
                 except Exception:
                     pass
+
+        # Format the datetime string if possible
+        if hearing_date and hearing_date != "TBD":
+            try:
+                from datetime import datetime
+
+                dt = datetime.fromisoformat(hearing_date.replace("Z", "+00:00"))
+                hearing_date = dt.strftime("%b %d, %Y at %I:%M %p")
+            except Exception:
+                pass
 
         if client_id:
             create_notification(
@@ -165,6 +177,7 @@ async def handle_domain_event(
                     "matter_title": matter_title,
                     "hearing_date": hearing_date,
                     "courtroom": courtroom,
+                    "purpose": purpose,
                     "matter_id": matter_id,
                 },
                 action={"label": "View Case", "url": f"/user/matters/{matter_id}"},
@@ -178,6 +191,7 @@ async def handle_domain_event(
                     "matter_title": matter_title,
                     "hearing_date": hearing_date,
                     "courtroom": courtroom,
+                    "purpose": purpose,
                     "matter_id": matter_id,
                 },
                 action={"label": "View Case", "url": f"/lawyer/matters/{matter_id}"},
@@ -205,12 +219,41 @@ async def handle_domain_event(
             if event_type == EventType.LAWYER_ACCEPTED
             else "lawyer_declined"
         )
+        lawyer_name = "An advocate"
+        if actor_id:
+            try:
+                prof_resp = (
+                    db.table("profiles")
+                    .select("full_name")
+                    .eq("id", actor_id)
+                    .single()
+                    .execute()
+                )
+                if prof_resp.data:
+                    lawyer_name = prof_resp.data["full_name"]
+            except Exception:
+                pass
+
+        is_accept = event_type == EventType.LAWYER_ACCEPTED
+        subject = (
+            f"Advocate Accepted Case — {matter_title}"
+            if is_accept
+            else f"Advocate Declined Request — {matter_title}"
+        )
+        body = (
+            f"Advocate {lawyer_name} has accepted your request for the case '{matter_title}'."
+            if is_accept
+            else f"Advocate {lawyer_name} has declined your request for the case '{matter_title}'."
+        )
+
         if client_id:
             create_notification(
                 db,
                 user_id=client_id,
                 type_name=decision_type,
                 data={
+                    "subject": subject,
+                    "body": body,
                     "matter_title": matter_title,
                     "matter_id": matter_id,
                 },

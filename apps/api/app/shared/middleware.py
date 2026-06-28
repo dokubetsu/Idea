@@ -20,9 +20,18 @@ class RequestTracingMiddleware:
             return
 
         # Try to find headers
+        import re
+
         headers = dict(scope.get("headers", []))
         req_id_bytes = headers.get(b"x-request-id", b"")
-        req_id = req_id_bytes.decode("utf-8") if req_id_bytes else str(uuid.uuid4())
+        raw_id = req_id_bytes.decode("utf-8").strip() if req_id_bytes else ""
+
+        # Enforce validation to restrict characters to alphanumeric/hyphens/underscores, max length 120
+        if raw_id and re.match(r"^[\w\-]{1,120}$", raw_id):
+            req_id = raw_id
+        else:
+            req_id = str(uuid.uuid4())
+
         request_id_var.set(req_id)
 
         # Check for Authorization header
@@ -31,6 +40,21 @@ class RequestTracingMiddleware:
         token = None
         if auth_str.lower().startswith("bearer "):
             token = auth_str[7:].strip()
+
+        # Securely decode and verify token to populate user_id on state
+        user_id = None
+        if token:
+            try:
+                from app.shared.jwt import decode_token
+
+                payload = decode_token(token)
+                user_id = payload.get("sub")
+            except Exception:
+                pass
+
+        if "state" not in scope:
+            scope["state"] = {}
+        scope["state"]["user_id"] = user_id
 
         from app.shared.database import create_client, set_request_db, clear_request_db
         from app.config import settings

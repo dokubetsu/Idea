@@ -12,7 +12,7 @@ from app.shared.exceptions import NotFound, Forbidden
 
 _VAKALATNAMA_TEMPLATE = """
 # VAKALATNAMA
-**IN THE COURT OF COMPONENT AUTHORITY / JUDICIAL MAGISTRATE / FORUM**
+**IN THE COURT OF COMPETENT AUTHORITY / JUDICIAL MAGISTRATE / FORUM**
 
 **In the matter of:**
 **Complainant / Petitioner:** {client_name}
@@ -51,8 +51,7 @@ _NOTICE_138_TEMPLATE = """
 **Date:** {notice_date}
 
 **To,**
-**Name:** {opponent_name}
-**Address:** {opponent_address}
+{to_field}
 
 **SUBJECT: LEGAL NOTICE UNDER SECTION 138 OF THE NEGOTIABLE INSTRUMENTS ACT, 1881 FOR DISHONOUR OF CHEQUE NO. {cheque_number} FOR ₹{cheque_amount:,}**
 
@@ -60,7 +59,9 @@ Dear Sir/Madam,
 
 Under instructions from and on behalf of my client, **{client_name}** residing at **{client_address}**, I hereby serve you with this Legal Notice under Section 138 of the Negotiable Instruments Act, 1881:
 
-1. That you issued a Cheque bearing No. **{cheque_number}** dated **{cheque_date}** for a sum of **₹{cheque_amount:,}** drawn on **{bank_name}** in favour of my client towards the discharge of your legally enforceable debt and liability (Nature of debt: *{debt_type}*).
+{corporate_clause}
+
+1. That you/Accused Company issued a Cheque bearing No. **{cheque_number}** dated **{cheque_date}** for a sum of **₹{cheque_amount:,}** drawn on **{bank_name}** in favour of my client towards the discharge of your/the Company's legally enforceable debt and liability (Nature of debt: *{debt_type}*).
 
 2. That my client presented the said cheque for clearance within its validity period. However, the cheque was returned unpaid by the bank on **{dishonour_date}** with the return memo stating reason: **"{dishonour_reason}"**.
 
@@ -68,7 +69,7 @@ Under instructions from and on behalf of my client, **{client_name}** residing a
 
 4. I, therefore, by means of this legal notice, call upon you to pay the entire cheque amount of **₹{cheque_amount:,}** to my client within **15 days** of the receipt of this notice.
 
-5. Please note that if you fail to pay the said sum within 15 days, my client will be constrained to initiate criminal proceedings against you under Section 138 of the Negotiable Instruments Act, 1881, in the competent court of law, entirely at your risk and consequence.
+5. Please note that if you fail to pay the said sum within 15 days, my client will be constrained to initiate criminal proceedings against you under Section 138 read with Section 141 of the Negotiable Instruments Act, 1881, in the competent court of law, entirely at your risk and consequence.
 
 Sincerely,
 
@@ -116,6 +117,27 @@ I, {client_name}, Complainant, do hereby verify that the contents of paragraphs 
 ___________________________
 **Signature of Complainant**
 """.strip()
+
+
+def parse_indian_amount(raw: Any) -> float:
+    if not raw:
+        return 0.0
+    # Clean spacing, symbols, and commas
+    cleaned = (
+        str(raw)
+        .replace("Rs.", "")
+        .replace("₹", "")
+        .replace(",", "")
+        .replace(" ", "")
+        .strip()
+    )
+    try:
+        amount = float(cleaned)
+        if amount < 0:
+            return 0.0
+        return amount
+    except ValueError:
+        return 0.0
 
 
 class DocumentDraftService:
@@ -228,15 +250,45 @@ class DocumentDraftService:
 
         # Generate Notice 138 (Cheque Bounce)
         elif document_type == "legal_notice_138":
-            try:
-                cheque_amount = float(facts_dict.get("cheque_amount", "0"))
-            except ValueError:
-                cheque_amount = 0.0
+            from fastapi import HTTPException
+
+            cheque_amount = parse_indian_amount(facts_dict.get("cheque_amount", ""))
+            if cheque_amount <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Valid cheque amount is required for legal notice generation",
+                )
+
+            is_corporate = str(
+                facts_dict.get("is_corporate_drawer", "")
+            ).strip().lower() in ("true", "yes", "1")
+            if is_corporate:
+                company_name = _escape(facts_dict.get("company_name") or opponent_name)
+                directors_str = _escape(
+                    facts_dict.get("directors") or "[Director Name(s)]"
+                )
+
+                to_field = f"**{company_name}**\nThrough its Directors:\n"
+                for d in [
+                    name.strip() for name in directors_str.split(",") if name.strip()
+                ]:
+                    to_field += f"- {d}\n"
+                to_field += f"Address: {opponent_address}"
+
+                corporate_clause = (
+                    f"That the Accused No. 1 is a Company incorporated under the Companies Act, and the "
+                    f"Directors (namely {directors_str}) are in charge of and responsible to the Company "
+                    f"for the conduct of its business, and are therefore jointly and severally liable for "
+                    f"the acts of the Company under Section 141 of the Negotiable Instruments Act, 1881."
+                )
+            else:
+                to_field = f"**{opponent_name}**\nAddress: {opponent_address}"
+                corporate_clause = ""
 
             draft = _NOTICE_138_TEMPLATE.format(
                 notice_date=facts_dict.get("notice_date") or today.isoformat(),
-                opponent_name=opponent_name,
-                opponent_address=opponent_address,
+                to_field=to_field,
+                corporate_clause=corporate_clause,
                 cheque_number=facts_dict.get("cheque_number") or "[Cheque Number]",
                 cheque_amount=cheque_amount,
                 cheque_date=facts_dict.get("cheque_date") or "[Cheque Date]",

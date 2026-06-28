@@ -37,7 +37,6 @@ async def start_intake(
 ):
     """Step 1: Extract facts from description."""
     result = await extract_facts(body.title, body.description)
-    response.headers["X-AI-Provider"] = result.provider or "unknown"
 
     db = get_db()
     row = (
@@ -134,7 +133,6 @@ async def run_intake_assessment(
             raw_description=session.get("raw_description"),
         )
     )
-    response.headers["X-AI-Provider"] = assessment.provider or "unknown"
 
     updated = (
         db.table("intake_sessions")
@@ -194,7 +192,10 @@ async def commit_intake(
     p_extracted_facts = None
     if body and body.confirmed_facts:
         facts_data = session["extracted_facts"].copy()
-        facts_data["facts"] = body.confirmed_facts
+        # Serialize ExtractedFact models back to dict for database compatibility
+        facts_data["facts"] = [
+            f.model_dump(by_alias=True) for f in body.confirmed_facts
+        ]
         session["extracted_facts"] = facts_data
         p_extracted_facts = facts_data
 
@@ -403,6 +404,23 @@ def _get_session(db, session_id: str, user_id: str) -> dict:
         raise Forbidden()
 
     row = r.data
+
+    # Enforce 48h expiry check on intake sessions
+    expires_at = row.get("expires_at")
+    if expires_at:
+        from datetime import datetime, timezone
+
+        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        if expiry < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "error": "session_expired",
+                    "message": "This intake session has expired. Please start a new one.",
+                    "expired_at": expires_at,
+                },
+            )
+
     row["extracted_facts"] = migrate_extracted_facts(
         row.get("extracted_facts", {}), row
     )

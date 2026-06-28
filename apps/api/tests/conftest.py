@@ -60,9 +60,12 @@ class MockSupabaseTable:
         self.queries = []
         self.data = []
         self.last_inserted = None
+        self._pending_update = None
 
     def select(self, *args, **kwargs):
-        self.queries.clear()
+        is_returning = any(q[0] in ("update", "insert") for q in self.queries)
+        if not is_returning:
+            self.queries.clear()
         self.queries.append(("select", args, kwargs))
         return self
 
@@ -80,11 +83,7 @@ class MockSupabaseTable:
     def update(self, data, *args, **kwargs):
         self.queries.clear()
         self.queries.append(("update", data, args, kwargs))
-        updated_rows = []
-        for row in self.data:
-            updated_rows.append({**row, **data})
-        self.data = updated_rows
-        self.last_inserted = updated_rows
+        self._pending_update = data
         return self
 
     def eq(self, column, value):
@@ -105,6 +104,34 @@ class MockSupabaseTable:
 
     def execute(self):
         is_single = any(q[0] == "single" for q in self.queries)
+        is_update = any(q[0] == "update" for q in self.queries)
+
+        if is_update and getattr(self, "_pending_update", None) is not None:
+            # Find the filters
+            filters = []
+            for query in self.queries:
+                if query[0] == "eq":
+                    filters.append((query[1], query[2]))
+
+            # Apply update only to rows in self.data matching the filters
+            updated_rows = []
+            for row in self.data:
+                match = True
+                for column, value in filters:
+                    if row.get(column) != value:
+                        match = False
+                        break
+                if match:
+                    row.update(self._pending_update)
+                    updated_rows.append(row)
+
+            self._pending_update = None
+            ret = updated_rows
+            if is_single:
+                ret = ret[0] if ret else None
+            self.queries.clear()
+            return MockSupabaseResponse(ret)
+
         if self.last_inserted is not None:
             data = self.last_inserted
             self.last_inserted = None
@@ -120,6 +147,7 @@ class MockSupabaseTable:
             ret = data[0] if data else None
         else:
             ret = data
+        self.queries.clear()
         return MockSupabaseResponse(ret)
 
 

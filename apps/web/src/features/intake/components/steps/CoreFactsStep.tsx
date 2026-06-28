@@ -51,7 +51,7 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
       </p>
 
       <Field label="When did this happen?" htmlFor="incident_date">
-        <input id="incident_date" type="date" {...register("incident_date")} className="form-input" />
+        <input id="incident_date" type="date" {...register("incident_date")} aria-invalid={!!errors.incident_date} className="form-input" />
         <Err msg={errors.incident_date?.message} />
       </Field>
 
@@ -61,6 +61,7 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
           type="text"
           placeholder="e.g. Bangalore, Karnataka"
           {...register("incident_location")}
+          aria-invalid={!!errors.incident_location}
           className="form-input"
         />
         <Err msg={errors.incident_location?.message} />
@@ -72,12 +73,13 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
           type="text"
           placeholder="e.g. Rakesh Sharma or HDFC Bank"
           {...register("opponent_name")}
+          aria-invalid={!!errors.opponent_name}
           className="form-input"
         />
         <Err msg={errors.opponent_name?.message} />
       </Field>
 
-      <div role="group" aria-labelledby="urgency-label" className="space-y-1.5">
+      <div role="group" aria-labelledby="urgency-label" aria-invalid={!!errors.urgency_level} className="space-y-1.5">
         <label id="urgency-label" className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-blue-light/50">
           How urgent is this?
         </label>
@@ -141,7 +143,7 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
       </div>
 
       <Field label="Who is filing this complaint? (Complainant Type)" htmlFor="complainant_type">
-        <select id="complainant_type" {...register("complainant_type")} className="form-input">
+        <select id="complainant_type" {...register("complainant_type")} aria-invalid={!!errors.complainant_type} className="form-input">
           <option value="">— Select Type —</option>
           {["Individual", "Proprietorship", "Partnership", "Company"].map((t) => (
             <option key={t} value={t}>
@@ -153,7 +155,7 @@ export function CoreFactsStep({ form, onSubmit, onBack }: CoreFactsStepProps) {
       </Field>
 
       <Field label="Do you have key documents for this case?" htmlFor="has_documents">
-        <select id="has_documents" {...register("has_documents")} className="form-input">
+        <select id="has_documents" {...register("has_documents")} aria-invalid={!!errors.has_documents} className="form-input">
           <option value="">— Select Option —</option>
           {["Yes, I have key documents", "Some documents, not all", "No documents"].map((o) => (
             <option key={o} value={o}>

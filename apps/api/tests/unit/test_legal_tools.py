@@ -206,14 +206,15 @@ def test_document_draft_generation(mock_db):
 
 def test_leap_year_suit_limitation():
     # Leap year: Feb 29, 2024. 3 years later should be Feb 28, 2027.
+    # Since Feb 28, 2027 is a Sunday, the court calendar extends it to March 1, 2027 (Monday).
     due = date(2024, 2, 29)
     res = SummarySuitCalculator.calculate(
         claim_amount=500000.0,
         due_date=due,
         state="delhi",
-        current_date=date(2027, 2, 28),
+        current_date=date(2027, 3, 1),
     )
-    assert res["limitation_expiry"] == "2027-02-28"
+    assert res["limitation_expiry"] == "2027-03-01"
     assert res["days_remaining"] == 0
     assert res["status"] == "action_required"
 
@@ -222,7 +223,7 @@ def test_leap_year_suit_limitation():
         claim_amount=500000.0,
         due_date=due,
         state="delhi",
-        current_date=date(2027, 3, 1),
+        current_date=date(2027, 3, 2),
     )
     assert res_expired["days_remaining"] < 0
     assert res_expired["status"] == "expired"
@@ -258,3 +259,24 @@ def test_cheque_bounce_calendar_month():
         current_date=date(2026, 3, 1),
     )
     assert res_expired["filing_valid"] is False
+
+
+def test_cheque_bounce_dynamic_filing_window():
+    # Test during a 31-day month (e.g. March)
+    cheque = date(2026, 3, 1)
+    dishonour = date(2026, 3, 5)
+    notice = date(2026, 3, 10)
+    receipt = date(2026, 3, 12)
+    # wait_end_date is March 27.
+    # filing_deadline is wait_end_date + relativedelta(months=1) which is April 27.
+    # total_window_days = (April 27 - March 12) = 46 days.
+    # If now is April 12, days_since_receipt = 31 days.
+    res = ChequeBounceCalculator.calculate(
+        cheque_date=cheque,
+        dishonour_date=dishonour,
+        notice_date=notice,
+        notice_receipt_date=receipt,
+        current_date=date(2026, 4, 12),
+    )
+    # total_window_days = 46. days_left = 46 - 31 = 15 days.
+    assert "15 days remaining" in res["reason"]

@@ -8,7 +8,13 @@ export async function createClient() {
     {
       cookies: {
         getAll:  () => store.getAll(),
-        setAll: (s: any) => s.forEach(({ name, value, options }: any) => store.set(name, value, options)),
+        setAll: (s: any) => {
+          try {
+            s.forEach(({ name, value, options }: any) => store.set(name, value, options));
+          } catch {
+            // Safe to ignore in Server Components; middleware will sync cookies on next request.
+          }
+        },
       },
     },
   );

@@ -24,9 +24,14 @@ class ChequeBounceRequest(BaseModel):
     )
 
 
+class RERAInstallment(BaseModel):
+    amount: float = Field(..., gt=0, description="Installment amount in INR")
+    paid_date: date = Field(..., description="Date the installment was paid")
+
+
 class RERARequest(BaseModel):
-    total_paid_amount: float = Field(
-        ..., gt=0, description="Total amount paid to developer in INR"
+    total_paid_amount: Optional[float] = Field(
+        None, description="Total amount paid to developer in INR (lump sum)"
     )
     promised_possession_date: date = Field(
         ..., description="Possession date promised in sale agreement"
@@ -39,6 +44,9 @@ class RERARequest(BaseModel):
     )
     current_date: Optional[date] = Field(
         None, description="Optional baseline date (defaults to today)"
+    )
+    installments: Optional[list[RERAInstallment]] = Field(
+        None, description="List of individual installments"
     )
 
 

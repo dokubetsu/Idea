@@ -247,7 +247,7 @@ async def update_matter(matter_id: str, body: MatterUpdateRequest, user: Auth):
         "case_number",
         "next_hearing_at",
     }
-    if user.role == UserRole.USER and restricted_fields.intersection(data.keys()):
+    if user.role.value == "user" and restricted_fields.intersection(data.keys()):
         raise Forbidden(
             "Access denied: Only lawyers/admins can update matter case metadata"
         )
@@ -287,7 +287,13 @@ async def verify_fact(
     """Lawyer or admin verifies (and optionally corrects) a fact."""
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    update: dict = {"is_verified": body.is_verified, "source": "lawyer"}
+    from datetime import timezone
+
+    update: dict = {
+        "is_verified": body.is_verified,
+        "source": "lawyer",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
     if body.value is not None:
         update["value"] = body.value
 
@@ -304,10 +310,24 @@ async def verify_fact(
         raise NotFound("Fact")
 
     if body.updated_at is not None and existing.get("updated_at") is not None:
-        if str(body.updated_at) != str(existing.get("updated_at")):
-            raise HTTPException(
-                status_code=409, detail="Fact was modified by another request"
-            )
+        from dateutil.parser import parse
+
+        try:
+            db_dt = parse(existing["updated_at"])
+            client_dt = body.updated_at
+            if client_dt.tzinfo is None:
+                client_dt = client_dt.replace(tzinfo=timezone.utc)
+            if db_dt != client_dt:
+                raise HTTPException(
+                    status_code=409, detail="Fact was modified by another request"
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            if str(body.updated_at) != str(existing.get("updated_at")):
+                raise HTTPException(
+                    status_code=409, detail="Fact was modified by another request"
+                )
 
     r = (
         db.table("facts")
@@ -480,10 +500,21 @@ async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
     ).execute()
 
     if is_admin:
+        try:
+            db.rpc(
+                "transition_matter_status",
+                {
+                    "p_matter_id": matter_id,
+                    "p_new_status": "active",
+                    "p_actor_id": str(user.id),
+                },
+            ).execute()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
         db.table("matters").update(
             {
                 "lawyer_id": body.lawyer_id,
-                "status": "active",
                 "assigned_at": datetime.now(timezone.utc).isoformat(),
             }
         ).eq("id", matter_id).execute()
@@ -610,30 +641,26 @@ async def update_milestone(
 
     data = body.model_dump(exclude_none=True)
 
+    # is_paid, payment_record_id, and payment_idempotency_key are never writable from REST API by any role
+    data.pop("is_paid", None)
+    data.pop("payment_record_id", None)
+    data.pop("payment_idempotency_key", None)
+
     # If client/user tries to pay bill
-    if (
-        "is_paid" in data
-        or "payment_gateway_ref" in data
-        or "payment_record_id" in data
-    ):
+    if "payment_gateway_ref" in data:
         if not settings.FEATURE_BILLING:
             raise HTTPException(status_code=404, detail="Billing feature not available")
 
     db = get_db()
     get_matter_or_403(db, matter_id, user)
 
-    if user.role == "user":
-        # Users can only update payment fields (excluding is_paid)
-        allowed_keys = {
-            "payment_gateway_ref",
-            "payment_record_id",
-            "payment_idempotency_key",
-        }
+    if user.role.value == "user":
+        # Users can only update payment_gateway_ref
+        allowed_keys = {"payment_gateway_ref"}
         data = {k: v for k, v in data.items() if k in allowed_keys}
         if not data:
-            raise HTTPException(
-                status_code=403,
-                detail="Users can only update payment status of milestones.",
+            raise Forbidden(
+                "Users are only permitted to update payment_gateway_ref on milestones."
             )
 
     if "completed_at" in data and data["completed_at"]:
@@ -858,13 +885,27 @@ async def payment_webhook(request: Request):
     if matter_res.data:
         user_id = matter_res.data[0].get("user_id")
 
-    # 6. Perform database update
+    # 6. Perform database update atomically (guarded by is_paid == False)
     update_data = {
         "is_paid": True,
         "payment_gateway_ref": payment_id,
         "payment_idempotency_key": idemp_key,
         "completed_at": datetime.utcnow().isoformat(),
     }
+
+    result = (
+        db.table("matter_milestones")
+        .update(update_data)
+        .eq("id", milestone_id)
+        .eq("is_paid", False)
+        .execute()
+    )
+    if not result.data:
+        return {
+            "status": "success",
+            "message": "Milestone already paid or already processed",
+            "milestone_id": milestone_id,
+        }
 
     # Check if we should insert a payment record in payments table
     payment_record_id = None
@@ -884,10 +925,9 @@ async def payment_webhook(request: Request):
         pay_res = db.table("payments").insert(payment_data).execute()
         if pay_res.data:
             payment_record_id = pay_res.data[0].get("id")
-            update_data["payment_record_id"] = payment_record_id
-
-    # Update the milestone
-    db.table("matter_milestones").update(update_data).eq("id", milestone_id).execute()
+            db.table("matter_milestones").update(
+                {"payment_record_id": payment_record_id}
+            ).eq("id", milestone_id).execute()
 
     # Emit MILESTONE_UPDATED event
     actor_id = user_id or "00000000-0000-0000-0000-000000000000"

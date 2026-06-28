@@ -71,7 +71,9 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
             for attempt in range(max_retries + 1):
                 try:
                     channel = get_channel(channel_name)
-                    channel.send(notification, recipient, subject, body)
+                    await asyncio.to_thread(
+                        channel.send, notification, recipient, subject, body
+                    )
                     success = True
                     break
                 except Exception as e:

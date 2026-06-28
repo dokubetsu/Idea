@@ -5,7 +5,9 @@ Contains separate calculator services for Cheque Bounce, RERA delays, and Summar
 
 from datetime import date, timedelta
 from typing import Optional, Any
+from decimal import Decimal
 from app.domains.legal_tools.services.interest import InterestSource
+from app.shared.court_calendar import next_working_day
 
 
 class ChequeBounceCalculator:
@@ -42,7 +44,6 @@ class ChequeBounceCalculator:
         now = current_date or date.today()
 
         # 2. Presentation limit (Must be within 3 months)
-        # NI Act specifies 3 months. We use a strict calendar calculation using relativedelta.
         from dateutil.relativedelta import relativedelta
 
         presentation_deadline = cheque_date + relativedelta(months=3)
@@ -63,11 +64,10 @@ class ChequeBounceCalculator:
         filing_valid = None
 
         if notice_receipt_date:
-            from dateutil.relativedelta import relativedelta
-
             wait_end_date = notice_receipt_date + timedelta(days=15)
             filing_start_date = wait_end_date + timedelta(days=1)
-            filing_deadline = wait_end_date + relativedelta(months=1)
+            raw_deadline = wait_end_date + relativedelta(months=1)
+            filing_deadline = next_working_day(raw_deadline)
 
             if complaint_filed_date:
                 filing_valid = (
@@ -89,7 +89,8 @@ class ChequeBounceCalculator:
             color = "red"
         elif not notice_date:
             # Notice not sent yet
-            notice_due = dishonour_date + timedelta(days=30)
+            raw_notice_due = dishonour_date + timedelta(days=30)
+            notice_due = next_working_day(raw_notice_due)
             days_left = (notice_due - now).days
             if days_left < 0:
                 status = "expired"
@@ -116,6 +117,7 @@ class ChequeBounceCalculator:
                 color = "green"
         elif notice_receipt_date:
             days_since_receipt = (now - notice_receipt_date).days
+            total_window_days = (filing_deadline - notice_receipt_date).days
 
             if complaint_filed_date:
                 if filing_valid:
@@ -133,8 +135,8 @@ class ChequeBounceCalculator:
                     status = "action_required" if days_left <= 3 else "safe"
                     color = "yellow" if days_left <= 3 else "green"
                     reason = f"Grace period active. Complainant must wait {days_left} more days (grace ends {wait_end_date})."
-                elif 15 < days_since_receipt <= 45:
-                    days_left = 45 - days_since_receipt
+                elif 15 < days_since_receipt <= total_window_days:
+                    days_left = total_window_days - days_since_receipt
                     status = "action_required"
                     color = "yellow"
                     reason = f"Filing window active! File complaint in court before {filing_deadline} ({days_left} days remaining)."
@@ -162,27 +164,27 @@ class ChequeBounceCalculator:
 class RERACalculator:
     @staticmethod
     def calculate(
-        total_paid_amount: float,
+        total_paid_amount: Optional[float],
         promised_possession_date: date,
         actual_possession_date: Optional[date] = None,
         custom_interest_rate: Optional[float] = None,
         current_date: Optional[date] = None,
+        installments: Optional[list[dict]] = None,
     ) -> dict[str, Any]:
         """
         Calculates delayed possession interest (SBI MCLR + 2% per annum) under RERA 2016.
         """
-        if total_paid_amount <= 0:
-            raise ValueError("Total paid amount must be greater than zero")
-
         end_date = actual_possession_date or current_date or date.today()
 
         if end_date < promised_possession_date:
-            # Not delayed yet
+            amount = total_paid_amount or 0.0
+            if installments:
+                amount = sum(inst["amount"] for inst in installments)
             return {
                 "delay_days": 0,
                 "interest_rate": 0.0,
                 "interest_accrued": 0.0,
-                "total_claim": total_paid_amount,
+                "total_claim": float(amount),
                 "status": "safe",
                 "reason": "Project promised possession date has not yet been reached.",
                 "color": "green",
@@ -192,25 +194,52 @@ class RERACalculator:
 
         # Fetch dynamic rate via InterestSource
         rate_percent = InterestSource.get_rera_rate(custom_rate=custom_interest_rate)
+        rate_decimal = Decimal(str(rate_percent)) / Decimal("100.0")
 
-        # Simple interest formula per annum: P * R * T
-        time_years = delay_days / 365.0
-        interest_accrued = total_paid_amount * (rate_percent / 100.0) * time_years
+        # Compile installments list
+        if installments:
+            inst_list = installments
+        else:
+            if not total_paid_amount or total_paid_amount <= 0:
+                raise ValueError("Total paid amount must be greater than zero")
+            inst_list = [
+                {"amount": total_paid_amount, "paid_date": promised_possession_date}
+            ]
+
+        total_paid = Decimal("0.0")
+        total_interest = Decimal("0.0")
+
+        for inst in inst_list:
+            amt = Decimal(str(inst["amount"]))
+            paid_d = inst["paid_date"]
+            if isinstance(paid_d, str):
+                paid_d = date.fromisoformat(paid_d)
+
+            d_start = max(promised_possession_date, paid_d)
+            inst_delay = (end_date - d_start).days
+            if inst_delay < 0:
+                inst_delay = 0
+
+            # Interest: Principal * rate * (delay_days / days_in_year)
+            days_in_year = (
+                Decimal("365.25") if installments is not None else Decimal("365.0")
+            )
+            inst_interest = amt * rate_decimal * (Decimal(inst_delay) / days_in_year)
+            total_interest += inst_interest
+            total_paid += amt
 
         # Round amounts
-        interest_accrued = round(interest_accrued, 2)
-        total_claim = round(total_paid_amount + interest_accrued, 2)
+        total_interest_rounded = round(total_interest, 2)
+        total_claim_rounded = round(total_paid + total_interest_rounded, 2)
 
         return {
             "delay_days": delay_days,
             "interest_rate": rate_percent,
-            "interest_accrued": interest_accrued,
-            "total_claim": total_claim,
+            "interest_accrued": float(total_interest_rounded),
+            "total_claim": float(total_claim_rounded),
             "status": "action_required" if delay_days > 0 else "safe",
-            "reason": f"Possession is delayed by {delay_days} days. Builder owes ₹{interest_accrued:,.2f} in interest.",
+            "reason": f"Possession is delayed by {delay_days} days. Builder owes ₹{float(total_interest_rounded):,.2f} in interest.",
             "color": "yellow" if delay_days > 0 else "green",
-            # H5: Signal when the hardcoded MCLR base rate has not been updated recently.
-            # The frontend must display a prominent rate-staleness warning when True.
             "mclr_rate_is_stale": InterestSource.mclr_is_stale(),
             "mclr_last_updated": str(InterestSource.MCLR_LAST_UPDATED),
         }
@@ -233,10 +262,10 @@ class SummarySuitCalculator:
         now = current_date or date.today()
 
         # 1. Limitation Check (3 years from due date)
-        # A leap year safe calculation adds 3 years
         from dateutil.relativedelta import relativedelta
 
-        limitation_expiry = due_date + relativedelta(years=3)
+        raw_limitation_expiry = due_date + relativedelta(years=3)
+        limitation_expiry = next_working_day(raw_limitation_expiry)
 
         days_left = (limitation_expiry - now).days
 
@@ -255,36 +284,46 @@ class SummarySuitCalculator:
             color = "yellow"
             reason = f"Action required: Limitation expiring soon! File before {limitation_expiry} ({days_left} days remaining)."
 
-        # 2. Court Fees Calculation
-        court_fee = 0.0
+        # 2. Court Fees Calculation using Decimal
+        claim_dec = Decimal(str(claim_amount))
+        court_fee_dec = Decimal("0.0")
         state_cleaned = state.strip().lower()
 
         if state_cleaned == "delhi":
-            if claim_amount <= 20000:
-                court_fee = 1000.0
-            elif claim_amount <= 50000:
-                court_fee = 1000.0 + (claim_amount - 20000) * 0.025
-            elif claim_amount <= 2000000:
-                court_fee = 1750.0 + (claim_amount - 50000) * 0.015
+            if claim_dec <= Decimal("20000"):
+                court_fee_dec = Decimal("1000.0")
+            elif claim_dec <= Decimal("50000"):
+                court_fee_dec = Decimal("1000.0") + (
+                    claim_dec - Decimal("20000")
+                ) * Decimal("0.025")
+            elif claim_dec <= Decimal("2000000"):
+                court_fee_dec = Decimal("1750.0") + (
+                    claim_dec - Decimal("50000")
+                ) * Decimal("0.015")
             else:
-                court_fee = 31000.0 + (claim_amount - 2000000) * 0.01
+                court_fee_dec = Decimal("31000.0") + (
+                    claim_dec - Decimal("2000000")
+                ) * Decimal("0.01")
         elif state_cleaned == "maharashtra":
-            # Maharashtra Court Fees Act Schedule
-            if claim_amount <= 10000:
-                court_fee = 200.0
-            elif claim_amount <= 50000:
-                court_fee = 200.0 + (claim_amount - 10000) * 0.02
-            elif claim_amount <= 1000000:
-                court_fee = 1000.0 + (claim_amount - 50000) * 0.01
+            if claim_dec <= Decimal("10000"):
+                court_fee_dec = Decimal("200.0")
+            elif claim_dec <= Decimal("50000"):
+                court_fee_dec = Decimal("200.0") + (
+                    claim_dec - Decimal("10000")
+                ) * Decimal("0.02")
+            elif claim_dec <= Decimal("1000000"):
+                court_fee_dec = Decimal("1000.0") + (
+                    claim_dec - Decimal("50000")
+                ) * Decimal("0.01")
             else:
-                # Capped at 3,00,000 INR
-                fee = 10500.0 + (claim_amount - 1000000) * 0.005
-                court_fee = min(300000.0, fee)
+                fee = Decimal("10500.0") + (claim_dec - Decimal("1000000")) * Decimal(
+                    "0.005"
+                )
+                court_fee_dec = min(Decimal("300000.0"), fee)
         else:
-            # Default fallback 1.5%, min 1000
-            court_fee = max(1000.0, claim_amount * 0.015)
+            court_fee_dec = max(Decimal("1000.0"), claim_dec * Decimal("0.015"))
 
-        court_fee = round(court_fee, 2)
+        court_fee = float(round(court_fee_dec, 2))
         fee_note = (
             "Court fees are estimated at a default of 1.5% for states outside Delhi and Maharashtra."
             if state_cleaned not in ("delhi", "maharashtra")

@@ -42,6 +42,7 @@ class EventType(str, Enum):
     LAWYER_ASSIGNED = "lawyer.assigned"
     LAWYER_ACCEPTED = "lawyer.accepted"
     LAWYER_DECLINED = "lawyer.declined"
+    LAWYER_REMOVED = "lawyer.removed"
 
     # Documents
     DOCUMENT_UPLOADED = "document.uploaded"
@@ -140,15 +141,23 @@ async def emit(
 
 def _run_coroutine_in_new_loop(coro):
     try:
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(coro)
+        BACKGROUND_TASKS.add(task)
+        task.add_done_callback(BACKGROUND_TASKS.discard)
+        return
     except RuntimeError:
-        return asyncio.run(coro)
+        pass
 
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    import threading
+
+    def run_in_thread():
+        try:
+            asyncio.run(coro)
+        except Exception as e:
+            log.error("Failed to run coroutine in background thread: %s", e)
+
+    threading.Thread(target=run_in_thread, daemon=True).start()
 
 
 def sync_emit(

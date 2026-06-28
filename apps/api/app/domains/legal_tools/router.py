@@ -51,6 +51,11 @@ async def calculate_rera_delay(body: RERARequest, user: Auth):
             actual_possession_date=body.actual_possession_date,
             custom_interest_rate=body.custom_interest_rate,
             current_date=body.current_date,
+            installments=(
+                [inst.model_dump() for inst in body.installments]
+                if body.installments
+                else None
+            ),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

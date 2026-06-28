@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/shared/lib/api/client";
 import type { Fact, Matter, MatterEvent, MatterUpdate } from "@/entities/types";
+import { useToast } from "@/shared/components/ui/Toast";
 
 export const matterKeys = {
   all:     ()         => ["matters"] as const,
@@ -37,10 +38,17 @@ export function useFacts(matterId: string) {
 
 export function useVerifyFact(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: ({ factId, value, is_verified }: { factId: string; value?: string; is_verified: boolean }) =>
       apiClient.patch<Fact>(`/matters/${matterId}/facts/${factId}`, { value, is_verified }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matterKeys.facts(matterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matterKeys.facts(matterId) });
+      toast.success("Fact verification updated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to update fact verification");
+    },
   });
 }
 
@@ -54,15 +62,23 @@ export function useUpdates(matterId: string) {
 
 export function usePostUpdate(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: { content: string; is_internal?: boolean; parent_id?: string }) =>
       apiClient.post<MatterUpdate>(`/matters/${matterId}/updates`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matterKeys.updates(matterId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matterKeys.updates(matterId) });
+      toast.success("Case update posted successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to post case update");
+    },
   });
 }
 
 export function useCreateMatter() {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: {
       title: string;
@@ -74,12 +90,19 @@ export function useCreateMatter() {
       court_name?: string;
       case_number?: string;
     }) => apiClient.post<Matter>(`/matters`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: matterKeys.all() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: matterKeys.all() });
+      toast.success("Matter created successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to create matter");
+    },
   });
 }
 
 export function useCreateHearing(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: {
       hearing_date: string;
@@ -91,12 +114,17 @@ export function useCreateHearing(matterId: string) {
     }) => apiClient.post(`/matters/${matterId}/hearings`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Hearing scheduled successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to schedule hearing");
     },
   });
 }
 
 export function useUpdateHearing(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: ({ hearingId, ...body }: {
       hearingId: string;
@@ -109,12 +137,17 @@ export function useUpdateHearing(matterId: string) {
     }) => apiClient.patch(`/matters/${matterId}/hearings/${hearingId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Hearing details updated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to update hearing");
     },
   });
 }
 
 export function useCreateMilestone(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: {
       title: string;
@@ -125,12 +158,17 @@ export function useCreateMilestone(matterId: string) {
     }) => apiClient.post(`/matters/${matterId}/milestones`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Milestone created successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to create milestone");
     },
   });
 }
 
 export function useUpdateMilestone(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: ({ milestoneId, ...body }: {
       milestoneId: string;
@@ -147,6 +185,10 @@ export function useUpdateMilestone(matterId: string) {
     }) => apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Milestone updated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to update milestone");
     },
   });
 }
@@ -161,6 +203,7 @@ export function useMatterEvents(matterId: string) {
 
 export function useCreateMeeting(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: {
       scheduled_at: string;
@@ -170,12 +213,17 @@ export function useCreateMeeting(matterId: string) {
     }) => apiClient.post(`/matters/${matterId}/meetings`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Meeting scheduled successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to schedule meeting");
     },
   });
 }
 
 export function useUpdateMeeting(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: ({ meetingId, ...body }: {
       meetingId: string;
@@ -187,12 +235,17 @@ export function useUpdateMeeting(matterId: string) {
     }) => apiClient.patch(`/matters/${matterId}/meetings/${meetingId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Meeting updated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Failed to update meeting");
     },
   });
 }
 
 export function useTriggerPaymentWebhook(matterId: string) {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (body: {
       event: string;
@@ -210,11 +263,15 @@ export function useTriggerPaymentWebhook(matterId: string) {
     }) =>
       apiClient.post(`/matters/webhook/payment`, body, {
         headers: {
-          "X-Razorpay-Signature": "mock",
+          ...(process.env.NODE_ENV !== "production" ? { "X-Razorpay-Signature": "mock" } : {}),
         },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      toast.success("Payment simulated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.detail || "Payment simulation failed");
     },
   });
 }

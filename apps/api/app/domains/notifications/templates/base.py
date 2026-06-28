@@ -37,11 +37,18 @@ class BaseNotificationTemplate:
         base_url = settings.APP_URL
         full_url = f"{base_url}{action_url}" if action_url else base_url
 
+        safe_url = self.escape(full_url)
+        safe_label = self.escape(action_label)
+
+        # Validate URL protocol scheme to prevent javascript: URI XSS injection
+        if not safe_url.startswith(("https://", "http://")):
+            safe_url = base_url
+
         cta_block = (
             f"""<tr><td align="center" style="padding:0 32px 28px;">
-              <a href="{full_url}" style="display:inline-block;padding:12px 28px;background:#C9A84C;
+              <a href="{safe_url}" style="display:inline-block;padding:12px 28px;background:#C9A84C;
                  color:#0D1B2A;font-weight:700;font-size:14px;border-radius:8px;text-decoration:none;
-                 letter-spacing:0.3px;">{action_label} →</a>
+                 letter-spacing:0.3px;">{safe_label} &rarr;</a>
             </td></tr>"""
             if action_url
             else ""

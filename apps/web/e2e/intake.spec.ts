@@ -18,8 +18,11 @@ test.describe("Petitioner Intake Wizard — E2E", () => {
     await page.goto("http://localhost:3000/login");
     await expect(page).toHaveTitle(/Login/i);
 
-    await page.fill('input[type="email"]', "client@lead.ai");
-    await page.fill('input[type="password"]', "password123");
+    const email = process.env.E2E_EMAIL || "client@lead.ai";
+    const password = process.env.E2E_PASSWORD || "password123";
+
+    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
 
     // 2. Confirm redirect to user dashboard

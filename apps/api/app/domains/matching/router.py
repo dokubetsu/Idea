@@ -92,6 +92,18 @@ class ContactRequest(BaseModel):
 async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
     db = get_db()
 
+    # Validate target is a verified lawyer
+    from fastapi import HTTPException
+
+    target = (
+        db.table("lawyer_profiles")
+        .select("id, is_verified")
+        .eq("id", lawyer_id)
+        .execute()
+    )
+    if not target.data or not target.data[0].get("is_verified"):
+        raise HTTPException(status_code=400, detail="Target must be a verified lawyer")
+
     matter_id = body.matter_id
     if matter_id:
         from app.shared.exceptions import Forbidden
@@ -228,6 +240,7 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
                 }
             )
             .eq("id", req["matter_id"])
+            .eq("status", "matching")
             .is_("lawyer_id", "null")  # optimistic lock: only update unassigned matters
             .execute()
         )

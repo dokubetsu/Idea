@@ -1,5 +1,6 @@
 BEGIN;
 
-ALTER TABLE public.meetings DROP CONSTRAINT IF EXISTS uq_meeting_no_overlaps;
+DROP TRIGGER IF EXISTS trg_check_meeting_overlap ON public.meetings;
+DROP FUNCTION IF EXISTS check_meeting_overlap();
 
 COMMIT;

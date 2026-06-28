@@ -74,6 +74,34 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
     lawyer_id = body.lawyer_id
     needs_auto_assign = body.package == "free" and not lawyer_id
 
+    if lawyer_id:
+        lawyer_res = (
+            db.table("profiles")
+            .select("id, role, is_active")
+            .eq("id", lawyer_id)
+            .execute()
+        )
+        if (
+            not lawyer_res.data
+            or lawyer_res.data[0].get("role") != "lawyer"
+            or not lawyer_res.data[0].get("is_active")
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or unavailable lawyer",
+            )
+        verified_res = (
+            db.table("lawyer_profiles")
+            .select("is_verified")
+            .eq("id", lawyer_id)
+            .execute()
+        )
+        if not verified_res.data or not verified_res.data[0].get("is_verified"):
+            raise HTTPException(
+                status_code=400,
+                detail="Lawyer is not yet verified",
+            )
+
     payload = {
         "user_id": str(user.id),
         "lawyer_id": lawyer_id,
@@ -226,7 +254,7 @@ async def patch_consultation(
     db = get_db()
     row = (
         db.table("consultations")
-        .select("user_id, lawyer_id")
+        .select("user_id, lawyer_id, status")
         .eq("id", consultation_id)
         .single()
         .execute()
@@ -235,6 +263,13 @@ async def patch_consultation(
     if not row:
         raise NotFound("Consultation not found")
     check_consultation_ownership(row, user)
+
+    terminal_states = {"cancelled", "completed", "declined"}
+    if row.get("status") in terminal_states:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot modify a consultation that is already {row['status']}",
+        )
 
     updates = body.model_dump(exclude_unset=True)
     if not updates:

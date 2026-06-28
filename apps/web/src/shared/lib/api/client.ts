@@ -93,6 +93,20 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
           if (retryRes.status === 204) return undefined as T;
           return retryRes.json();
         }
+        if (retryRes.status === 401) {
+          if (typeof window !== "undefined") {
+            await createClient().auth.signOut();
+            window.location.href = "/login?notice=session-expired";
+          }
+          throw new ApiError(401, "Session expired. Please sign in again.");
+        }
+        const errbody = await retryRes.json().catch(() => ({}));
+        const detail = Array.isArray(errbody.detail)
+          ? errbody.detail.map((e: { loc?: string[]; msg?: string }) =>
+              e.loc ? `${e.loc.slice(-1)[0]}: ${e.msg}` : e.msg
+            ).join(" · ")
+          : (errbody.detail ?? `Request failed: ${retryRes.status}`);
+        throw new ApiError(retryRes.status, detail);
       }
 
       if (typeof window !== "undefined") {
