@@ -46,10 +46,13 @@ def clear_request_db(token):
     """Clear the request-scoped database client context."""
     _request_db_client.reset(token)
 
+
 def get_test_db():
     """Returns the mock database client for testing purposes."""
     import sys
+
     if "pytest" in sys.modules:
         from tests.conftest import MockSupabaseClient
+
         return MockSupabaseClient()
     raise RuntimeError("get_test_db() called outside of pytest environment")
