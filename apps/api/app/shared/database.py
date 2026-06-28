@@ -52,7 +52,5 @@ def get_test_db():
     import sys
 
     if "pytest" in sys.modules:
-        from tests.conftest import MockSupabaseClient
-
-        return MockSupabaseClient()
+        return get_service_role_db()
     raise RuntimeError("get_test_db() called outside of pytest environment")

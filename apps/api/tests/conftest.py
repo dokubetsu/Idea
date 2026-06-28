@@ -159,7 +159,7 @@ class MockSupabaseTable:
 class MockSupabaseResponse:
     def __init__(self, data, count=None):
         self.data = data
-        self.count = count or len(data)
+        self.count = count or (len(data) if data is not None else 0)
 
 
 class MockRpcBuilder:
@@ -365,6 +365,7 @@ def mock_db(request, monkeypatch):
         "app.domains.legal_tools.services.draft.get_db",
         "app.domains.system.router.get_service_role_db",
         "app.domains.consultations.router.get_db",
+        "app.domains.consultations.service.get_db",
     ):
         try:
             monkeypatch.setattr(path, lambda: client)
