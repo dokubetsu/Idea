@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("PAYMENT_WEBHOOK_SECRET", "test_webhook_secret")
+
 import pytest
 import pytest_asyncio
 import asyncio
