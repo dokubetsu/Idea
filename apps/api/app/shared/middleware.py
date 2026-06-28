@@ -62,14 +62,10 @@ class RequestTracingMiddleware:
         import sys
 
         # Create request-scoped client (using anon key to respect RLS)
-        if "pytest" in sys.modules and (
-            not settings.SUPABASE_TEST_PROJECT_URL
-            or "placeholder" in settings.SUPABASE_TEST_PROJECT_URL
-            or settings.SUPABASE_TEST_PROJECT_URL == "null"
-        ):
-            from app.shared.database import get_service_role_db
+        if "pytest" in sys.modules:
+            from app.shared.database import get_test_db
 
-            user_client = get_service_role_db()
+            user_client = get_test_db()
         else:
             user_client = create_client(
                 settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY

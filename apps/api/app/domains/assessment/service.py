@@ -47,7 +47,7 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
         "assessment", context, version="v1"
     )
 
-    if settings.ai_provider == "mock":
+    if settings.ai_provider == "mock" and settings.APP_ENV != "production":
         # Safe deterministic local mock
         mock = MockProvider()
         raw_mock = await mock.generate(system_prompt, user_prompt)
