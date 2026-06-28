@@ -523,7 +523,7 @@ async def test_patch_terminal_consultation_status_guard(client: AsyncClient, moc
 
 
 @pytest.mark.asyncio
-async def test_request_id_log_injection_prevention(client: AsyncClient):
+async def test_request_id_log_injection_prevention(client: AsyncClient, mock_db):
     res = await client.get(
         "/api/v1/openapi.json", headers={"x-request-id": "clean-id\n[attack]"}
     )
