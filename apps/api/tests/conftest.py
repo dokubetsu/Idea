@@ -1,4 +1,5 @@
 import os
+
 os.environ.setdefault("PAYMENT_WEBHOOK_SECRET", "test_webhook_secret")
 
 import pytest
@@ -53,7 +54,7 @@ def skip_if_no_test_database(request):
         )
         if not has_test_db:
             pytest.skip(
-                "Skipping integration test: SUPABASE_TEST_PROJECT_URL and " \
+                "Skipping integration test: SUPABASE_TEST_PROJECT_URL and "
                 "SUPABASE_TEST_SERVICE_ROLE_KEY are not configured."
             )
 
