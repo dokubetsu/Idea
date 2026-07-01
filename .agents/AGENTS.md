@@ -70,3 +70,13 @@ When working in the codebase, use this mapping to keep branding consistent:
 - `nyay-api` → `lead-api`
 - `Nyay Update` → `LeAd Update`
 - `client@nyay.ai` → `client@lead.ai`
+
+---
+
+## 5. Pre-Commit & Quality Checklist
+
+Always remember to run and verify the following code quality checks before pushing changes to GitHub:
+- **Code Style (Black)**: Run `black --check apps/api/app apps/api/tests` (and reformat if necessary) to ensure proper styling.
+- **Linting (Ruff)**: Run `ruff check apps/api/app` to catch and correct static issues.
+- **Type Checking (Mypy)**: Run `mypy --ignore-missing-imports apps/api/app` to ensure clean static typing.
+- **SQL File Encodings**: Ensure all PostgreSQL migration files in `supabase/migrations/` use standard UTF-8 text encoding.
