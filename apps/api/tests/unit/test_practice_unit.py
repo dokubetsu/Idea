@@ -113,17 +113,9 @@ async def test_practice_service_gameplay(mock_db):
             "is_active": True,
         },
         "facts": {
-            "cheque_date": {
-                "type": "pool",
-                "values": ["2026-05-01"]
-            },
-            "dishonour_date": {
-                "type": "pool",
-                "values": ["2026-05-03"]
-            },
-            "notice_date": {
-                "player_input": True
-            }
+            "cheque_date": {"type": "pool", "values": ["2026-05-01"]},
+            "dishonour_date": {"type": "pool", "values": ["2026-05-03"]},
+            "notice_date": {"player_input": True},
         },
         "nodes": {
             "start": {
@@ -200,7 +192,9 @@ async def test_practice_service_gameplay(mock_db):
     assert session.scenario_key == "test_case"
     assert session.status == "active"
     assert session.score == 0
-    assert session.max_score == 20  # correct path: 10 (c_correct) + 10 (notice_date_node)
+    assert (
+        session.max_score == 20
+    )  # correct path: 10 (c_correct) + 10 (notice_date_node)
     assert session.current_node is not None
     assert "2026-05-01" in session.current_node.text
 
@@ -212,7 +206,7 @@ async def test_practice_service_gameplay(mock_db):
         "scenario_key": "test_case",
         "title": "Cheque Bounce Notice Trap",
         "domain": "Cheque Bounce",
-        "difficulty": "beginner"
+        "difficulty": "beginner",
     }
 
     # 2. Submit Correct Choice
@@ -303,8 +297,8 @@ async def test_router_endpoints(client: AsyncClient, mock_db):
                 "practice_scenarios": {
                     "title": "Cheque Bounce Notice",
                     "domain": "Cheque Bounce",
-                    "difficulty": "beginner"
-                }
+                    "difficulty": "beginner",
+                },
             }
         ]
 

@@ -80,6 +80,7 @@ class MockSupabaseTable:
         self.queries.append(("insert", data, args, kwargs))
         import uuid
         from datetime import datetime, timezone
+
         now_str = datetime.now(timezone.utc).isoformat()
         if isinstance(data, list):
             for row in data:

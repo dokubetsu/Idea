@@ -50,9 +50,7 @@ def get_session(session_id: str, user: Auth):
 
 
 @router.post("/sessions/{session_id}/decide", response_model=DecisionResponse)
-def submit_decision(
-    session_id: str, body: DecisionRequest, user: Auth
-):
+def submit_decision(session_id: str, body: DecisionRequest, user: Auth):
     return PracticeService.submit_decision(
         user_id=user.id,
         session_id=session_id,

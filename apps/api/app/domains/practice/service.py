@@ -5,8 +5,8 @@ from fastapi import HTTPException
 import re
 from datetime import date
 
-from app.shared.database import get_db, get_service_role_db
-from app.shared.events import emit, EventType
+from app.shared.database import get_db
+from app.shared.events import EventType
 from app.domains.practice import scenario_loader
 from app.domains.practice.rules_engine import FactsGenerator, RulesEngine
 from app.domains.practice.schemas import (
@@ -26,7 +26,7 @@ from app.domains.practice.schemas import (
 log = logging.getLogger(__name__)
 
 
-def render_text(template_str: str, facts: dict, player_input: dict = None) -> str:
+def render_text(template_str: str, facts: dict, player_input: dict | None = None) -> str:
     if not template_str:
         return template_str
     try:
@@ -58,7 +58,7 @@ def render_text(template_str: str, facts: dict, player_input: dict = None) -> st
 
 
 def render_node_state(
-    node_id: str, scenario: dict, facts: dict, player_input: dict = None
+    node_id: str, scenario: dict, facts: dict, player_input: dict | None = None
 ) -> SessionNodeState:
     nodes = scenario.get("nodes", {})
     node = nodes.get(node_id)
@@ -87,7 +87,7 @@ def render_node_state(
 
 
 def compute_max_score(nodes: dict) -> int:
-    memo = {}
+    memo: dict[str, int] = {}
 
     def dfs(node_id):
         if node_id in memo:
@@ -315,7 +315,9 @@ class PracticeService:
                     player_input[fact_key] = input_value
 
         # Evaluate rules for condition matching
-        rules = RulesEngine.evaluate_rules(scenario.get("rules", {}), facts, player_input)
+        rules = RulesEngine.evaluate_rules(
+            scenario.get("rules", {}), facts, player_input
+        )
 
         matched_choice = None
         if node.get("player_input"):
@@ -395,7 +397,9 @@ class PracticeService:
         if completed_at:
             session_update["completed_at"] = completed_at
 
-        db.table("practice_sessions").update(session_update).eq("id", session_id).execute()
+        db.table("practice_sessions").update(session_update).eq(
+            "id", session_id
+        ).execute()
 
         # Update practice profiles if choice contains issue_tag
         if issue_tag:
@@ -417,10 +421,10 @@ class PracticeService:
             if profile_res.data:
                 existing_prof = profile_res.data[0]
                 profile_row["attempts"] = existing_prof["attempts"] + 1
-                profile_row["correct"] = existing_prof["correct"] + (1 if is_correct else 0)
-                profile_row["streak"] = (
-                    existing_prof["streak"] + 1 if is_correct else 0
+                profile_row["correct"] = existing_prof["correct"] + (
+                    1 if is_correct else 0
                 )
+                profile_row["streak"] = existing_prof["streak"] + 1 if is_correct else 0
 
                 db.table("practice_profiles").update(profile_row).eq(
                     "id", existing_prof["id"]
@@ -513,12 +517,16 @@ class PracticeService:
             if node:
                 if node.get("player_input"):
                     # Re-evaluate conditions
-                    rules = RulesEngine.evaluate_rules(scenario.get("rules", {}), facts, player_input)
+                    rules = RulesEngine.evaluate_rules(
+                        scenario.get("rules", {}), facts, player_input
+                    )
                     for c in node.get("choices", []):
                         cond = c.get("condition")
                         if cond:
                             try:
-                                if RulesEngine.evaluate_condition(cond, facts, player_input, rules):
+                                if RulesEngine.evaluate_condition(
+                                    cond, facts, player_input, rules
+                                ):
                                     matched_choice = c
                                     break
                             except Exception:
@@ -538,8 +546,12 @@ class PracticeService:
                 if node.get("player_input"):
                     choice_text = f"Notice Date: {row.get('input_value')}"
                 else:
-                    choice_text = render_text(matched_choice.get("text", ""), facts, player_input)
-                feedback = render_text(matched_choice.get("feedback", ""), facts, player_input)
+                    choice_text = render_text(
+                        matched_choice.get("text", ""), facts, player_input
+                    )
+                feedback = render_text(
+                    matched_choice.get("feedback", ""), facts, player_input
+                )
                 if not citation:
                     citation = matched_choice.get("citation")
 
@@ -612,7 +624,9 @@ class PracticeService:
 
         res = (
             db.table("practice_sessions")
-            .select("id, score, max_score, status, completed_at, practice_scenarios(title, domain, difficulty)")
+            .select(
+                "id, score, max_score, status, completed_at, practice_scenarios(title, domain, difficulty)"
+            )
             .eq("user_id", user_id)
             .order("started_at", desc=True)
             .range(start_idx, end_idx)

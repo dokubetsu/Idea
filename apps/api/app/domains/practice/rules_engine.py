@@ -1,6 +1,7 @@
 import re
 import random
 from datetime import date, timedelta
+from typing import Any
 from dateutil.relativedelta import relativedelta
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -26,8 +27,8 @@ def make_attr_dict(d: dict) -> AttrDict:
     return res
 
 
-def parse_dates_in_dict(d: dict) -> dict:
-    res = {}
+def parse_dates_in_dict(d: dict[str, Any]) -> dict[str, Any]:
+    res: dict[str, Any] = {}
     for k, v in d.items():
         if isinstance(v, dict):
             res[k] = parse_dates_in_dict(v)
@@ -62,6 +63,7 @@ class FactsGenerator:
                 base = definition.get("base", "today")
                 offset_days = definition.get("offset_days", 0)
 
+                base_date: Any = date.today()
                 if base == "today":
                     base_date = date.today()
                 elif base.startswith("facts."):
@@ -88,10 +90,10 @@ class RulesEngine:
         facts_attr = make_attr_dict(parsed_facts)
         input_attr = make_attr_dict(parsed_input)
 
-        rules_dict = {}
+        rules_dict: dict[str, Any] = {}
         rules_attr = make_attr_dict(rules_dict)
 
-        eval_globals = {"__builtins__": {}}
+        eval_globals: dict[str, Any] = {"__builtins__": {}}
         eval_locals = {
             "facts": facts_attr,
             "input": input_attr,
@@ -126,7 +128,7 @@ class RulesEngine:
         input_attr = make_attr_dict(parsed_input)
         rules_attr = make_attr_dict(parsed_rules)
 
-        eval_globals = {"__builtins__": {}}
+        eval_globals: dict[str, Any] = {"__builtins__": {}}
         eval_locals = {
             "facts": facts_attr,
             "input": input_attr,
@@ -141,6 +143,4 @@ class RulesEngine:
         try:
             return bool(eval(expression, eval_globals, eval_locals))
         except Exception as e:
-            raise ValueError(
-                f"Failed to evaluate expression '{expression}': {e}"
-            )
+            raise ValueError(f"Failed to evaluate expression '{expression}': {e}")

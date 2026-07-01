@@ -1,11 +1,11 @@
 import os
 import glob
-import yaml
+import yaml  # type: ignore[import-untyped]
 import logging
 
 log = logging.getLogger(__name__)
 
-_scenarios_cache = {}
+_scenarios_cache: dict[str, dict] = {}
 
 
 def get_scenarios_dir() -> str:
@@ -119,9 +119,7 @@ def sync_to_database() -> None:
             .execute()
         )
         if existing.data:
-            db.table("practice_scenarios").update(row).eq(
-                "scenario_key", key
-            ).execute()
+            db.table("practice_scenarios").update(row).eq("scenario_key", key).execute()
         else:
             db.table("practice_scenarios").insert(row).execute()
     log.info(f"Synced {len(_scenarios_cache)} scenarios to database.")

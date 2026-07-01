@@ -74,7 +74,11 @@ async def lifespan(app: FastAPI):
     log.info("✅ Assessment provider: %s", provider.name)
 
     if settings.FEATURE_PRACTICE:
-        from app.domains.practice.scenario_loader import load_all_scenarios, sync_to_database
+        from app.domains.practice.scenario_loader import (
+            load_all_scenarios,
+            sync_to_database,
+        )
+
         try:
             load_all_scenarios()
             sync_to_database()
