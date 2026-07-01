@@ -1,0 +1,155 @@
+meta:
+  id: "late_notice_trap"
+  title: "The Late Notice Trap"
+  domain: "Cheque Bounce"
+  difficulty: "beginner"
+  based_on: "Section 138, Negotiable Instruments Act, 1881"
+  estimated_minutes: 10
+  tags: ["NI Act", "Cheque Bounce", "Limitation", "Legal Notice"]
+
+facts:
+  drawer_name:
+    type: "pool"
+    values: ["Ramesh Kumar", "Suresh Mehta", "Vijay Sharma", "Dinesh Patel"]
+  bank_name:
+    type: "pool"
+    values: ["State Bank of India", "HDFC Bank", "ICICI Bank", "Punjab National Bank"]
+  cheque_amount:
+    type: "range"
+    min: 100000
+    max: 1000000
+    step: 50000
+  cheque_date:
+    type: "relative_date"
+    base: "today"
+    offset_days: -45
+  dishonour_date:
+    type: "relative_date"
+    base: "facts.cheque_date"
+    offset_days: 15
+  dishonour_reason:
+    type: "pool"
+    values: ["Funds Insufficient", "Refer to Drawer", "Exceeds Arrangement"]
+  notice_date:
+    player_input: true
+
+rules:
+  notice_timeliness: "(input.notice_date - facts.dishonour_date).days <= 30 and (input.notice_date - facts.dishonour_date).days >= 0"
+  presentation_validity: "(facts.dishonour_date - facts.cheque_date).days <= 90"
+
+nodes:
+  start:
+    text: "Your client has received a bank return memo (cheque dishonour report) from {{facts.bank_name}} stating that a cheque for Rs. {{facts.cheque_amount}} drawn by {{facts.drawer_name}} on {{facts.cheque_date}} was dishonoured on {{facts.dishonour_date}} due to '{{facts.dishonour_reason}}'. The client wants to take legal action immediately. What is your first step?"
+    choices:
+      - id: "send_notice"
+        text: "Prepare and send a formal statutory demand notice to the drawer under Section 138 of the Negotiable Instruments Act."
+        leads_to: "notice_timing"
+        is_correct: true
+        score: 10
+        feedback: "Correct! Section 138(b) of the NI Act mandates that a written demand notice for the cheque amount must be sent within 30 days of receiving the bank's dishonour memo."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "notice_requirement"
+      - id: "file_fir"
+        text: "File an immediate Police FIR for cheating under Section 420 of the Indian Penal Code (IPC)."
+        leads_to: "wrong_fir"
+        is_correct: false
+        score: 0
+        feedback: "Incorrect. Filing an FIR under Section 420 IPC immediately for a cheque bounce is generally discouraged and often quashed by courts if the mandatory statutory process of Section 138 NI Act is bypassed."
+        citation: "Section 138, Negotiable Instruments Act, 1881"
+        issue_tag: "remedy_selection"
+      - id: "negotiate"
+        text: "Contact the drawer to negotiate an amicable settlement and hold off on formal notice."
+        leads_to: "negotiate_risk"
+        is_correct: false
+        score: 5
+        feedback: "Risky. While negotiation is fine, you risk running out the strict 30-day statutory limitation period for sending the legal notice."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "limitation_clock"
+
+  wrong_fir:
+    text: "You attempted to file a police FIR. The police either refused to register it citing a civil/commercial dispute, or the drawer filed a quashing petition in the High Court. Meanwhile, the strict 30-day window to send the Section 138 legal notice expired. Your client is left without a strong criminal remedy."
+    choices: []
+
+  negotiate_risk:
+    text: "The drawer, {{facts.drawer_name}}, promises to pay the amount in full next month, but pleads with you not to send any formal notices. What do you do?"
+    choices:
+      - id: "negotiate_wait"
+        text: "Agree to wait. You want to maintain business relationships and avoid formal litigation."
+        leads_to: "node_time_barred"
+        is_correct: false
+        score: 0
+        feedback: "Failure. You waited beyond the 30-day window from the dishonour date ({{facts.dishonour_date}}). The claim is now time-barred, and you can no longer file a Section 138 complaint."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "limitation_clock"
+      - id: "negotiate_send"
+        text: "Reject the delay request. Draft and send the formal demand notice immediately."
+        leads_to: "wait_period"
+        is_correct: true
+        score: 10
+        feedback: "Excellent decision. You protected your client's legal rights by sending the notice before the 30-day limit expired."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "limitation_clock"
+
+  notice_timing:
+    text: "Specify the notice date when the statutory demand notice is sent to {{facts.drawer_name}}. The dishonour report was received on {{facts.dishonour_date}}."
+    player_input: true
+    input_type: "date"
+    choices:
+      - id: "notice_timely"
+        text: "Submit selected date"
+        condition: "rules.notice_timeliness"
+        leads_to: "wait_period"
+        is_correct: true
+        score: 10
+        feedback: "Correct! The notice is sent on {{input.notice_date}}, which is within the 30-day statutory window of the dishonour date ({{facts.dishonour_date}})."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "notice_timeline"
+      - id: "notice_late"
+        text: "Submit selected date"
+        condition: "not rules.notice_timeliness"
+        leads_to: "node_time_barred"
+        is_correct: false
+        score: 0
+        feedback: "Late notice! The notice is sent on {{input.notice_date}}, which is more than 30 days after the dishonour date ({{facts.dishonour_date}}). The claim is now legally time-barred."
+        citation: "Section 138(b), Negotiable Instruments Act, 1881"
+        issue_tag: "notice_timeline"
+
+  node_time_barred:
+    text: "The Section 138 claim is legally time-barred because the demand notice was not served within 30 days of receipt of the bank dishonour memo. The magistrate will dismiss your complaint on maintainability grounds."
+    choices: []
+
+  wait_period:
+    text: "The statutory notice is served on {{facts.drawer_name}}. Under the NI Act, the drawer has exactly 15 days from receipt to make payment. How do you advise your client to proceed?"
+    choices:
+      - id: "file_early"
+        text: "File the criminal complaint in court immediately on Day 5 to show aggressive intent."
+        leads_to: "wrong_fir"
+        is_correct: false
+        score: 0
+        feedback: "Premature filing! A cause of action only arises *after* the 15-day payment period has completely expired without payment. Filing earlier makes the complaint legally defective."
+        citation: "Section 138(c) and Section 142(1)(b), Negotiable Instruments Act, 1881"
+        issue_tag: "cause_of_action"
+      - id: "file_timely"
+        text: "Wait for the 15-day payment window to expire, then file the complaint in court within the next 30 days."
+        leads_to: "debrief"
+        is_correct: true
+        score: 20
+        feedback: "Perfect! The cause of action arises on the 16th day after notice service, and you have exactly 1 month to file the complaint under Section 142."
+        citation: "Section 142(1)(b), Negotiable Instruments Act, 1881"
+        issue_tag: "filing_timeline"
+      - id: "file_late"
+        text: "Give them 2 months to arrange the money, and file the complaint if they still don't pay."
+        leads_to: "missed_window"
+        is_correct: false
+        score: 5
+        feedback: "Missed the filing window. A complaint must be filed within 1 month from the date the cause of action arose. Serving late requires proving 'sufficient cause' to condone the delay."
+        citation: "Section 142(1)(b), Negotiable Instruments Act, 1881"
+        issue_tag: "filing_timeline"
+
+  debrief:
+    text: "Success! You successfully advised the client, avoided the common limitation traps, served notice within 30 days of dishonour, waited the mandatory 15-day payment period, and filed the complaint within the 30-day window. The court has taken cognizance of your complaint."
+    choices: []
+
+  missed_window:
+    text: "The complaint was filed late. You must now file a Condonation of Delay application under Section 142(1)(b) proviso. This adds significant delay, legal costs, and risk of dismissal if the magistrate rejects your excuse."
+    choices: []

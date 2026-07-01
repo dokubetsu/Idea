@@ -246,4 +246,5 @@ async def get_features():
         "hearings": settings.FEATURE_HEARINGS,
         "milestones": settings.FEATURE_MILESTONES,
         "ai_summaries": settings.FEATURE_AI_SUMMARIES,
+        "practice": settings.FEATURE_PRACTICE,
     }

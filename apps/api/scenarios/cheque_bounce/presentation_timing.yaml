@@ -1,0 +1,75 @@
+meta:
+  id: "presentation_timing"
+  title: "The 3-Month Cheque Window"
+  domain: "Cheque Bounce"
+  difficulty: "intermediate"
+  based_on: "Section 138(a), Negotiable Instruments Act, 1881"
+  estimated_minutes: 8
+  tags: ["NI Act", "Cheque Bounce", "Presentation Timeline", "Limitation"]
+
+facts:
+  drawer_name:
+    type: "pool"
+    values: ["Anil Mehta", "Sunil Sharma", "Vikas Gupta"]
+  bank_name:
+    type: "pool"
+    values: ["State Bank of India", "HDFC Bank", "ICICI Bank"]
+  cheque_amount:
+    type: "range"
+    min: 50000
+    max: 500000
+    step: 25000
+  cheque_date:
+    type: "relative_date"
+    base: "today"
+    offset_days: -100
+  presentation_date:
+    player_input: true
+
+rules:
+  presentation_timeliness: "(input.presentation_date - facts.cheque_date).days <= 90 and (input.presentation_date - facts.cheque_date).days >= 0"
+
+nodes:
+  start:
+    text: "Your client, Ramesh Kumar, was issued a cheque of Rs. {{facts.cheque_amount}} drawn on {{facts.bank_name}} by {{facts.drawer_name}}. The cheque is dated {{facts.cheque_date}}. He tells you he wants to present it for payment, but he has been busy. What is your legal advice regarding the deadline for cheque presentation?"
+    choices:
+      - id: "advise_three_months"
+        text: "Advise him that the cheque must be presented to the bank within 3 months (90 days) from its date."
+        leads_to: "presentation_input_node"
+        score: 10
+        is_correct: true
+        feedback: "Correct! Under Section 138(a) of the NI Act, a cheque must be presented to the bank within a period of three months from the date on which it is drawn."
+        citation: "Section 138(a), NI Act, 1881"
+        issue_tag: "presentation_window"
+      - id: "advise_six_months"
+        text: "Advise him that cheques in India are valid for 6 months, so he still has plenty of time."
+        leads_to: "presentation_input_node"
+        score: 0
+        is_correct: false
+        feedback: "Incorrect. The RBI reduced the validity period of cheques and drafts from 6 months to 3 months (90 days) starting April 1, 2012. Advising 6 months will lead to time-barred claims."
+        citation: "RBI Circular DBOD.AML.BC.No.86/14.01.001/2011-12"
+        issue_tag: "presentation_window"
+
+  presentation_input_node:
+    text: "Your client decides to present the cheque at his bank. Please enter the date on which the cheque was presented to the bank for payment. Note: The cheque date is {{facts.cheque_date}}."
+    player_input: true
+    input_type: "date"
+    choices:
+      - condition: "((input.presentation_date - facts.cheque_date).days) <= 90"
+        leads_to: "end"
+        score: 10
+        is_correct: true
+        feedback: "Correct! The cheque was presented on {{input.presentation_date}}, which is within the 90-day (3-month) statutory window from {{facts.cheque_date}}."
+        citation: "Section 138(a), NI Act, 1881"
+        issue_tag: "presentation_timeline"
+      - condition: "((input.presentation_date - facts.cheque_date).days) > 90"
+        leads_to: "end"
+        score: 0
+        is_correct: false
+        feedback: "Late presentation! The cheque was presented on {{input.presentation_date}}, which is more than 90 days after the cheque date ({{facts.cheque_date}}). The bank will reject it as stale, and no Section 138 action can be maintained."
+        citation: "Section 138(a), NI Act, 1881"
+        issue_tag: "presentation_timeline"
+
+  end:
+    text: "The presentation step is complete. If presentation was timely and dishonoured, you can proceed to issue the demand notice; if it was late, the legal remedy under Section 138 is lost."
+    choices: []

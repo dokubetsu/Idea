@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("PAYMENT_WEBHOOK_SECRET", "test_webhook_secret")
+os.environ.setdefault("CRON_SECRET", "test_cron_secret")
 
 import pytest
 import pytest_asyncio
@@ -77,10 +78,26 @@ class MockSupabaseTable:
     def insert(self, data, *args, **kwargs):
         self.queries.clear()
         self.queries.append(("insert", data, args, kwargs))
+        import uuid
+        from datetime import datetime, timezone
+        now_str = datetime.now(timezone.utc).isoformat()
         if isinstance(data, list):
+            for row in data:
+                if "id" not in row:
+                    row["id"] = str(uuid.uuid4())
+                if "created_at" not in row:
+                    row["created_at"] = now_str
+                if "started_at" not in row:
+                    row["started_at"] = now_str
             self.data.extend(data)
             self.last_inserted = data
         else:
+            if "id" not in data:
+                data["id"] = str(uuid.uuid4())
+            if "created_at" not in data:
+                data["created_at"] = now_str
+            if "started_at" not in data:
+                data["started_at"] = now_str
             self.data.append(data)
             self.last_inserted = [data]
         return self
@@ -101,6 +118,10 @@ class MockSupabaseTable:
 
     def limit(self, limit_val):
         self.queries.append(("limit", limit_val))
+        return self
+
+    def range(self, start, end):
+        self.queries.append(("range", start, end))
         return self
 
     def order(self, column, *args, **kwargs):
@@ -147,6 +168,9 @@ class MockSupabaseTable:
             if query[0] == "eq":
                 column, value = query[1], query[2]
                 data = [row for row in data if row.get(column) == value]
+            elif query[0] == "range":
+                start, end = query[1], query[2]
+                data = data[start : end + 1]
 
         if is_single:
             ret = data[0] if data else None

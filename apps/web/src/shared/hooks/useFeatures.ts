@@ -8,6 +8,7 @@ export interface FeatureFlags {
   hearings: boolean;
   milestones: boolean;
   ai_summaries: boolean;
+  practice: boolean;
 }
 
 export function useFeatures() {

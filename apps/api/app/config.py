@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     PAYMENT_WEBHOOK_SECRET: str
 
     FEATURE_CONSULTATIONS: bool = True
+    FEATURE_PRACTICE: bool = False
     FEATURE_BILLING: bool = False
     FEATURE_HEARINGS: bool = False
     FEATURE_MILESTONES: bool = False

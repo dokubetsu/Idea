@@ -7,12 +7,14 @@ import { Menu, X, Scale, LogOut } from "lucide-react";
 import { createClient } from "@/shared/lib/supabase/client";
 import type { UserRole } from "@/entities/types";
 import { NAV, ROLE_COLOR, ROLE_LABEL } from "@/shared/lib/navigation";
+import { useFeatures } from "@/shared/hooks/useFeatures";
 
 export function MobileNav({ role, userName }: { role: UserRole; userName: string }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { features } = useFeatures();
 
   useEffect(() => {
     setMounted(true);
@@ -86,7 +88,11 @@ export function MobileNav({ role, userName }: { role: UserRole; userName: string
 
             {/* Navigation Links */}
             <nav className="flex-1 space-y-1 overflow-y-auto py-6">
-              {NAV[role]?.map(({ href, label, icon: Icon }) => {
+              {NAV[role]?.filter(({ href }) => {
+                if (href.includes("lawyers") && !features.consultations) return false;
+                if (href.includes("practice") && !features.practice) return false;
+                return true;
+              }).map(({ href, label, icon: Icon }) => {
                 const active = pathname === href || pathname.startsWith(href + "/");
                 return (
                   <Link

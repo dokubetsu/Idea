@@ -46,6 +46,7 @@ export function Sidebar({ role, userName }: { role: UserRole; userName: string }
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {NAV[role]?.filter(({ href }) => {
           if (href.includes("lawyers") && !features.consultations) return false;
+          if (href.includes("practice") && !features.practice) return false;
           return true;
         }).map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");

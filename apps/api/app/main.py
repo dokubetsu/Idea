@@ -32,6 +32,7 @@ from app.domains.legal_tools.router import router as legal_tools_router
 from app.domains.notifications.router import router as notifications_router
 from app.domains.consultations.router import router as consultations_router
 from app.domains.system.router import router as system_router
+from app.domains.practice import practice_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -71,6 +72,14 @@ async def lifespan(app: FastAPI):
 
     provider = get_provider()
     log.info("✅ Assessment provider: %s", provider.name)
+
+    if settings.FEATURE_PRACTICE:
+        from app.domains.practice.scenario_loader import load_all_scenarios, sync_to_database
+        try:
+            load_all_scenarios()
+            sync_to_database()
+        except Exception as sync_exc:
+            log.error("Failed to load/sync practice scenarios on startup: %s", sync_exc)
 
     yield
     # ── Shutdown ─────────────────────────────────────────────
@@ -135,6 +144,7 @@ app.include_router(admin_router, prefix=PREFIX)
 app.include_router(legal_tools_router, prefix=PREFIX)
 app.include_router(notifications_router, prefix=PREFIX)
 app.include_router(consultations_router, prefix=PREFIX)
+app.include_router(practice_router, prefix=PREFIX)
 app.include_router(system_router, prefix=PREFIX)
 
 

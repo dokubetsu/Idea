@@ -135,6 +135,12 @@ summary:focus-visible {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
 /* ─── Animation Utilities ─────────────────────────────────────── */
 
 .animate-scale-tilt     { animation: scale-tilt 7s ease-in-out infinite; }
@@ -145,6 +151,7 @@ summary:focus-visible {
 .animate-gold-pulse     { animation: gold-pulse 2.5s ease-in-out infinite; }
 .animate-float          { animation: float 5s ease-in-out infinite; }
 .animate-blink          { animation: blink 1.1s step-end infinite; }
+.animate-shake          { animation: shake 0.2s ease-in-out 2; }
 
 .animate-wave-1 { animation: wave-dot-1 1.2s ease-in-out infinite; }
 .animate-wave-2 { animation: wave-dot-2 1.2s ease-in-out infinite; }

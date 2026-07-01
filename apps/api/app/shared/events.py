@@ -57,6 +57,10 @@ class EventType(str, Enum):
     MEETING_COMPLETED = "meeting.completed"
     MILESTONE_UPDATED = "milestone.updated"
 
+    # Practice Scenarios
+    PRACTICE_SESSION_STARTED = "practice.session_started"
+    PRACTICE_SESSION_COMPLETED = "practice.session_completed"
+
 
 BACKGROUND_TASKS: set[asyncio.Task] = set()
 

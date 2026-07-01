@@ -1,0 +1,134 @@
+meta:
+  id: "medical_negligence_trial"
+  title: "The Standard of Care: Medical Negligence Trial"
+  domain: "Consumer Protection"
+  difficulty: "advanced"
+  based_on: "Kunal Saha v. AMRI Hospital (2013) & Jacob Mathew v. State of Punjab (2005)"
+  estimated_minutes: 15
+  tags: ["Consumer Protection Act", "Medical Negligence", "Standard of Care", "Trial Advocacy", "Evidence"]
+
+facts:
+  patient_name:
+    type: "pool"
+    values: ["Anuradha Saha", "Priya Sen", "Meera Nair"]
+  hospital_name:
+    type: "pool"
+    values: ["AMRI Hospital", "Advance Medicare Research Institute", "Apollo Hospital"]
+  steroid_dose_mg:
+    type: "range"
+    min: 80
+    max: 160
+    step: 40
+  patient_age:
+    type: "range"
+    min: 30
+    max: 40
+    step: 2
+
+rules:
+  is_excessive_dose: "facts.steroid_dose_mg >= 80"
+
+nodes:
+  start:
+    text: "You represent Dr. Kunal Saha, a doctor whose wife, {{facts.patient_name}} (aged {{facts.patient_age}}), died at {{facts.hospital_name}} due to a severe skin condition called Toxic Epidermal Necrolysis (TEN). The medical records show she was administered a massive dosage of Depomedrol ({{facts.steroid_dose_mg}}mg twice daily) for a skin rash. Your client wants to sue for medical negligence. What is the most appropriate forum under Indian Law to seek substantial compensation for 'deficiency in service'?"
+    choices:
+      - id: "forum_civil_court"
+        text: "File a civil suit for breach of contract and tortious negligence in a local Civil Court."
+        leads_to: "evidence_evaluation"
+        score: 2
+        is_correct: false
+        feedback: "Incorrect. While a civil suit is legally valid, civil courts in India are notorious for prolonged delays (often taking 10-15 years), and court fees are prohibitively high for multi-crore claims."
+        citation: "Section 9, Code of Civil Procedure, 1908"
+        issue_tag: "jurisdiction"
+      - id: "forum_consumer_court"
+        text: "File a complaint in the National Consumer Disputes Redressal Commission (NCDRC) under the Consumer Protection Act."
+        leads_to: "evidence_evaluation"
+        score: 10
+        is_correct: true
+        feedback: "Correct! The Supreme Court in Indian Medical Association v. V.P. Shantha held that medical services fall under the definition of 'service' under the Consumer Protection Act. The NCDRC has original jurisdiction to hear high-value claims directly, offering a relatively faster trial process."
+        citation: "Indian Medical Association v. V.P. Shantha (1995) 6 SCC 651"
+        issue_tag: "jurisdiction"
+
+  evidence_evaluation:
+    text: "The trial begins. You receive the official treatment charts from the hospital. Depomedrol's standard pharmacology guidelines state that the maximum recommended dose is 40-120mg *weekly*. However, the charts verify that doctors at {{facts.hospital_name}} administered {{facts.steroid_dose_mg}}mg *twice daily* without performing any immunological tests. How do you present this evidence to establish a breach of duty?"
+    choices:
+      - id: "evidence_standard_deviation"
+        text: "Submit the drug manufacturer's insert and independent expert pharmacologist testimony to prove the dosage administered was a gross deviation from medical standards."
+        leads_to: "defense_bolam_test"
+        score: 10
+        is_correct: true
+        feedback: "Correct! Introducing standard medical literature and expert testimony establishes that the attending doctors failed to exercise 'reasonable care' and did not follow the standard protocol, satisfying the second element of negligence."
+        citation: "Section 45, Indian Evidence Act, 1872"
+        issue_tag: "evidence_presentation"
+      - id: "evidence_res_ipsa"
+        text: "Rely solely on the doctrine of Res Ipsa Loquitur (the thing speaks for itself) to argue that the patient's death itself is sufficient proof of negligence."
+        leads_to: "defense_bolam_test"
+        score: 3
+        is_correct: false
+        feedback: "Risky strategy. In medical negligence cases, Res Ipsa Loquitur only applies where negligence is obvious to a layperson (e.g., surgical tools left inside the body). Complex drug dosages require expert evidence to establish deviation."
+        citation: "Jacob Mathew v. State of Punjab (2005) 6 SCC 1"
+        issue_tag: "evidence_presentation"
+
+  defense_bolam_test:
+    text: "The hospital's defense counsel argues that the attending doctors followed a practice accepted by a respectable body of medical opinion at the time (the Bolam Test). They present a witness, Dr. Prasad, who testifies that steroids are commonly used to treat severe allergies. How do you cross-examine or counter this Bolam defense?"
+    choices:
+      - id: "counter_bolam_excessive"
+        text: "Cross-examine Dr. Prasad to get him to admit that while steroids are standard, administering {{facts.steroid_dose_mg}}mg twice daily (amounting to a weekly dose exceeding 1000mg) is unheard of and has no support in any peer-reviewed medical body."
+        leads_to: "defense_contributory"
+        score: 10
+        is_correct: true
+        feedback: "Excellent! The Bolam Test protects doctors who follow a 'responsible' body of opinion, but it does not protect practices that are irrational or exceed safe therapeutic limits. Proving the dosage was mathematically absurd destroys the Bolam defense."
+        citation: "Dr. Laxman Balkrishna Joshi v. Dr. Trimbak Bapu Godbole (1969) SCR (1) 206"
+        issue_tag: "standard_of_care"
+      - id: "counter_bolam_attack"
+        text: "Argue that the Bolam Test is outdated in modern consumer law and should be completely ignored in favor of strict liability."
+        leads_to: "defense_contributory"
+        score: 0
+        is_correct: false
+        feedback: "Incorrect. The Bolam Test remains the cornerstone of medical negligence jurisprudence in India. Courts will not ignore it; you must satisfy it or show that the doctor's choice of treatment was irrational or negligent."
+        citation: "Jacob Mathew v. State of Punjab (2005) 6 SCC 1"
+        issue_tag: "standard_of_care"
+
+  defense_contributory:
+    text: "The defense throws a curveball: they argue that your client, Dr. Kunal Saha, was a doctor himself and actively interfered with the treatment by recommending medications, which constitutes contributory negligence. The hospital records contain nursing notes stating: 'Patient's husband suggested steroid adjustment.' How do you address this?"
+    choices:
+      - id: "contributory_rebuttal"
+        text: "Argue that a doctor-hospital relationship cannot be overridden by casual suggestions. Point out that the final authority and signatures on the prescription charts belonged exclusively to the hospital's consultants, who had sole control over the administration of drugs."
+        leads_to: "compensation_calculation"
+        score: 10
+        is_correct: true
+        feedback: "Correct! The Supreme Court in the Kunal Saha case rejected the hospital's defense of contributory negligence, ruling that the ultimate responsibility for clinical administration lies with the registered hospital staff and attending consultants, not the family."
+        citation: "Kunal Saha v. AMRI Hospital (2013) 11 SCC 384"
+        issue_tag: "liability_allocation"
+      - id: "contributory_concession"
+        text: "Concede that there was minor contributory negligence and ask the court to reduce the compensation by a small percentage."
+        leads_to: "compensation_calculation"
+        score: 2
+        is_correct: false
+        feedback: "Incorrect. Conceding contributory negligence unnecessarily reduces your client's compensation. In medical malpractice, unless the patient/family active hid symptoms or self-administered drugs against instructions, the hospital remains fully liable."
+        citation: "Kunal Saha v. AMRI Hospital (2013)"
+        issue_tag: "liability_allocation"
+
+  compensation_calculation:
+    text: "The court finds {{facts.hospital_name}} and its doctors negligent. Now comes the calculation of damages. The patient was a child psychologist earning a substantial income. The defense argues for a flat ceiling of 5 Lakhs Rs. as standard compensation under local medical council rules. How do you argue for multi-crore damages?"
+    choices:
+      - id: "damages_flat_sum"
+        text: "Accept the statutory flat sum cap and ask for additional emotional distress damages of 5 Lakhs Rs."
+        leads_to: "end"
+        score: 1
+        is_correct: false
+        feedback: "Incorrect. There is no flat ceiling on compensation under the Consumer Protection Act. Accepting a low flat sum does not represent your client's interests."
+        citation: "Section 14(1)(d), Consumer Protection Act, 1986"
+        issue_tag: "damages"
+      - id: "damages_multiplier"
+        text: "Argue for the 'Multiplier Method' based on the deceased's age, annual income, loss of dependency, and future prospects, leading to just and adequate compensation."
+        leads_to: "end"
+        score: 10
+        is_correct: true
+        feedback: "Correct! The Supreme Court in Kunal Saha's case established that compensation under the Consumer Protection Act must be 'just and adequate' and applied the multiplier method, awarding over 11 Crore Rupees (including interest) — the highest medical negligence payout in Indian history."
+        citation: "Kunal Saha v. AMRI Hospital (2013) 11 SCC 384"
+        issue_tag: "damages"
+
+  end:
+    text: "The trial is complete. You have successfully established medical negligence against {{facts.hospital_name}}, defeated their Bolam and contributory negligence arguments, and secured a landmark compensation payout based on the multiplier method."
+    choices: []
