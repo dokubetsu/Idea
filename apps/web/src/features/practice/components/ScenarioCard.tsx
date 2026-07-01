@@ -1,26 +1,18 @@
-import { useRouter } from "next/navigation";
 import { BookOpen, Clock } from "lucide-react";
-import { useStartSession } from "../hooks/usePractice";
 import { ScenarioSummary } from "../types";
 import { Card, Badge, Button } from "@/shared/components/ui";
 
 export function ScenarioCard({
   scenario,
   role,
+  onStart,
+  isStarting,
 }: {
   scenario: ScenarioSummary;
   role: "user" | "lawyer";
+  onStart: () => void;
+  isStarting: boolean;
 }) {
-  const router = useRouter();
-  const startSessionMutation = useStartSession();
-
-  const handleStart = () => {
-    startSessionMutation.mutate(scenario.scenario_key, {
-      onSuccess: (data) => {
-        router.push(`/${role}/practice/${data.id}`);
-      },
-    });
-  };
 
   const difficultyTone = {
     beginner: "teal" as const,
@@ -81,12 +73,12 @@ export function ScenarioCard({
       {/* Action Button */}
       <div className="p-5 pt-0">
         <Button
-          onClick={handleStart}
-          disabled={startSessionMutation.isPending}
+          onClick={onStart}
+          disabled={isStarting}
           variant="gold"
           className="w-full"
         >
-          {startSessionMutation.isPending ? "Starting..." : "Start Practice"}
+          {isStarting ? "Starting..." : "Start Practice"}
         </Button>
       </div>
     </Card>

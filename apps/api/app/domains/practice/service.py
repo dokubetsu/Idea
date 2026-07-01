@@ -372,7 +372,7 @@ class PracticeService:
         db.table("practice_decisions").insert(decision_row).execute()
 
         # Update session values
-        new_score = sess["score"] + score_awarded
+        new_score = max(0, sess["score"] + score_awarded)
         new_decisions_count = sess["decisions_count"] + 1
         new_correct_count = sess["correct_count"] + (1 if is_correct else 0)
 

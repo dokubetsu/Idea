@@ -13,7 +13,8 @@ import { ChoiceCard } from "./ChoiceCard";
 import { InputNode } from "./InputNode";
 import { DecisionFeedback } from "./DecisionFeedback";
 import { DebriefPanel } from "./DebriefPanel";
-import { Button, Card } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { DecisionResponse } from "../types";
 
 export function SessionView({
   sessionId,
@@ -37,7 +38,7 @@ export function SessionView({
   const startSessionMutation = useStartSession();
 
   // States
-  const [feedbackData, setFeedbackData] = useState<any | null>(null);
+  const [feedbackData, setFeedbackData] = useState<DecisionResponse | null>(null);
   const [startTime, setStartTime] = useState<number>(Date.now());
 
   // Reset timer on node change

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Award, Compass, Search } from "lucide-react";
-import { useScenarios } from "../hooks/usePractice";
+import { useScenarios, useStartSession } from "../hooks/usePractice";
 import { ScenarioCard } from "./ScenarioCard";
 import { Button, Select } from "@/shared/components/ui";
 
 export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
+  const router = useRouter();
+  const startSessionMutation = useStartSession();
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -17,6 +20,14 @@ export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
     domain,
     difficulty,
   });
+
+  const handleStartSession = (scenarioKey: string) => {
+    startSessionMutation.mutate(scenarioKey, {
+      onSuccess: (res) => {
+        router.push(`/${role}/practice/${res.id}`);
+      },
+    });
+  };
 
   // Filter local results by search query
   const scenarios = data?.scenarios ?? [];
@@ -118,7 +129,13 @@ export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
       ) : filteredScenarios.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredScenarios.map((scen) => (
-            <ScenarioCard key={scen.id} scenario={scen} role={role} />
+            <ScenarioCard
+              key={scen.id}
+              scenario={scen}
+              role={role}
+              onStart={() => handleStartSession(scen.scenario_key)}
+              isStarting={startSessionMutation.isPending && startSessionMutation.variables === scen.scenario_key}
+            />
           ))}
         </div>
       ) : (

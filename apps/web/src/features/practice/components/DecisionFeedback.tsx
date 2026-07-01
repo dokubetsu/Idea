@@ -43,9 +43,19 @@ export function DecisionFeedback({
           >
             {isCorrect ? "Correct Decision" : "Incorrect Decision"}
           </span>
-          <span className="text-xs font-bold text-brand-gold">
-            +{scoreAwarded} Points
-          </span>
+          {scoreAwarded !== 0 ? (
+            <span
+              className={`text-xs font-bold ${
+                scoreAwarded > 0 ? "text-brand-gold" : "text-red-500"
+              }`}
+            >
+              {scoreAwarded > 0 ? `+${scoreAwarded}` : scoreAwarded} Points
+            </span>
+          ) : (
+            <span className="text-xs font-bold text-brand-blue-light/50">
+              No points awarded
+            </span>
+          )}
         </div>
 
         <p className="text-sm font-semibold leading-relaxed animate-fade-in-up text-brand-blue-dark">

@@ -130,7 +130,7 @@ nodes:
         citation: "Section 138(c) and Section 142(1)(b), Negotiable Instruments Act, 1881"
         issue_tag: "cause_of_action"
       - id: "file_timely"
-        text: "Wait for the 15-day payment window to expire, then file the complaint in court within the next 30 days."
+        text: "Wait for the 15-day payment window to expire, then file the complaint in court within one month."
         leads_to: "debrief"
         is_correct: true
         score: 20
@@ -147,7 +147,7 @@ nodes:
         issue_tag: "filing_timeline"
 
   debrief:
-    text: "Success! You successfully advised the client, avoided the common limitation traps, served notice within 30 days of dishonour, waited the mandatory 15-day payment period, and filed the complaint within the 30-day window. The court has taken cognizance of your complaint."
+    text: "Success! You successfully advised the client, avoided the common limitation traps, served notice within 30 days of dishonour, waited the mandatory 15-day payment period, and filed the complaint within the one-month window. The court has taken cognizance of your complaint."
     choices: []
 
   missed_window:

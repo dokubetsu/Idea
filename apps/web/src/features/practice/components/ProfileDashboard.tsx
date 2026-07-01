@@ -248,6 +248,28 @@ export function ProfileDashboard({ role }: { role: "user" | "lawyer" }) {
                   })}
                 </tbody>
               </table>
+              {/* Pagination controls */}
+              <div className="flex items-center justify-between p-4 border-t border-black/5 bg-brand-blue-dark/[0.02]">
+                <Button
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                  variant="outline"
+                  className="text-xs py-1.5 px-3"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs text-brand-blue-light/60 font-semibold">
+                  Page {page}
+                </span>
+                <Button
+                  onClick={() => setPage((prev) => prev + 1)}
+                  disabled={history.length < 10}
+                  variant="outline"
+                  className="text-xs py-1.5 px-3"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-12 text-center">

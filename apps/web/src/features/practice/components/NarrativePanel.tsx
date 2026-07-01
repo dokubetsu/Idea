@@ -3,7 +3,7 @@ import { DarkCard } from "@/shared/components/ui";
 
 export function NarrativePanel({ text }: { text: string }) {
   return (
-    <DarkCard className="p-6 md:p-8 animate-fade-in-up">
+    <DarkCard className="relative p-6 md:p-8 animate-fade-in-up">
       {/* Decorative gavel icon in the corner */}
       <div className="absolute right-4 top-4 opacity-10">
         <Scale className="w-24 h-24 text-white" />
