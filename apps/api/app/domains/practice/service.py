@@ -26,7 +26,9 @@ from app.domains.practice.schemas import (
 log = logging.getLogger(__name__)
 
 
-def render_text(template_str: str, facts: dict, player_input: dict | None = None) -> str:
+def render_text(
+    template_str: str, facts: dict, player_input: dict | None = None
+) -> str:
     if not template_str:
         return template_str
     try:
