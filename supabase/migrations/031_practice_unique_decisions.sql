@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION submit_practice_decision(
   p_is_correct BOOLEAN,
   p_score_awarded INT,
   p_issue_tag TEXT,
-  p_input_value TEXT,
+  p_input_value JSONB,
   p_time_taken_ms INT,
   p_new_node TEXT,
   p_new_status TEXT,

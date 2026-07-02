@@ -451,7 +451,7 @@ class PracticeService:
                 "p_is_correct": is_correct,
                 "p_score_awarded": score_awarded,
                 "p_issue_tag": issue_tag or "",
-                "p_input_value": str(input_value) if input_value is not None else "",
+                "p_input_value": input_value,
                 "p_time_taken_ms": time_taken_ms or 0,
                 "p_new_node": leads_to or current_node_id,
                 "p_new_status": new_status,
