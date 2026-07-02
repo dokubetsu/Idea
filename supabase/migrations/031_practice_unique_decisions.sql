@@ -2,6 +2,14 @@
 CREATE UNIQUE INDEX IF NOT EXISTS idx_practice_decisions_unique_node 
 ON practice_decisions (session_id, node_id);
 
+-- Drop existing function if any to support parameter type changes
+DROP FUNCTION IF EXISTS submit_practice_decision(
+  UUID, UUID, TEXT, TEXT, BOOLEAN, INT, TEXT, TEXT, INT, TEXT, TEXT, TIMESTAMPTZ, TEXT
+);
+DROP FUNCTION IF EXISTS submit_practice_decision(
+  UUID, UUID, TEXT, TEXT, BOOLEAN, INT, TEXT, JSONB, INT, TEXT, TEXT, TIMESTAMPTZ, TEXT
+);
+
 -- Create atomic RPC function to wrap decision insertion, session update, and profile upsert
 CREATE OR REPLACE FUNCTION submit_practice_decision(
   p_session_id UUID,
