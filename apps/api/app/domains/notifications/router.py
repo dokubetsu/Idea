@@ -23,7 +23,6 @@ TICKET_EXPIRY_SECONDS = 30
 # ── SSE auth helper (native EventSource with short-lived tickets) ─────────────
 async def get_sse_user(
     ticket: Optional[str] = Query(None),
-    db=Depends(get_db),
 ) -> CurrentUser:
     if not ticket:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -32,6 +31,9 @@ async def get_sse_user(
     if not ticket_data:
         raise HTTPException(status_code=401, detail="Invalid or expired ticket")
 
+    from app.shared.database import get_service_role_db
+
+    db = get_service_role_db()
     result = (
         db.table("profiles")
         .select("id,role,full_name,is_active")
