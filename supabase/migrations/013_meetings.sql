@@ -15,7 +15,7 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE TABLE meetings (
+CREATE TABLE IF NOT EXISTS meetings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   matter_id UUID NOT NULL REFERENCES matters(id) ON DELETE CASCADE,
   scheduled_at TIMESTAMPTZ NOT NULL,

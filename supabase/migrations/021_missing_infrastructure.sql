@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS payments (
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
 -- Payments Policies
+DROP POLICY IF EXISTS "Users can view their own payments" ON payments;
 CREATE POLICY "Users can view their own payments"
   ON payments FOR SELECT
   USING (auth.uid() = user_id OR EXISTS (
@@ -75,12 +76,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Audit Logs Policies
+DROP POLICY IF EXISTS "Admins can view all audit logs" ON audit_logs;
 CREATE POLICY "Admins can view all audit logs"
   ON audit_logs FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
   ));
 
+DROP POLICY IF EXISTS "System can insert audit logs" ON audit_logs;
 CREATE POLICY "System can insert audit logs"
   ON audit_logs FOR INSERT
   WITH CHECK (auth.role() = 'service_role');
@@ -103,10 +106,12 @@ CREATE TABLE IF NOT EXISTS lawyer_availability (
 ALTER TABLE lawyer_availability ENABLE ROW LEVEL SECURITY;
 
 -- Lawyer Availability Policies
+DROP POLICY IF EXISTS "Anyone can view lawyer availability" ON lawyer_availability;
 CREATE POLICY "Anyone can view lawyer availability"
   ON lawyer_availability FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Lawyers can manage their own availability" ON lawyer_availability;
 CREATE POLICY "Lawyers can manage their own availability"
   ON lawyer_availability FOR ALL
   USING (auth.uid() = lawyer_id)
@@ -129,19 +134,29 @@ CREATE TABLE IF NOT EXISTS time_slots (
 ALTER TABLE time_slots ENABLE ROW LEVEL SECURITY;
 
 -- Time Slots Policies
+DROP POLICY IF EXISTS "Anyone can view time slots" ON time_slots;
 CREATE POLICY "Anyone can view time slots"
   ON time_slots FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Lawyers can manage their own slots" ON time_slots;
 CREATE POLICY "Lawyers can manage their own slots"
   ON time_slots FOR ALL
   USING (auth.uid() = lawyer_id)
   WITH CHECK (auth.uid() = lawyer_id);
 
 -- ── Triggers: updated_at for 021 tables ──────────────────────────
-CREATE TRIGGER trg_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-CREATE TRIGGER trg_lawyer_availability_updated_at BEFORE UPDATE ON public.lawyer_availability FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
-CREATE TRIGGER trg_time_slots_updated_at BEFORE UPDATE ON public.time_slots FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER trg_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_lawyer_availability_updated_at BEFORE UPDATE ON public.lawyer_availability FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_time_slots_updated_at BEFORE UPDATE ON public.time_slots FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── 6. Admin Stats RPC ───────────────────────────────────────────
 CREATE OR REPLACE FUNCTION get_admin_stats()

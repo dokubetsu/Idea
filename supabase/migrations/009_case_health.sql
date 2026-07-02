@@ -4,12 +4,16 @@ BEGIN;
 -- LEAD PLATFORM — Migration 009: Case Health Status
 -- ================================================================
 
-CREATE TYPE matter_health_status AS ENUM (
-  'waiting_on_client',
-  'waiting_on_lawyer',
-  'waiting_on_court',
-  'in_progress'
-);
+DO $$ BEGIN
+  CREATE TYPE public.matter_health_status AS ENUM (
+    'waiting_on_client',
+    'waiting_on_lawyer',
+    'waiting_on_court',
+    'in_progress'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE matters
   ADD COLUMN IF NOT EXISTS matter_health matter_health_status NOT NULL DEFAULT 'in_progress';
