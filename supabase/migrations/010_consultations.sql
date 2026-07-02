@@ -36,7 +36,7 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE TABLE consultations (
+CREATE TABLE IF NOT EXISTS consultations (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   lawyer_id           UUID REFERENCES profiles(id),
