@@ -56,9 +56,18 @@ CREATE INDEX IF NOT EXISTS idx_time_slots_available
 --   payment_gateway_ref  TEXT  -- opaque string from Razorpay/Stripe ("pay_AbCdXyZ")
 --   payment_record_id    UUID  -- FK to our internal payments table
 
--- Step 1: Rename old TEXT column (safe — no data type change)
-ALTER TABLE matter_milestones
-  RENAME COLUMN payment_id TO payment_gateway_ref;
+-- Step 1: Rename old TEXT column only if it hasn't been renamed yet
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'matter_milestones'
+      AND column_name  = 'payment_id'
+  ) THEN
+    ALTER TABLE matter_milestones RENAME COLUMN payment_id TO payment_gateway_ref;
+  END IF;
+END $$;
 
 -- Step 2: Add the structured FK column
 ALTER TABLE matter_milestones
