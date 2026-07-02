@@ -254,7 +254,7 @@ export function ProfileDashboard({ role }: { role: "user" | "lawyer" }) {
                 <Button
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                   disabled={page === 1}
-                  variant="outline"
+                  variant="secondary"
                   className="text-xs py-1.5 px-3"
                 >
                   Previous
@@ -265,7 +265,7 @@ export function ProfileDashboard({ role }: { role: "user" | "lawyer" }) {
                 <Button
                   onClick={() => setPage((prev) => prev + 1)}
                   disabled={history.length < 10}
-                  variant="outline"
+                  variant="secondary"
                   className="text-xs py-1.5 px-3"
                 >
                   Next
