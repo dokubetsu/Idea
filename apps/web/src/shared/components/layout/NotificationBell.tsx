@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/shared/lib/supabase/client";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "@/shared/lib/api/notifications";
 import { Notification } from "@/entities/types";
+import { apiClient } from "@/shared/lib/api/client";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -60,26 +61,8 @@ export function NotificationBell() {
     async function connectSSE() {
       if (!active) return;
       try {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (!token) {
-          scheduleReconnect();
-          return;
-        }
-
-        // Fetch short-lived ticket
-        const ticketRes = await fetch(`${BASE_API_URL}/api/v1/notifications/ticket`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (!ticketRes.ok) {
-          throw new Error("Failed to acquire SSE ticket");
-        }
-        const { ticket } = await ticketRes.json();
+        // Fetch short-lived ticket using our unified API client
+        const { ticket } = await apiClient.post<{ ticket: string }>("/notifications/ticket", {});
 
         if (!active) return;
 
@@ -104,7 +87,13 @@ export function NotificationBell() {
           scheduleReconnect();
         };
       } catch (err) {
-        console.error("SSE connection setup failed:", err);
+        // Suppress noisy stack traces for common network failures/offline states
+        const isNetworkErr = err instanceof TypeError && err.message === "Failed to fetch";
+        if (isNetworkErr) {
+          console.warn("Notification server is offline or unreachable. Retrying in background...");
+        } else {
+          console.error("SSE connection setup failed:", err);
+        }
         scheduleReconnect();
       }
     }
