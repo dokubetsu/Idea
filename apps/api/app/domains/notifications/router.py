@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional
 import json
 import asyncio
 import uuid
-import time
 from sse_starlette.sse import EventSourceResponse
 
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole

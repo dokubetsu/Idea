@@ -1,6 +1,12 @@
 from __future__ import annotations
 from fastapi import APIRouter, Query, HTTPException, Request
-from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified, UserRole
+import asyncio
+from app.shared.dependencies import (
+    Auth,
+    LawyerOrAdmin,
+    ensure_lawyer_verified,
+    UserRole,
+)
 from app.shared.database import get_db, get_service_role_db
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound, Forbidden
@@ -33,7 +39,7 @@ from app.domains.matters.service import (
     transition_status,
     SELECT,
 )
-from app.shared.dependencies import UserRole
+
 from app.domains.matters.documents_router import router as documents_router
 
 router = APIRouter(prefix="/matters", tags=["matters"])
@@ -941,7 +947,11 @@ async def payment_webhook(request: Request):
     # Check if we should insert a payment record in payments table
     payment_record_id = None
     milestone_amount = milestone.get("amount_inr")
-    if settings.FEATURE_BILLING and milestone_amount is not None and float(milestone_amount) > 0:
+    if (
+        settings.FEATURE_BILLING
+        and milestone_amount is not None
+        and float(milestone_amount) > 0
+    ):
         payment_data = {
             "milestone_id": milestone_id,
             "user_id": user_id,

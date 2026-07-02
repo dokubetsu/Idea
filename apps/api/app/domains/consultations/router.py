@@ -201,12 +201,13 @@ async def cancel_consultation(consultation_id: str, user: Auth):
     scheduled_at_str = row.get("scheduled_at")
     if scheduled_at_str:
         from datetime import datetime, timezone
+
         scheduled = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         if (scheduled - now).total_seconds() < 24 * 3600:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot cancel within 24 hours of scheduled time. Contact support."
+                detail="Cannot cancel within 24 hours of scheduled time. Contact support.",
             )
 
     if row["status"] != "pending":
@@ -290,14 +291,17 @@ async def patch_consultation(
     scheduled_at = updates.get("scheduled_at")
     if scheduled_at and row.get("lawyer_id"):
         from datetime import datetime, timedelta
+
         if isinstance(scheduled_at, str):
-            scheduled_datetime = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            scheduled_datetime = datetime.fromisoformat(
+                scheduled_at.replace("Z", "+00:00")
+            )
         else:
             scheduled_datetime = scheduled_at
-            
+
         window_start = scheduled_datetime - timedelta(minutes=30)
         window_end = scheduled_datetime + timedelta(minutes=30)
-        
+
         conflicts = (
             db.table("consultations")
             .select("id")
@@ -309,8 +313,10 @@ async def patch_consultation(
             .execute()
         )
         if conflicts.data:
-            raise HTTPException(status_code=400, detail="This time slot is already booked")
-            
+            raise HTTPException(
+                status_code=400, detail="This time slot is already booked"
+            )
+
         updates["scheduled_at"] = scheduled_datetime.isoformat()
 
     res = (

@@ -1,6 +1,5 @@
 import logging
-from starlette.types import ASGIApp, Scope, Receive, Send
-from fastapi import HTTPException
+from starlette.types import ASGIApp, Scope, Receive, Send, Message
 
 log = logging.getLogger("app.body_size_limit")
 
@@ -24,7 +23,11 @@ class BodySizeLimitMiddleware:
         path = scope.get("path", "")
 
         # Enforce 64KB limit for webhooks and cron triggers, 1MB for all others
-        limit = 64 * 1024 if "webhook" in path or "/cron/" in path else self.max_content_length
+        limit = (
+            64 * 1024
+            if "webhook" in path or "/cron/" in path
+            else self.max_content_length
+        )
 
         if content_length_bytes:
             try:
@@ -39,7 +42,7 @@ class BodySizeLimitMiddleware:
         # Enforce limit dynamically during stream read
         total_size = 0
 
-        async def receive_with_limit() -> dict:
+        async def receive_with_limit() -> Message:
             nonlocal total_size
             message = await receive()
             if message["type"] == "http.request":
@@ -52,35 +55,45 @@ class BodySizeLimitMiddleware:
         try:
             await self.app(scope, receive_with_limit, send)
         except SizeLimitError:
-            log.warning("Request body size exceeded limit of %d bytes on path: %s", limit, path)
+            log.warning(
+                "Request body size exceeded limit of %d bytes on path: %s", limit, path
+            )
             await self._send_413(send)
         except Exception:
             raise
 
     async def _send_413(self, send: Send) -> None:
-        await send({
-            "type": "http.response.start",
-            "status": 413,
-            "headers": [
-                (b"content-type", b"application/json"),
-            ]
-        })
-        await send({
-            "type": "http.response.body",
-            "body": b'{"detail": "Payload too large"}',
-            "more_body": False
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b'{"detail": "Payload too large"}',
+                "more_body": False,
+            }
+        )
 
     async def _send_400(self, send: Send) -> None:
-        await send({
-            "type": "http.response.start",
-            "status": 400,
-            "headers": [
-                (b"content-type", b"application/json"),
-            ]
-        })
-        await send({
-            "type": "http.response.body",
-            "body": b'{"detail": "Invalid Content-Length header"}',
-            "more_body": False
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 400,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                ],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b'{"detail": "Invalid Content-Length header"}',
+                "more_body": False,
+            }
+        )

@@ -212,7 +212,7 @@ class MockSupabaseTable:
                     for part in parts:
                         subparts = part.split(".")
                         if len(subparts) == 3 and subparts[1] == "eq":
-                            col, op, val = subparts[0], subparts[1], subparts[2]
+                            col, _, val = subparts[0], subparts[1], subparts[2]
                             if str(row.get(col)) == val:
                                 any_match = True
                                 break
@@ -526,6 +526,7 @@ async def client(mock_user) -> AsyncGenerator[AsyncClient, None]:
     # Override authentication dependency to use mock user
     app.dependency_overrides[get_current_user] = lambda: mock_user
     from app.domains.notifications.subscriber import init_subscriber
+
     init_subscriber()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

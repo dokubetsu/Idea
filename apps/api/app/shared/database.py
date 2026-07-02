@@ -35,6 +35,7 @@ def get_db() -> Client:
     if req_client is not None:
         return req_client
     import sys
+
     if "pytest" in sys.modules:
         return get_service_role_db()
     raise RuntimeError(

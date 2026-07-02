@@ -277,7 +277,7 @@ async def retry_stale_deliveries(
     return {
         "status": "success",
         "retried_count": len(stale_deliveries),
-        "notifications_count": len(notification_ids)
+        "notifications_count": len(notification_ids),
     }
 
 

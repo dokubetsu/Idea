@@ -2,29 +2,40 @@ import time
 import json
 import logging
 import threading
+import typing
 from app.config import settings
 
 log = logging.getLogger("app.ticket_store")
 
 
 class RedisTicketStore:
+    client: typing.Any
+
     def __init__(self, redis_url: str):
         self.use_redis = False
         self._lock = threading.Lock()
-        
+
         if redis_url and redis_url.startswith(("redis://", "rediss://")):
             try:
-                import redis
+                import redis  # type: ignore[import-untyped]
+
                 self.client = redis.from_url(redis_url, decode_responses=True)
                 self.use_redis = True
-                log.info("Successfully connected to Redis ticket store at %s", redis_url)
+                log.info(
+                    "Successfully connected to Redis ticket store at %s", redis_url
+                )
             except ImportError:
-                log.warning("redis package not installed. Falling back to in-memory ticket store.")
+                log.warning(
+                    "redis package not installed. Falling back to in-memory ticket store."
+                )
             except Exception as e:
-                log.error("Failed to connect to Redis ticket store: %s. Falling back to in-memory.", e)
-        
+                log.error(
+                    "Failed to connect to Redis ticket store: %s. Falling back to in-memory.",
+                    e,
+                )
+
         if not self.use_redis:
-            self.tickets = {}
+            self.tickets: dict[str, typing.Any] = {}
 
     def set_ticket(self, ticket_id: str, data: dict, expiry: int) -> None:
         if self.use_redis:
@@ -36,14 +47,11 @@ class RedisTicketStore:
                 with self._lock:
                     self.tickets[ticket_id] = {
                         **data,
-                        "expires_at": time.time() + expiry
+                        "expires_at": time.time() + expiry,
                     }
         else:
             with self._lock:
-                self.tickets[ticket_id] = {
-                    **data,
-                    "expires_at": time.time() + expiry
-                }
+                self.tickets[ticket_id] = {**data, "expires_at": time.time() + expiry}
                 # Clean up expired tickets on write
                 now = time.time()
                 expired = [k for k, v in self.tickets.items() if now > v["expires_at"]]

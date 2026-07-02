@@ -82,7 +82,9 @@ def safe_eval(
             elif isinstance(node.op, ast.Mod):
                 return left % right
             elif isinstance(node.op, ast.Pow):
-                if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+                if not isinstance(left, (int, float)) or not isinstance(
+                    right, (int, float)
+                ):
                     raise TypeError("Power operator requires numeric operands")
                 if abs(right) > 20:
                     raise ValueError(f"Exponent too large: {right}")

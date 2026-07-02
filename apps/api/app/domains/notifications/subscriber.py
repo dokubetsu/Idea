@@ -295,7 +295,7 @@ async def handle_domain_event(
         new_status = payload.get("to") or payload.get("new_status") or "unknown"
         reason = payload.get("reason")
         reason_str = f" ({reason})" if reason else ""
-        
+
         subject = f"Case Status Updated: {matter_title}"
         body = f"The status of your case '{matter_title}' has changed from {old_status} to {new_status}{reason_str}."
 
@@ -351,6 +351,7 @@ async def handle_domain_event(
                     if raw_date:
                         try:
                             from datetime import datetime
+
                             dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
                             scheduled_at_str = dt.strftime("%b %d, %Y at %I:%M %p")
                         except Exception:
