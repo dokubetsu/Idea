@@ -4,25 +4,37 @@ BEGIN;
 -- LEAD PLATFORM — Migration 010: Consultations
 -- ================================================================
 
-CREATE TYPE consultation_package AS ENUM ('free', 'starter', 'full');
+DO $$ BEGIN
+  CREATE TYPE public.consultation_package AS ENUM ('free', 'starter', 'full');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 -- Package-to-session-count mapping (configured in app, not in DB):
 --   free    = 1 session
 --   starter = 3 sessions
 --   full    = 5 sessions
 
-CREATE TYPE consultation_status AS ENUM (
-  'pending',
-  'confirmed',
-  'completed',
-  'cancelled',
-  'declined'
-);
+DO $$ BEGIN
+  CREATE TYPE public.consultation_status AS ENUM (
+    'pending',
+    'confirmed',
+    'completed',
+    'cancelled',
+    'declined'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE consultation_payment_status AS ENUM (
-  'unpaid',
-  'paid',
-  'waived'
-);
+DO $$ BEGIN
+  CREATE TYPE public.consultation_payment_status AS ENUM (
+    'unpaid',
+    'paid',
+    'waived'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE consultations (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -58,32 +70,38 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TABLE consultations ENABLE ROW LEVEL SECURITY;
 
 -- User reads their own bookings
+DROP POLICY IF EXISTS "consultations:user_read_own" ON consultations;
 CREATE POLICY "consultations:user_read_own"
   ON consultations FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
 -- Lawyer reads consultations assigned to them
+DROP POLICY IF EXISTS "consultations:lawyer_read_assigned" ON consultations;
 CREATE POLICY "consultations:lawyer_read_assigned"
   ON consultations FOR SELECT TO authenticated
   USING (lawyer_id = auth.uid());
 
 -- Admin reads all (uses auth_role() helper from 002_rls.sql — not hand-rolled EXISTS)
+DROP POLICY IF EXISTS "consultations:admin_all" ON consultations;
 CREATE POLICY "consultations:admin_all"
   ON consultations FOR ALL TO authenticated
   USING (auth_role() = 'admin');
 
 -- User creates their own bookings
+DROP POLICY IF EXISTS "consultations:user_insert" ON consultations;
 CREATE POLICY "consultations:user_insert"
   ON consultations FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
 
 -- Lawyer updates consultations assigned to them (confirm / decline / complete)
+DROP POLICY IF EXISTS "consultations:lawyer_update_assigned" ON consultations;
 CREATE POLICY "consultations:lawyer_update_assigned"
   ON consultations FOR UPDATE TO authenticated
   USING (lawyer_id = auth.uid());
 
 -- User can cancel their OWN PENDING booking before lawyer responds
 -- Scoped to status = 'pending' to prevent cancelling confirmed/completed consultations
+DROP POLICY IF EXISTS "consultations:user_cancel_own" ON consultations;
 CREATE POLICY "consultations:user_cancel_own"
   ON consultations FOR UPDATE TO authenticated
   USING (user_id = auth.uid() AND status = 'pending')
