@@ -35,7 +35,7 @@ facts:
 
 rules:
   notice_timeliness: "(input.notice_date - facts.dishonour_date).days <= 30 and (input.notice_date - facts.dishonour_date).days >= 0"
-  presentation_validity: "(facts.dishonour_date - facts.cheque_date).days <= 90"
+  presentation_validity: "facts.dishonour_date <= (facts.cheque_date + relativedelta(months=3))"
 
 nodes:
   start:

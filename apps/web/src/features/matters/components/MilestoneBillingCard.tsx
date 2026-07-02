@@ -22,7 +22,7 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
     setProcessingId(milestoneId);
     const randomSuffix = Math.random().toString(36).substr(2, 9);
     const paymentId = "pay_" + randomSuffix;
-    const idempotencyKey = `pay_key_${milestoneId}_${randomSuffix}`;
+    const idempotencyKey = `pay_key_${matterId}_${milestoneId}`;
     
     setTimeout(async () => {
       try {

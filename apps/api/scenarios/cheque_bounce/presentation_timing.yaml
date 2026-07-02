@@ -27,7 +27,7 @@ facts:
     player_input: true
 
 rules:
-  presentation_timeliness: "(input.presentation_date - facts.cheque_date).days <= 90 and (input.presentation_date - facts.cheque_date).days >= 0"
+  presentation_timeliness: "input.presentation_date <= (facts.cheque_date + relativedelta(months=3)) and (input.presentation_date - facts.cheque_date).days >= 0"
 
 nodes:
   start:

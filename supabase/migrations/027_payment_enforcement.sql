@@ -87,8 +87,8 @@ BEGIN
   END IF;
 
   -- 6. Create matter atomically within the same transaction.
-  INSERT INTO matters (user_id, lawyer_id, title, category, status)
-    VALUES (v_user_id, v_lawyer_id, 'Consultation Case', 'other', 'active')
+  INSERT INTO matters (user_id, lawyer_id, title, summary, category, status)
+    VALUES (v_user_id, v_lawyer_id, 'Consultation Case', 'Consultation case created upon payment confirmation.', 'other', 'active')
     RETURNING id INTO v_matter_id;
 
   -- 7. Link matter back and advance status.

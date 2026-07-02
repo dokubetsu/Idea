@@ -121,8 +121,8 @@ export function MeetingsPanel({ matterId, isLawyer }: { matterId: string; isLawy
                       {new Date(m.scheduled_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       <span className="text-xs font-normal text-brand-blue-light/50 ml-2">({m.duration_minutes} min)</span>
                     </p>
-                    {m.meeting_link && (
-                      <a href={m.meeting_link} target="_blank" rel="noreferrer" className="text-xs text-brand-gold hover:underline font-medium block mt-1">
+                    {m.meeting_link && /^https?:\/\//.test(m.meeting_link) && (
+                      <a href={m.meeting_link} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-gold hover:underline font-medium block mt-1">
                         Join Meeting →
                       </a>
                     )}
