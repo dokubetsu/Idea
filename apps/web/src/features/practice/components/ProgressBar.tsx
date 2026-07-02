@@ -13,7 +13,14 @@ export function ProgressBar({
         <span>Progress</span>
         <span>{Math.round(percentage)}%</span>
       </div>
-      <div className="h-1.5 w-full bg-brand-blue-dark/5 rounded-full overflow-hidden border border-black/5">
+      <div
+        role="progressbar"
+        aria-valuenow={current}
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-label="Simulation Progress"
+        className="h-1.5 w-full bg-brand-blue-dark/5 rounded-full overflow-hidden border border-black/5"
+      >
         <div
           className="h-full bg-gradient-to-r from-brand-gold to-brand-gold/80 rounded-full transition-all duration-500 ease-out"
           style={{ width: `${percentage}%` }}

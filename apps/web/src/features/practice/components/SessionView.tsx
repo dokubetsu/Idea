@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Award } from "lucide-react";
 import {
@@ -40,11 +40,14 @@ export function SessionView({
   // States
   const [feedbackData, setFeedbackData] = useState<DecisionResponse | null>(null);
   const [startTime, setStartTime] = useState<number>(Date.now());
+  const submittingRef = useRef(false);
 
   // Reset timer on node change
   useEffect(() => {
     if (session?.current_node) {
       setStartTime(Date.now());
+      setFeedbackData(null);
+      submittingRef.current = false;
     }
   }, [session?.current_node?.node_id]);
 
@@ -84,6 +87,9 @@ export function SessionView({
   };
 
   const handleChoiceSubmit = (choiceId: string, inputValue?: any) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+
     const timeTakenMs = Date.now() - startTime;
     submitDecisionMutation.mutate(
       {
@@ -94,6 +100,10 @@ export function SessionView({
       {
         onSuccess: (data) => {
           setFeedbackData(data);
+          submittingRef.current = false;
+        },
+        onError: () => {
+          submittingRef.current = false;
         },
       }
     );
@@ -164,6 +174,7 @@ export function SessionView({
           />
         ) : currentNode.player_input ? (
           <InputNode
+            key={currentNode.node_id}
             inputType={currentNode.input_type}
             disabled={submitDecisionMutation.isPending}
             onSubmit={(val) => {

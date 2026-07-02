@@ -208,6 +208,74 @@ class MockSupabaseClient:
 
     def rpc(self, name: str, params: dict = None):
         self.rpc_calls.append((name, params))
+        if params is None:
+            params = {}
+        if name == "submit_practice_decision":
+            session_id = params.get("p_session_id")
+            user_id = params.get("p_user_id")
+            node_id = params.get("p_node_id")
+            choice_id = params.get("p_choice_id")
+            is_correct = params.get("p_is_correct")
+            score_awarded = params.get("p_score_awarded")
+            issue_tag = params.get("p_issue_tag")
+            input_value = params.get("p_input_value")
+            time_taken_ms = params.get("p_time_taken_ms")
+            new_node = params.get("p_new_node")
+            new_status = params.get("p_new_status")
+            completed_at = params.get("p_completed_at")
+            domain = params.get("p_domain")
+
+            dec_row = {
+                "session_id": session_id,
+                "node_id": node_id,
+                "choice_id": choice_id,
+                "is_correct": is_correct,
+                "score_awarded": score_awarded,
+                "issue_tag": issue_tag,
+                "input_value": input_value,
+                "time_taken_ms": time_taken_ms,
+            }
+            self.table("practice_decisions").data.append(dec_row)
+
+            for row in self.table("practice_sessions").data:
+                if row.get("id") == session_id:
+                    row["current_node"] = new_node
+                    row["status"] = new_status
+                    row["score"] = max(0, row["score"] + score_awarded)
+                    row["decisions_count"] += 1
+                    row["correct_count"] += 1 if is_correct else 0
+                    row["completed_at"] = completed_at
+                    break
+
+            if issue_tag:
+                from datetime import datetime, timezone
+
+                now_str = datetime.now(timezone.utc).isoformat()
+                profiles = self.table("practice_profiles").data
+                found_p = None
+                for p in profiles:
+                    if p.get("user_id") == user_id and p.get("issue_tag") == issue_tag:
+                        found_p = p
+                        break
+                if found_p:
+                    found_p["attempts"] += 1
+                    found_p["correct"] += 1 if is_correct else 0
+                    found_p["streak"] = (found_p["streak"] + 1) if is_correct else 0
+                    found_p["last_attempted"] = now_str
+                else:
+                    new_p = {
+                        "user_id": user_id,
+                        "issue_tag": issue_tag,
+                        "domain": domain,
+                        "attempts": 1,
+                        "correct": 1 if is_correct else 0,
+                        "streak": 1 if is_correct else 0,
+                        "last_attempted": now_str,
+                    }
+                    profiles.append(new_p)
+
+            return MockRpcBuilder([])
+
         if name == "verify_lawyer_rpc":
             return MockRpcBuilder([])
         if name == "suspend_lawyer_rpc":

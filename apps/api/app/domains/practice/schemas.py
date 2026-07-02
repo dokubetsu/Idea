@@ -10,7 +10,7 @@ class StartSessionRequest(BaseModel):
 
 class DecisionRequest(BaseModel):
     choice_id: str
-    input_value: Any | None = None
+    input_value: str | int | float | None = None
     time_taken_ms: int | None = None
 
 
@@ -62,6 +62,7 @@ class SessionOut(BaseModel):
     started_at: datetime
     completed_at: datetime | None = None
     generated_facts: dict[str, Any]
+    estimated_decisions: int
     current_node: SessionNodeState | None = None
 
     class Config:

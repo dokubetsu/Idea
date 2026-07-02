@@ -16,6 +16,7 @@ export function DecisionFeedback({
 }) {
   return (
     <div
+      role="alert"
       className={`p-6 rounded-xl border flex flex-col md:flex-row gap-5 shadow-lg items-start transition-all duration-300 ${
         isCorrect
           ? "border-green-500/20 bg-green-500/5 text-green-800 shadow-green-500/5 animate-glow-pulse"

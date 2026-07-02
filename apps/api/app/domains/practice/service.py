@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 from fastapi import HTTPException
+from postgrest.types import CountMethod
 import re
 from datetime import date
 
@@ -90,12 +91,17 @@ def render_node_state(
 
 def compute_max_score(nodes: dict) -> int:
     memo: dict[str, int] = {}
+    in_progress = set()
 
     def dfs(node_id):
         if node_id in memo:
             return memo[node_id]
+        if node_id in in_progress:
+            return 0
+        in_progress.add(node_id)
         node = nodes.get(node_id)
         if not node or not node.get("choices"):
+            in_progress.remove(node_id)
             return 0
         max_val = 0
         for choice in node["choices"]:
@@ -105,10 +111,48 @@ def compute_max_score(nodes: dict) -> int:
                 max_val = max(max_val, score + dfs(next_node))
             else:
                 max_val = max(max_val, score)
+        in_progress.remove(node_id)
         memo[node_id] = max_val
         return max_val
 
     return dfs("start")
+
+
+def compute_optimal_path_length(nodes: dict) -> int:
+    memo: dict[str, tuple[int, int]] = {}
+    in_progress = set()
+
+    def dfs(node_id) -> tuple[int, int]:
+        if node_id in memo:
+            return memo[node_id]
+        if node_id in in_progress:
+            return 0, 0
+        in_progress.add(node_id)
+        node = nodes.get(node_id)
+        if not node or not node.get("choices"):
+            in_progress.remove(node_id)
+            return 0, 0
+        best_score = -999999
+        best_length = 0
+        for choice in node["choices"]:
+            score = choice.get("score", 0)
+            next_node = choice.get("leads_to")
+            if next_node:
+                sub_score, sub_len = dfs(next_node)
+                total_score = score + sub_score
+                total_len = 1 + sub_len
+            else:
+                total_score = score
+                total_len = 1
+            if total_score > best_score:
+                best_score = total_score
+                best_length = total_len
+        in_progress.remove(node_id)
+        memo[node_id] = (best_score, best_length)
+        return best_score, best_length
+
+    _, length = dfs("start")
+    return length
 
 
 class PracticeService:
@@ -120,21 +164,22 @@ class PracticeService:
         per_page: int = 10,
     ) -> ScenarioListResponse:
         db = get_db()
-        query = db.table("practice_scenarios").select("*").eq("is_active", True)
+        query = (
+            db.table("practice_scenarios")
+            .select("*", count=CountMethod.exact)
+            .eq("is_active", True)
+        )
         if domain:
             query = query.eq("domain", domain)
         if difficulty:
             query = query.eq("difficulty", difficulty)
-
-        # Count total
-        count_res = query.execute()
-        total = len(count_res.data) if count_res.data else 0
 
         # Pagination
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page - 1
         res = query.range(start_idx, end_idx).execute()
 
+        total = res.count if res.count is not None else 0
         scenarios = [ScenarioSummary.model_validate(row) for row in (res.data or [])]
         return ScenarioListResponse(scenarios=scenarios, total=total)
 
@@ -196,6 +241,8 @@ class PracticeService:
             payload={"session_id": sess["id"], "scenario_key": scenario_key},
         )
 
+        estimated_decisions = compute_optimal_path_length(scenario.get("nodes", {}))
+
         return SessionOut(
             id=sess["id"],
             scenario_key=scenario_key,
@@ -207,7 +254,10 @@ class PracticeService:
             decisions_count=sess["decisions_count"],
             correct_count=sess["correct_count"],
             started_at=datetime.fromisoformat(sess["started_at"]),
-            generated_facts=sess["generated_facts"],
+            generated_facts=(
+                sess["generated_facts"] if sess["status"] == "completed" else {}
+            ),
+            estimated_decisions=estimated_decisions,
             current_node=node_state,
         )
 
@@ -243,6 +293,8 @@ class PracticeService:
                 sess["current_node"], scenario, sess["generated_facts"]
             )
 
+        estimated_decisions = compute_optimal_path_length(scenario.get("nodes", {}))
+
         return SessionOut(
             id=sess["id"],
             scenario_key=scenario_key,
@@ -259,7 +311,10 @@ class PracticeService:
                 if sess["completed_at"]
                 else None
             ),
-            generated_facts=sess["generated_facts"],
+            generated_facts=(
+                sess["generated_facts"] if sess["status"] == "completed" else {}
+            ),
+            estimated_decisions=estimated_decisions,
             current_node=node_state,
         )
 
@@ -358,23 +413,19 @@ class PracticeService:
         feedback = render_text(matched_choice.get("feedback", ""), facts, player_input)
         citation = matched_choice.get("citation")
 
-        # Insert decision log
-        decision_row = {
-            "session_id": session_id,
-            "node_id": current_node_id,
-            "choice_id": matched_choice.get("id") or "",
-            "is_correct": is_correct,
-            "score_awarded": score_awarded,
-            "issue_tag": issue_tag,
-            "input_value": input_value,
-            "time_taken_ms": time_taken_ms,
-        }
-        db.table("practice_decisions").insert(decision_row).execute()
-
-        # Update session values
-        new_score = max(0, sess["score"] + score_awarded)
-        new_decisions_count = sess["decisions_count"] + 1
-        new_correct_count = sess["correct_count"] + (1 if is_correct else 0)
+        # Check for double submission
+        existing_dec = (
+            db.table("practice_decisions")
+            .select("id")
+            .eq("session_id", session_id)
+            .eq("node_id", current_node_id)
+            .execute()
+        )
+        if existing_dec.data:
+            raise HTTPException(
+                status_code=409,
+                detail="Decision already submitted for this node",
+            )
 
         # Advance node
         new_status = "active"
@@ -389,54 +440,25 @@ class PracticeService:
             # Render next node state
             next_node_state = render_node_state(leads_to, scenario, facts, player_input)
 
-        session_update = {
-            "current_node": leads_to or current_node_id,
-            "status": new_status,
-            "score": new_score,
-            "decisions_count": new_decisions_count,
-            "correct_count": new_correct_count,
-        }
-        if completed_at:
-            session_update["completed_at"] = completed_at
-
-        db.table("practice_sessions").update(session_update).eq(
-            "id", session_id
+        # Call atomic RPC database function
+        db.rpc(
+            "submit_practice_decision",
+            {
+                "p_session_id": session_id,
+                "p_user_id": user_id,
+                "p_node_id": current_node_id,
+                "p_choice_id": matched_choice.get("id") or "",
+                "p_is_correct": is_correct,
+                "p_score_awarded": score_awarded,
+                "p_issue_tag": issue_tag or "",
+                "p_input_value": str(input_value) if input_value is not None else "",
+                "p_time_taken_ms": time_taken_ms or 0,
+                "p_new_node": leads_to or current_node_id,
+                "p_new_status": new_status,
+                "p_completed_at": completed_at,
+                "p_domain": scenario["meta"]["domain"],
+            },
         ).execute()
-
-        # Update practice profiles if choice contains issue_tag
-        if issue_tag:
-            profile_res = (
-                db.table("practice_profiles")
-                .select("*")
-                .eq("user_id", user_id)
-                .eq("issue_tag", issue_tag)
-                .execute()
-            )
-
-            profile_row = {
-                "user_id": user_id,
-                "issue_tag": issue_tag,
-                "domain": scenario["meta"]["domain"],
-                "last_attempted": datetime.now(timezone.utc).isoformat(),
-            }
-
-            if profile_res.data:
-                existing_prof = profile_res.data[0]
-                profile_row["attempts"] = existing_prof["attempts"] + 1
-                profile_row["correct"] = existing_prof["correct"] + (
-                    1 if is_correct else 0
-                )
-                profile_row["streak"] = existing_prof["streak"] + 1 if is_correct else 0
-
-                db.table("practice_profiles").update(profile_row).eq(
-                    "id", existing_prof["id"]
-                ).execute()
-            else:
-                profile_row["attempts"] = 1
-                profile_row["correct"] = 1 if is_correct else 0
-                profile_row["streak"] = 1 if is_correct else 0
-
-                db.table("practice_profiles").insert(profile_row).execute()
 
         # Emit completed event if finished
         if new_status == "completed":
@@ -448,7 +470,7 @@ class PracticeService:
                 payload={
                     "session_id": session_id,
                     "scenario_key": scenario_key,
-                    "score": new_score,
+                    "score": max(0, sess["score"] + score_awarded),
                     "max_score": sess["max_score"],
                 },
             )

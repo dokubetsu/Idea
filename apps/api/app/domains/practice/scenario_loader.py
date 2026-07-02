@@ -83,7 +83,7 @@ def load_all_scenarios() -> None:
             log.info(f"Loaded scenario '{scenario_id}' from {file_path}")
         except Exception as e:
             log.error(f"Failed to load scenario from {file_path}: {e}")
-            raise e
+            continue
 
 
 def get_scenario(key: str) -> dict | None:

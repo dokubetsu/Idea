@@ -76,6 +76,7 @@ export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
           <input
             type="text"
             placeholder="Search scenarios or tags..."
+            aria-label="Search scenarios"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-brand-gold/15 bg-base-100 text-brand-blue-dark outline-none focus:border-brand-gold focus:bg-white transition-all"
@@ -90,6 +91,7 @@ export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
             </span>
             <Select
               id="difficulty-filter"
+              aria-label="Difficulty filter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="text-xs min-h-9 !py-1"
@@ -105,10 +107,12 @@ export function PracticeHub({ role }: { role: "user" | "lawyer" }) {
       </div>
 
       {/* Domain Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-black/5 pb-2">
+      <div role="tablist" className="flex items-center gap-1 overflow-x-auto border-b border-black/5 pb-2">
         {domains.map((dom) => (
           <button
             key={dom}
+            role="tab"
+            aria-selected={domainFilter === dom}
             onClick={() => setDomainFilter(dom)}
             className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
               domainFilter === dom

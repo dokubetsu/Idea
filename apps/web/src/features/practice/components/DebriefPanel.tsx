@@ -117,7 +117,7 @@ export function DebriefPanel({
           <div className="flex flex-wrap gap-2 pt-1">
             {missedIssues.map((issue) => (
               <Badge key={issue} tone="red" className="text-[9px] font-semibold">
-                {issue?.replace("_", " ")}
+                {issue?.replace(/_/g, " ")}
               </Badge>
             ))}
           </div>
@@ -135,7 +135,7 @@ export function DebriefPanel({
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-brand-blue-light/40">
-                    Step {idx + 1}: {dec.node_id.replace("_", " ")}
+                    Step {idx + 1}: {dec.node_id.replace(/_/g, " ")}
                   </span>
                   <p className="text-sm font-bold text-brand-blue-dark">
                     {dec.choice_text || "Input Value Submitted"}

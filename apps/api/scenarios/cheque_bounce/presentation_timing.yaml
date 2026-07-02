@@ -55,7 +55,7 @@ nodes:
     player_input: true
     input_type: "date"
     choices:
-      - condition: "((input.presentation_date - facts.cheque_date).days) <= 90"
+      - condition: "((input.presentation_date - facts.cheque_date).days) <= 90 and ((input.presentation_date - facts.cheque_date).days) >= 0"
         leads_to: "end"
         score: 10
         is_correct: true

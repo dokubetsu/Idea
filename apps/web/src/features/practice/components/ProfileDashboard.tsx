@@ -25,8 +25,9 @@ export function ProfileDashboard({ role }: { role: "user" | "lawyer" }) {
   const strengths = profile?.strengths ?? [];
 
   // Calculate aggregates
-  const totalAttempts = blindSpots.reduce((sum, s) => sum + s.attempts, 0);
-  const totalCorrect = blindSpots.reduce((sum, s) => sum + s.correct, 0);
+  const allSpots = [...blindSpots, ...strengths];
+  const totalAttempts = allSpots.reduce((sum, s) => sum + s.attempts, 0);
+  const totalCorrect = allSpots.reduce((sum, s) => sum + s.correct, 0);
   const overallAccuracy =
     totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
@@ -135,9 +136,9 @@ export function ProfileDashboard({ role }: { role: "user" | "lawyer" }) {
         {Object.keys(domainStats).length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Object.entries(domainStats).map(([dom, stats]) => {
-              const domainAvg = Math.round(
+              const domainAvg = stats.maxScore > 0 ? Math.round(
                 (stats.totalScore / stats.maxScore) * 100
-              );
+              ) : 0;
               return (
                 <Card key={dom} className="p-5 space-y-3">
                   <Badge tone="teal" className="text-[9px] font-semibold">

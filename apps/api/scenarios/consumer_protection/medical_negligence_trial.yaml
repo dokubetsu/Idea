@@ -16,8 +16,8 @@ facts:
     values: ["AMRI Hospital", "Advance Medicare Research Institute", "Apollo Hospital"]
   steroid_dose_mg:
     type: "range"
-    min: 80
-    max: 160
+    min: 120
+    max: 200
     step: 40
   patient_age:
     type: "range"
@@ -26,7 +26,7 @@ facts:
     step: 2
 
 rules:
-  is_excessive_dose: "facts.steroid_dose_mg >= 80"
+  is_excessive_dose: "facts.steroid_dose_mg >= 120"
 
 nodes:
   start:
