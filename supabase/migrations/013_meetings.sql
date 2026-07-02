@@ -5,11 +5,15 @@ BEGIN;
 -- ================================================================
 
 
-CREATE TYPE meeting_status AS ENUM (
-  'scheduled',
-  'completed',
-  'cancelled'
-);
+DO $$ BEGIN
+  CREATE TYPE public.meeting_status AS ENUM (
+    'scheduled',
+    'completed',
+    'cancelled'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE meetings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,6 +38,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
 
 -- Users can read meetings for their matters
+DROP POLICY IF EXISTS "meetings:user_read" ON meetings;
 CREATE POLICY "meetings:user_read"
   ON meetings FOR SELECT TO authenticated
   USING (
@@ -45,6 +50,7 @@ CREATE POLICY "meetings:user_read"
   );
 
 -- Lawyers can read meetings for assigned matters
+DROP POLICY IF EXISTS "meetings:lawyer_read" ON meetings;
 CREATE POLICY "meetings:lawyer_read"
   ON meetings FOR SELECT TO authenticated
   USING (
@@ -56,12 +62,14 @@ CREATE POLICY "meetings:lawyer_read"
   );
 
 -- Admin can read all
+DROP POLICY IF EXISTS "meetings:admin_all" ON meetings;
 CREATE POLICY "meetings:admin_all"
   ON meetings FOR ALL TO authenticated
   USING (auth_role() = 'admin');
 
 -- Users and Lawyers can insert/update if they are associated with the matter
 -- Note: we enforce specific validations (like session limits) in the backend API router.
+DROP POLICY IF EXISTS "meetings:user_lawyer_insert" ON meetings;
 CREATE POLICY "meetings:user_lawyer_insert"
   ON meetings FOR INSERT TO authenticated
   WITH CHECK (
@@ -72,6 +80,7 @@ CREATE POLICY "meetings:user_lawyer_insert"
     )
   );
 
+DROP POLICY IF EXISTS "meetings:user_lawyer_update" ON meetings;
 CREATE POLICY "meetings:user_lawyer_update"
   ON meetings FOR UPDATE TO authenticated
   USING (
