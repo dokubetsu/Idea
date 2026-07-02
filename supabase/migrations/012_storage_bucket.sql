@@ -21,6 +21,7 @@ VALUES (
 -- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Admin can do everything
+DROP POLICY IF EXISTS "Admins have full access" ON storage.objects;
 CREATE POLICY "Admins have full access"
 ON storage.objects FOR ALL
 TO authenticated
@@ -45,6 +46,7 @@ LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- Policy: Users can read/insert/update/delete objects in matters they own
+DROP POLICY IF EXISTS "Users can manage documents for their matters" ON storage.objects;
 CREATE POLICY "Users can manage documents for their matters"
 ON storage.objects FOR ALL
 TO authenticated
@@ -58,6 +60,7 @@ USING (
 );
 
 -- Policy: Lawyers can read/insert/update/delete objects in matters they are assigned to
+DROP POLICY IF EXISTS "Lawyers can manage documents for assigned matters" ON storage.objects;
 CREATE POLICY "Lawyers can manage documents for assigned matters"
 ON storage.objects FOR ALL
 TO authenticated
