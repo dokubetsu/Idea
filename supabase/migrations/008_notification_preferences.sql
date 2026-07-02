@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 );
 
 -- Auto-update updated_at on change
+DROP TRIGGER IF EXISTS trg_notification_prefs_updated_at ON notification_preferences;
 CREATE TRIGGER trg_notification_prefs_updated_at
     BEFORE UPDATE ON notification_preferences
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
@@ -27,24 +28,29 @@ CREATE TRIGGER trg_notification_prefs_updated_at
 ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Users can read and manage only their own preferences
+DROP POLICY IF EXISTS "users_select_own_prefs" ON notification_preferences;
 CREATE POLICY "users_select_own_prefs"
     ON notification_preferences FOR SELECT
     USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_insert_own_prefs" ON notification_preferences;
 CREATE POLICY "users_insert_own_prefs"
     ON notification_preferences FOR INSERT
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_update_own_prefs" ON notification_preferences;
 CREATE POLICY "users_update_own_prefs"
     ON notification_preferences FOR UPDATE
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_delete_own_prefs" ON notification_preferences;
 CREATE POLICY "users_delete_own_prefs"
     ON notification_preferences FOR DELETE
     USING (user_id = auth.uid());
 
 -- Service role bypasses RLS (for backend worker reads)
+DROP POLICY IF EXISTS "service_role_all_prefs" ON notification_preferences;
 CREATE POLICY "service_role_all_prefs"
     ON notification_preferences FOR ALL
     USING (auth.role() = 'service_role');

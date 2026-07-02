@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS pending_notifications (
 ALTER TABLE pending_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users with admin role to manage outbox
+DROP POLICY IF EXISTS "pending_notifications:admin_all" ON pending_notifications;
 CREATE POLICY "pending_notifications:admin_all"
   ON pending_notifications FOR ALL TO authenticated
   USING (auth_role() = 'admin');

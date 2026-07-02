@@ -58,9 +58,11 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_deliveries ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create policies for notifications
+DROP POLICY IF EXISTS "notifications:read_own" ON public.notifications;
 CREATE POLICY "notifications:read_own" ON public.notifications
   FOR SELECT TO authenticated USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "notifications:update_own" ON public.notifications;
 CREATE POLICY "notifications:update_own" ON public.notifications
   FOR UPDATE TO authenticated USING (user_id = auth.uid());
 
