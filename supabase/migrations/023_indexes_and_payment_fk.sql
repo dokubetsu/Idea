@@ -64,6 +64,11 @@ BEGIN
     WHERE table_schema = 'public'
       AND table_name   = 'matter_milestones'
       AND column_name  = 'payment_id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'matter_milestones'
+      AND column_name  = 'payment_gateway_ref'
   ) THEN
     ALTER TABLE matter_milestones RENAME COLUMN payment_id TO payment_gateway_ref;
   END IF;
