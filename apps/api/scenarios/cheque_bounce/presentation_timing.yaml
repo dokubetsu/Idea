@@ -34,11 +34,11 @@ nodes:
     text: "Your client, Ramesh Kumar, was issued a cheque of Rs. {{facts.cheque_amount}} drawn on {{facts.bank_name}} by {{facts.drawer_name}}. The cheque is dated {{facts.cheque_date}}. He tells you he wants to present it for payment, but he has been busy. What is your legal advice regarding the deadline for cheque presentation?"
     choices:
       - id: "advise_three_months"
-        text: "Advise him that the cheque must be presented to the bank within 3 months (90 days) from its date."
+        text: "Advise him that the cheque must be presented to the bank within 3 calendar months from its date."
         leads_to: "presentation_input_node"
         score: 10
         is_correct: true
-        feedback: "Correct! Under Section 138(a) of the NI Act, a cheque must be presented to the bank within a period of three months from the date on which it is drawn."
+        feedback: "Correct! Under Section 138(a) of the NI Act, a cheque must be presented to the bank within three calendar months from the date on which it is drawn. Three calendar months is not always 90 days."
         citation: "Section 138(a), NI Act, 1881"
         issue_tag: "presentation_window"
       - id: "advise_six_months"
@@ -55,20 +55,20 @@ nodes:
     player_input: true
     input_type: "date"
     choices:
-      - condition: "((input.presentation_date - facts.cheque_date).days) <= 90 and ((input.presentation_date - facts.cheque_date).days) >= 0"
+      - condition: "rules.presentation_timeliness"
         leads_to: "end"
-        score: 10
+        score: 15
         is_correct: true
-        feedback: "Correct! The cheque was presented on {{input.presentation_date}}, which is within the 90-day (3-month) statutory window from {{facts.cheque_date}}."
+        feedback: "Correct! The cheque was presented on {{input.presentation_date}}, which is within 3 calendar months of {{facts.cheque_date}} (Section 138(a) NI Act). This preserves the payee's right to file a complaint upon dishonour."
         citation: "Section 138(a), NI Act, 1881"
-        issue_tag: "presentation_timeline"
-      - condition: "((input.presentation_date - facts.cheque_date).days) > 90"
+        issue_tag: "presentation_validity"
+      - condition: "not rules.presentation_timeliness"
         leads_to: "end"
         score: 0
         is_correct: false
-        feedback: "Late presentation! The cheque was presented on {{input.presentation_date}}, which is more than 90 days after the cheque date ({{facts.cheque_date}}). The bank will reject it as stale, and no Section 138 action can be maintained."
+        feedback: "Late presentation! The cheque was presented on {{input.presentation_date}}, which is after 3 calendar months from {{facts.cheque_date}}. Under Section 138(a), this extinguishes the criminal remedy — the bank will reject it as stale."
         citation: "Section 138(a), NI Act, 1881"
-        issue_tag: "presentation_timeline"
+        issue_tag: "presentation_validity"
 
   end:
     text: "The presentation step is complete. If presentation was timely and dishonoured, you can proceed to issue the demand notice; if it was late, the legal remedy under Section 138 is lost."

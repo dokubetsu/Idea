@@ -79,20 +79,10 @@ def unsubscribe(callback) -> None:
         _subscribers.remove(callback)
 
 
-def _write_event(row: dict) -> None:
-    db = database.get_service_role_db()
-    db.table("events").insert(row).execute()
-
-
 def _get_event_value(event_type: EventType | str) -> str:
     if isinstance(event_type, Enum):
         return event_type.value
     return str(event_type)
-
-
-def _write_pending_notifications(rows: list[dict]) -> None:
-    db = database.get_service_role_db()
-    db.table("pending_notifications").insert(rows).execute()
 
 
 def _resolve_subscriber(name: str):
@@ -110,43 +100,59 @@ def _resolve_subscriber(name: str):
     return None
 
 
+# ---------------------------------------------------------------------------
+# C2 fix: atomic event + outbox write via single DB transaction RPC
+# ---------------------------------------------------------------------------
+
+def _emit_event_with_outbox(event_str: str, actor_id: str | None, matter_id: str | None, payload: dict, pending_rows: list[dict]) -> None:
+    """Write the event record and all outbox rows in one DB transaction.
+
+    Uses the emit_event_with_outbox() plpgsql function (migration 036) so
+    that if the outbox insert fails the event insert is also rolled back —
+    preventing the 'event logged but notification never queued' bug.
+    """
+    db = database.get_service_role_db()
+    db.rpc(
+        "emit_event_with_outbox",
+        {
+            "p_event_type": event_str,
+            "p_actor_id": actor_id,
+            "p_matter_id": matter_id,
+            "p_payload": payload,
+            "p_pending": [{"subscriber_name": r["subscriber_name"]} for r in pending_rows],
+        },
+    ).execute()
+
+
+# ---------------------------------------------------------------------------
+# C1 fix: atomic outbox claim using FOR UPDATE SKIP LOCKED
+# ---------------------------------------------------------------------------
+
 async def process_pending_notifications() -> None:
+    """Claim and process outbox rows.
+
+    Uses the claim_pending_notifications() plpgsql function (migration 035)
+    which atomically transitions rows to 'processing' using
+    FOR UPDATE SKIP LOCKED.  This prevents the polling loop and the
+    immediate-trigger task from claiming the same row concurrently,
+    eliminating duplicate subscriber executions and duplicate notifications.
+    """
     db = database.get_service_role_db()
     try:
-        res = (
-            db.table("pending_notifications")
-            .select("*")
-            .or_("status.eq.pending,status.eq.failed")
-            .execute()
-        )
+        res = db.rpc("claim_pending_notifications", {"p_batch_size": 50}).execute()
     except Exception as e:
-        log.error("Outbox: failed to fetch pending notifications: %s", e)
+        log.error("Outbox: failed to claim pending notifications: %s", e)
         return
 
     rows = res.data or []
     if not rows:
         return
 
-    from datetime import datetime, timezone, timedelta
-
-    now = datetime.now(timezone.utc)
+    from datetime import datetime, timezone
 
     for row in rows:
+        now = datetime.now(timezone.utc)
         attempts = row["attempts"]
-        last_attempt_at_str = row.get("last_attempt_at")
-
-        # Check backoff if failed
-        if row["status"] == "failed" and last_attempt_at_str:
-            try:
-                last_attempt_at = datetime.fromisoformat(
-                    last_attempt_at_str.replace("Z", "+00:00")
-                )
-                backoff_seconds = (2 ** (attempts - 1)) * 5  # 5s, 10s, 20s, 40s, 80s
-                if now < last_attempt_at + timedelta(seconds=backoff_seconds):
-                    continue
-            except Exception:
-                pass
-
         sub_name = row["subscriber_name"]
         sub = _resolve_subscriber(sub_name)
 
@@ -165,7 +171,7 @@ async def process_pending_notifications() -> None:
             continue
 
         try:
-            # Increment attempt count in DB
+            # Increment attempt count before executing subscriber
             new_attempts = attempts + 1
             db.table("pending_notifications").update(
                 {
@@ -253,18 +259,8 @@ async def emit(
 ) -> None:
     try:
         event_str = _get_event_value(event_type)
-        row = {
-            "event_type": event_str,
-            "payload": payload or {},
-        }
-        if actor_id:
-            row["actor_id"] = actor_id
-        if matter_id:
-            row["matter_id"] = matter_id
 
-        await asyncio.to_thread(_write_event, row)
-
-        # Write to pending_notifications (Outbox)
+        # Build subscriber list for outbox rows
         pending_rows = []
         for sub in list(_subscribers):
             sub_name = (
@@ -272,21 +268,22 @@ async def emit(
                 if hasattr(sub, "__name__")
                 else str(sub)
             )
-            pending_rows.append(
-                {
-                    "event_type": event_str,
-                    "actor_id": actor_id,
-                    "matter_id": matter_id,
-                    "payload": payload or {},
-                    "subscriber_name": sub_name,
-                    "status": "pending",
-                    "attempts": 0,
-                }
-            )
+            pending_rows.append({"subscriber_name": sub_name})
+
+        # C2: single atomic write — event + outbox rows in one DB transaction
+        await asyncio.to_thread(
+            _emit_event_with_outbox,
+            event_str,
+            actor_id,
+            matter_id,
+            payload or {},
+            pending_rows,
+        )
 
         if pending_rows:
-            await asyncio.to_thread(_write_pending_notifications, pending_rows)
-            # Trigger execution immediately
+            # C1: immediate processing — safe because claim_pending_notifications
+            # uses FOR UPDATE SKIP LOCKED, so concurrent polling loop cannot
+            # double-process the same row.
             task = asyncio.create_task(process_pending_notifications())
             BACKGROUND_TASKS.add(task)
             task.add_done_callback(BACKGROUND_TASKS.discard)
@@ -326,12 +323,6 @@ def sync_emit(
     """Synchronous version for use in sync contexts."""
     try:
         event_str = _get_event_value(event_type)
-        row = {"event_type": event_str, "payload": payload or {}}
-        if actor_id:
-            row["actor_id"] = actor_id
-        if matter_id:
-            row["matter_id"] = matter_id
-        _write_event(row)
 
         pending_rows = []
         for sub in list(_subscribers):
@@ -340,21 +331,13 @@ def sync_emit(
                 if hasattr(sub, "__name__")
                 else str(sub)
             )
-            pending_rows.append(
-                {
-                    "event_type": event_str,
-                    "actor_id": actor_id,
-                    "matter_id": matter_id,
-                    "payload": payload or {},
-                    "subscriber_name": sub_name,
-                    "status": "pending",
-                    "attempts": 0,
-                }
-            )
+            pending_rows.append({"subscriber_name": sub_name})
+
+        # C2: single atomic write — event + outbox rows in one DB transaction
+        _emit_event_with_outbox(event_str, actor_id, matter_id, payload or {}, pending_rows)
 
         if pending_rows:
-            _write_pending_notifications(pending_rows)
-            # Trigger execution immediately
+            # C1: immediate processing with row-level locking
             _run_coroutine_in_new_loop(process_pending_notifications())
 
     except Exception as exc:
