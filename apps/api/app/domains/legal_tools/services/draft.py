@@ -121,7 +121,7 @@ ___________________________
 
 def parse_indian_amount(raw: Any) -> float:
     if not raw:
-        return 0.0
+        raise ValueError("Amount is empty or missing")
     # Clean spacing, symbols, and commas
     cleaned = (
         str(raw)
@@ -133,11 +133,11 @@ def parse_indian_amount(raw: Any) -> float:
     )
     try:
         amount = float(cleaned)
-        if amount < 0:
-            return 0.0
+        if amount <= 0:
+            raise ValueError("Amount must be positive")
         return amount
     except ValueError:
-        return 0.0
+        raise ValueError(f"Invalid format: '{raw}'")
 
 
 class DocumentDraftService:
@@ -252,11 +252,12 @@ class DocumentDraftService:
         elif document_type == "legal_notice_138":
             from fastapi import HTTPException
 
-            cheque_amount = parse_indian_amount(facts_dict.get("cheque_amount", ""))
-            if cheque_amount <= 0:
+            try:
+                cheque_amount = parse_indian_amount(facts_dict.get("cheque_amount", ""))
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400,
-                    detail="Valid cheque amount is required for legal notice generation",
+                    detail=f"Valid cheque amount is required: {e}",
                 )
 
             is_corporate = str(
@@ -308,7 +309,9 @@ class DocumentDraftService:
         # Generate RERA Form M
         elif document_type == "rera_complaint_form_m":
             try:
-                total_paid = float(facts_dict.get("total_paid_amount", "0"))
+                total_paid = parse_indian_amount(
+                    facts_dict.get("total_paid_amount", "0")
+                )
             except ValueError:
                 total_paid = 0.0
 

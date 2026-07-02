@@ -90,6 +90,130 @@ def _get_event_value(event_type: EventType | str) -> str:
     return str(event_type)
 
 
+def _write_pending_notifications(rows: list[dict]) -> None:
+    db = database.get_service_role_db()
+    db.table("pending_notifications").insert(rows).execute()
+
+
+def _resolve_subscriber(name: str):
+    for sub in _subscribers:
+        sub_name = f"{sub.__module__}.{sub.__name__}" if hasattr(sub, "__name__") else str(sub)
+        if sub_name == name:
+            return sub
+    # Fallback to importing or checking common name
+    if "handle_domain_event" in name:
+        from app.domains.notifications.subscriber import handle_domain_event
+        return handle_domain_event
+    return None
+
+
+async def process_pending_notifications() -> None:
+    db = database.get_service_role_db()
+    try:
+        res = (
+            db.table("pending_notifications")
+            .select("*")
+            .or_("status.eq.pending,status.eq.failed")
+            .execute()
+        )
+    except Exception as e:
+        log.error("Outbox: failed to fetch pending notifications: %s", e)
+        return
+
+    rows = res.data or []
+    if not rows:
+        return
+
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+
+    for row in rows:
+        attempts = row["attempts"]
+        last_attempt_at_str = row.get("last_attempt_at")
+        
+        # Check backoff if failed
+        if row["status"] == "failed" and last_attempt_at_str:
+            try:
+                last_attempt_at = datetime.fromisoformat(last_attempt_at_str.replace("Z", "+00:00"))
+                backoff_seconds = (2 ** (attempts - 1)) * 5  # 5s, 10s, 20s, 40s, 80s
+                if now < last_attempt_at + timedelta(seconds=backoff_seconds):
+                    continue
+            except Exception:
+                pass
+
+        sub_name = row["subscriber_name"]
+        sub = _resolve_subscriber(sub_name)
+        
+        if not sub:
+            log.error("Outbox: could not resolve subscriber %s", sub_name)
+            try:
+                db.table("pending_notifications").update({
+                    "status": "failed_permanently",
+                    "error_message": f"Subscriber {sub_name} not found",
+                    "updated_at": now.isoformat(),
+                }).eq("id", row["id"]).execute()
+            except Exception:
+                pass
+            continue
+
+        try:
+            # Increment attempt count in DB
+            new_attempts = attempts + 1
+            db.table("pending_notifications").update({
+                "attempts": new_attempts,
+                "last_attempt_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            }).eq("id", row["id"]).execute()
+
+            # Execute subscriber
+            if asyncio.iscoroutinefunction(sub):
+                await sub(row["event_type"], row["actor_id"], row["matter_id"], row["payload"])
+            else:
+                await asyncio.to_thread(sub, row["event_type"], row["actor_id"], row["matter_id"], row["payload"])
+
+            # Mark as completed
+            db.table("pending_notifications").update({
+                "status": "completed",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", row["id"]).execute()
+
+        except Exception as e:
+            error_msg = str(e)
+            log.warning("Outbox: notification task %s failed (attempt %d): %s", row["id"], attempts + 1, error_msg)
+            next_status = "failed"
+            if attempts + 1 >= 5:
+                next_status = "failed_permanently"
+                log.error("Outbox: notification task %s permanently failed after 5 attempts", row["id"])
+
+            try:
+                db.table("pending_notifications").update({
+                    "status": next_status,
+                    "error_message": error_msg,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", row["id"]).execute()
+            except Exception:
+                pass
+
+
+def start_outbox_worker() -> None:
+    async def outbox_loop():
+        log.info("Starting outbox processing loop")
+        while True:
+            try:
+                await process_pending_notifications()
+            except Exception as e:
+                log.error("Error in outbox processing loop: %s", e)
+            await asyncio.sleep(5)
+
+    try:
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(outbox_loop())
+        BACKGROUND_TASKS.add(task)
+        task.add_done_callback(BACKGROUND_TASKS.discard)
+    except RuntimeError:
+        pass
+
+
 async def emit(
     event_type: EventType | str,
     *,
@@ -97,17 +221,6 @@ async def emit(
     matter_id: str | None = None,
     payload: dict | None = None,
 ) -> None:
-    """
-    Write an event row. Fire-and-forget — failures are logged, not raised.
-    Uses asyncio.to_thread to avoid blocking FastAPI's async event loop.
-    Then dispatches the event to all registered subscribers.
-
-    H5 DURABILITY WARNING: Subscriber tasks are in-process asyncio tasks only.
-    If the server restarts mid-flight (e.g., during a deployment), pending notification
-    tasks will be silently lost with no retry. For production reliability, replace
-    asyncio.create_task() below with a persistent job queue (Celery, RQ, or a
-    transactional outbox pattern writing to the `events` table + a worker).
-    """
     try:
         event_str = _get_event_value(event_type)
         row = {
@@ -121,23 +234,26 @@ async def emit(
 
         await asyncio.to_thread(_write_event, row)
 
-        # Dispatch to subscribers
-        # TODO(durability): Replace asyncio.create_task with a persistent job queue
-        # to survive process restarts. See H5 warning in docstring above.
+        # Write to pending_notifications (Outbox)
+        pending_rows = []
         for sub in list(_subscribers):
-            try:
-                if asyncio.iscoroutinefunction(sub):
-                    task = asyncio.create_task(
-                        sub(event_str, actor_id, matter_id, payload or {})
-                    )
-                    BACKGROUND_TASKS.add(task)
-                    task.add_done_callback(BACKGROUND_TASKS.discard)
-                else:
-                    sub(event_str, actor_id, matter_id, payload or {})
-            except Exception as sub_exc:
-                log.error(
-                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
-                )
+            sub_name = f"{sub.__module__}.{sub.__name__}" if hasattr(sub, "__name__") else str(sub)
+            pending_rows.append({
+                "event_type": event_str,
+                "actor_id": actor_id,
+                "matter_id": matter_id,
+                "payload": payload or {},
+                "subscriber_name": sub_name,
+                "status": "pending",
+                "attempts": 0,
+            })
+        
+        if pending_rows:
+            await asyncio.to_thread(_write_pending_notifications, pending_rows)
+            # Trigger execution immediately
+            task = asyncio.create_task(process_pending_notifications())
+            BACKGROUND_TASKS.add(task)
+            task.add_done_callback(BACKGROUND_TASKS.discard)
 
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)
@@ -181,18 +297,23 @@ def sync_emit(
             row["matter_id"] = matter_id
         _write_event(row)
 
-        # Dispatch to subscribers
+        pending_rows = []
         for sub in list(_subscribers):
-            try:
-                if asyncio.iscoroutinefunction(sub):
-                    _run_coroutine_in_new_loop(
-                        sub(event_str, actor_id, matter_id, payload or {})
-                    )
-                else:
-                    sub(event_str, actor_id, matter_id, payload or {})
-            except Exception as sub_exc:
-                log.error(
-                    "Subscriber callback failed for event %s: %s", event_str, sub_exc
-                )
+            sub_name = f"{sub.__module__}.{sub.__name__}" if hasattr(sub, "__name__") else str(sub)
+            pending_rows.append({
+                "event_type": event_str,
+                "actor_id": actor_id,
+                "matter_id": matter_id,
+                "payload": payload or {},
+                "subscriber_name": sub_name,
+                "status": "pending",
+                "attempts": 0,
+            })
+        
+        if pending_rows:
+            _write_pending_notifications(pending_rows)
+            # Trigger execution immediately
+            _run_coroutine_in_new_loop(process_pending_notifications())
+
     except Exception as exc:
         log.error("Event emit failed [%s]: %s", event_type, exc)

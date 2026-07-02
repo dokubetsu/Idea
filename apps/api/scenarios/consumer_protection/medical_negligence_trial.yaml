@@ -118,7 +118,7 @@ nodes:
         score: 1
         is_correct: false
         feedback: "Incorrect. There is no flat ceiling on compensation under the Consumer Protection Act. Accepting a low flat sum does not represent your client's interests."
-        citation: "Section 14(1)(d), Consumer Protection Act, 1986"
+        citation: "Section 39(1)(a), Consumer Protection Act, 2019"
         issue_tag: "damages"
       - id: "damages_multiplier"
         text: "Argue for the 'Multiplier Method' based on the deceased's age, annual income, loss of dependency, and future prospects, leading to just and adequate compensation."

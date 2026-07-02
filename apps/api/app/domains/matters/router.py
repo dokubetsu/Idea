@@ -1,13 +1,13 @@
 from __future__ import annotations
 from fastapi import APIRouter, Query, HTTPException, Request
-from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified
+from app.shared.dependencies import Auth, LawyerOrAdmin, ensure_lawyer_verified, UserRole
 from app.shared.database import get_db, get_service_role_db
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound, Forbidden
 from app.config import settings
 import hmac
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from app.domains.matters.schemas import (
     MatterOut,
     MatterUpdateRequest,
@@ -45,8 +45,8 @@ def _matter_payload(row: dict, *, with_facts: bool = False) -> dict:
     payload.setdefault("lawyer_id", row.get("lawyer_id"))
     payload.setdefault("assigned_at", None)
     payload.setdefault("resolved_at", None)
-    payload.setdefault("created_at", datetime.utcnow())
-    payload.setdefault("updated_at", datetime.utcnow())
+    payload.setdefault("created_at", datetime.now(timezone.utc))
+    payload.setdefault("updated_at", datetime.now(timezone.utc))
     return payload
 
 
@@ -153,8 +153,8 @@ async def create_matter(body: MatterCreateRequest, user: LawyerOrAdmin):
             "status": "pending",
         },
     ]
-    for dm in default_milestones:
-        db.table("matter_milestones").insert({"matter_id": r["id"], **dm}).execute()
+    milestones_to_insert = [{"matter_id": r["id"], **dm} for dm in default_milestones]
+    db.table("matter_milestones").insert(milestones_to_insert).execute()
 
     # Enrich & return
     full = db.table("matters").select(SELECT).eq("id", r["id"]).single().execute().data
@@ -188,42 +188,56 @@ async def get_matter(matter_id: str, user: Auth):
     db = get_db()
     row = get_matter_or_403(db, matter_id, user)
 
-    # Attach facts, hearings, milestones, meetings
-    facts = (
-        db.table("facts")
-        .select("*")
-        .eq("matter_id", matter_id)
-        .order("created_at")
-        .execute()
-        .data
-        or []
-    )
-    hearings = (
-        db.table("hearings")
-        .select("*")
-        .eq("matter_id", matter_id)
-        .order("hearing_date")
-        .execute()
-        .data
-        or []
-    )
-    milestones = (
-        db.table("matter_milestones")
-        .select("*")
-        .eq("matter_id", matter_id)
-        .order("order_index")
-        .execute()
-        .data
-        or []
-    )
-    meetings = (
-        db.table("meetings")
-        .select("*")
-        .eq("matter_id", matter_id)
-        .order("scheduled_at")
-        .execute()
-        .data
-        or []
+    # Attach facts, hearings, milestones, meetings in parallel to optimize N+1 queries
+    def fetch_facts():
+        return (
+            db.table("facts")
+            .select("*")
+            .eq("matter_id", matter_id)
+            .order("created_at")
+            .execute()
+            .data
+            or []
+        )
+
+    def fetch_hearings():
+        return (
+            db.table("hearings")
+            .select("*")
+            .eq("matter_id", matter_id)
+            .order("hearing_date")
+            .execute()
+            .data
+            or []
+        )
+
+    def fetch_milestones():
+        return (
+            db.table("matter_milestones")
+            .select("*")
+            .eq("matter_id", matter_id)
+            .order("order_index")
+            .execute()
+            .data
+            or []
+        )
+
+    def fetch_meetings():
+        return (
+            db.table("meetings")
+            .select("*")
+            .eq("matter_id", matter_id)
+            .order("scheduled_at")
+            .execute()
+            .data
+            or []
+        )
+
+    facts, hearings, milestones, meetings = await asyncio.gather(
+        asyncio.to_thread(fetch_facts),
+        asyncio.to_thread(fetch_hearings),
+        asyncio.to_thread(fetch_milestones),
+        asyncio.to_thread(fetch_meetings),
     )
 
     enriched = _matter_payload(row, with_facts=True)
@@ -756,6 +770,12 @@ async def update_meeting(
     db = get_db()
     get_matter_or_403(db, matter_id, user)
 
+    if body.status == "completed" and user.role == UserRole.USER:
+        raise HTTPException(
+            status_code=403,
+            detail="Only lawyers or admins can mark meetings as completed",
+        )
+
     # Check existing meeting status to prevent double-counting sessions_used
     existing = (
         db.table("meetings")
@@ -800,13 +820,24 @@ async def update_meeting(
 
 @router.post("/webhook/payment")
 async def payment_webhook(request: Request):
+    # Enforce body size limit of 64KB on webhook payload
+    content_length = request.headers.get("Content-Length")
+    if content_length:
+        try:
+            if int(content_length) > 64 * 1024:
+                raise HTTPException(status_code=413, detail="Payload too large")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
+    else:
+        raise HTTPException(status_code=411, detail="Length required")
+
     # 1. Read request body
     body_bytes = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
 
     # 2. Verify signature
     # In non-production, allow signature verification bypass if signature is "mock"
-    is_mock = settings.APP_ENV != "production" and signature == "mock"
+    is_mock = settings.PAYMENT_WEBHOOK_SKIP_VERIFICATION and signature == "mock"
 
     if not is_mock:
         if not signature:
@@ -909,15 +940,12 @@ async def payment_webhook(request: Request):
 
     # Check if we should insert a payment record in payments table
     payment_record_id = None
-    if settings.FEATURE_BILLING:
+    milestone_amount = milestone.get("amount_inr")
+    if settings.FEATURE_BILLING and milestone_amount is not None and float(milestone_amount) > 0:
         payment_data = {
             "milestone_id": milestone_id,
             "user_id": user_id,
-            "amount_inr": (
-                float(milestone["amount_inr"])
-                if milestone.get("amount_inr") is not None
-                else 0.0
-            ),
+            "amount_inr": float(milestone_amount),
             "status": "completed",
             "payment_id": payment_id,
             "payment_idempotency_key": idemp_key,

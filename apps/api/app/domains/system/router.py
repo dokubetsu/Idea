@@ -238,6 +238,49 @@ async def cleanup_intake_sessions(
     return {"status": "success", "sessions_deleted": deleted}
 
 
+@router.post("/cron/retry-stale-deliveries", status_code=200)
+async def retry_stale_deliveries(
+    x_cron_secret: str | None = Header(default=None, alias="X-Cron-Secret"),
+):
+    """
+    Finds notification deliveries that are still "pending" after 5 minutes,
+    and retries triggering their delivery.
+    """
+    verify_cron_secret(x_cron_secret)
+    db = get_service_role_db()
+
+    # Find deliveries stuck in 'pending' status created > 5 minutes ago
+    five_minutes_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+
+    response = (
+        db.table("notification_deliveries")
+        .select("id, notification_id")
+        .eq("status", "pending")
+        .lt("created_at", five_minutes_ago)
+        .execute()
+    )
+
+    stale_deliveries = response.data or []
+    if not stale_deliveries:
+        return {"status": "success", "retried_count": 0}
+
+    # Group by notification_id to avoid redundant fetches
+    notification_ids = set(d["notification_id"] for d in stale_deliveries)
+
+    from app.domains.notifications.worker import trigger_deliveries
+    import asyncio
+
+    for notification_id in notification_ids:
+        # Run trigger_deliveries in background
+        asyncio.create_task(trigger_deliveries(db, notification_id))
+
+    return {
+        "status": "success",
+        "retried_count": len(stale_deliveries),
+        "notifications_count": len(notification_ids)
+    }
+
+
 @router.get("/features")
 async def get_features():
     return {

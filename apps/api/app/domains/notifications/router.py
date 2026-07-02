@@ -14,21 +14,11 @@ from app.domains.notifications.models import NotificationOut, NotificationStatus
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
 import app.domains.notifications.service as service
 import app.domains.notifications.preferences as prefs_service
+from app.shared.ticket_store import ticket_store
 
 bearer = HTTPBearer(auto_error=False)
 
-# Dictionary mapping ticket_id -> {"user_id": str, "expires_at": float}
-SSE_TICKETS: Dict[str, dict] = {}
 TICKET_EXPIRY_SECONDS = 30
-MAX_TOTAL_TICKETS = 5000
-MAX_TICKETS_PER_USER = 5
-
-
-def _clean_expired_tickets():
-    now = time.time()
-    expired = [k for k, v in SSE_TICKETS.items() if now > v["expires_at"]]
-    for k in expired:
-        SSE_TICKETS.pop(k, None)
 
 
 # ── SSE auth helper (native EventSource with short-lived tickets) ─────────────
@@ -39,11 +29,9 @@ async def get_sse_user(
     if not ticket:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    ticket_data = SSE_TICKETS.pop(ticket, None)
+    ticket_data = ticket_store.pop_ticket(ticket)
     if not ticket_data:
         raise HTTPException(status_code=401, detail="Invalid or expired ticket")
-    if time.time() > ticket_data["expires_at"]:
-        raise HTTPException(status_code=401, detail="Ticket expired")
 
     result = (
         db.table("profiles")
@@ -137,29 +125,13 @@ async def create_sse_ticket(
     user: CurrentUser = Depends(get_current_user),
 ) -> dict:
     """Generate a short-lived SSE connection ticket for the current user."""
-    _clean_expired_tickets()
-
-    # 1. Cap total active tickets to prevent memory exhaustion DoS
-    if len(SSE_TICKETS) >= MAX_TOTAL_TICKETS:
-        raise HTTPException(
-            status_code=429, detail="Server is busy. Please try again later."
-        )
-
-    # 2. Cap tickets per user. If limit exceeded, evict oldest to make room.
-    user_tickets = [k for k, v in SSE_TICKETS.items() if v.get("user_id") == user.id]
-    if len(user_tickets) >= MAX_TICKETS_PER_USER:
-        sorted_keys = sorted(
-            user_tickets, key=lambda k: SSE_TICKETS[k].get("expires_at", 0)
-        )
-        SSE_TICKETS.pop(sorted_keys[0], None)
-
     ticket_id = str(uuid.uuid4())
-    SSE_TICKETS[ticket_id] = {
+    ticket_data = {
         "user_id": user.id,
-        "role": user.role,
+        "role": user.role.value,
         "full_name": user.full_name,
-        "expires_at": time.time() + TICKET_EXPIRY_SECONDS,
     }
+    ticket_store.set_ticket(ticket_id, ticket_data, TICKET_EXPIRY_SECONDS)
     return {"ticket": ticket_id}
 
 

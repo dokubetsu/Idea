@@ -82,9 +82,16 @@ def safe_eval(
             elif isinstance(node.op, ast.Mod):
                 return left % right
             elif isinstance(node.op, ast.Pow):
-                if isinstance(right, (int, float)) and abs(right) > 1000:
+                if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+                    raise TypeError("Power operator requires numeric operands")
+                if abs(right) > 20:
                     raise ValueError(f"Exponent too large: {right}")
-                return left**right
+                if abs(left) > 1e6:
+                    raise ValueError(f"Base too large: {left}")
+                result = left**right
+                if abs(result) > 1e15:
+                    raise ValueError(f"Result too large: {result}")
+                return result
             raise TypeError(f"Unsupported binary operator: {type(node.op)}")
         elif isinstance(node, ast.Compare):
             left = _eval(node.left)

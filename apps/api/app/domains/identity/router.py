@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.shared.database import get_db, get_service_role_db
 from app.shared.dependencies import Auth
 
@@ -32,6 +32,15 @@ class ProfileUpdateRequest(BaseModel):
     city: str | None = None
     state: str | None = None
     avatar_url: str | None = None
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not v.startswith("https://"):
+            raise ValueError("Avatar URL must use https scheme")
+        return v
 
 
 def _decode_signup_jwt(token: str) -> dict:

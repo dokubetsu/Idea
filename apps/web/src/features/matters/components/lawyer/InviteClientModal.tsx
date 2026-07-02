@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Briefcase, X } from "lucide-react";
 import { useCreateMatter } from "@/features/matters/hooks/useMatters";
 import { Button, Input, Textarea, Select, Card } from "@/shared/components/ui";
@@ -14,6 +14,7 @@ interface InviteClientModalProps {
 
 export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientModalProps) {
   const createMatter = useCreateMatter();
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const [newMatter, setNewMatter] = useState({
     title: "",
@@ -25,6 +26,40 @@ export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientMo
     case_number: "",
     summary: ""
   });
+
+  // Focus trap + Escape handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = dialogRef.current;
+    if (!el) return;
+
+    const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (n) => !n.hasAttribute("disabled") && window.getComputedStyle(n).display !== "none"
+      );
+
+    // Focus first focusable element on open
+    const first = getFocusable()[0];
+    if (first) first.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+      const firstEl = focusable[0];
+      const lastEl = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) { lastEl.focus(); e.preventDefault(); }
+      } else {
+        if (document.activeElement === lastEl) { firstEl.focus(); e.preventDefault(); }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -56,7 +91,14 @@ export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-      <Card className="w-full max-w-lg p-6 relative animate-scale-up space-y-4">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-modal-title"
+        className="w-full max-w-lg"
+      >
+      <Card className="p-6 relative animate-scale-up space-y-4">
         <button
           type="button"
           onClick={onClose}
@@ -68,7 +110,7 @@ export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientMo
         <div className="flex gap-3 items-center border-b border-brand-gold/12 pb-3">
           <Briefcase className="h-6 w-6 text-brand-gold" />
           <div>
-            <h3 className="font-serif text-xl font-bold">Invite Client & Create Case</h3>
+            <h3 id="invite-modal-title" className="font-serif text-xl font-bold">Invite Client & Create Case</h3>
             <p className="text-xs text-brand-blue-light/55">Create a case timeline and invite the client via email.</p>
           </div>
         </div>
@@ -157,6 +199,7 @@ export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientMo
           </div>
         </form>
       </Card>
+      </div>
     </div>
   );
 }

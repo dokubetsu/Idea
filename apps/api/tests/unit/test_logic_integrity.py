@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from httpx import AsyncClient
 from app.domains.intake.facts_engine import _mock_extract
 from app.shared.ai.validator import Normalizer
@@ -467,8 +468,10 @@ def test_parse_indian_amount():
     assert parse_indian_amount("1,00,000") == 100000.0
     assert parse_indian_amount("41,00,000.50") == 4100000.50
     assert parse_indian_amount("Rs. 6") == 6.0
-    assert parse_indian_amount("invalid") == 0.0
-    assert parse_indian_amount("") == 0.0
+    with pytest.raises(ValueError):
+        parse_indian_amount("invalid")
+    with pytest.raises(ValueError):
+        parse_indian_amount("")
 
 
 @pytest.mark.asyncio
@@ -566,6 +569,7 @@ async def test_admin_suspend_lawyer_orphaned_matters(client: AsyncClient, mock_d
         mock_db.table("matters").data = [
             {
                 "id": "matter-1",
+                "title": "Test Matter",
                 "user_id": "client-1",
                 "lawyer_id": "test-lawyer-id",
                 "status": "active",
@@ -573,6 +577,7 @@ async def test_admin_suspend_lawyer_orphaned_matters(client: AsyncClient, mock_d
         ]
         res = await client.patch("/api/v1/admin/lawyers/test-lawyer-id/suspend")
         assert res.status_code == 200
+        await asyncio.sleep(0.1)
         assert mock_db.table("matters").data[0]["lawyer_id"] is None
         assert mock_db.table("matters").data[0]["status"] == "matching"
     finally:

@@ -470,6 +470,30 @@ class PracticeService:
 
         # Emit completed event if finished
         if new_status == "completed":
+            # Compute actual path max_score based on nodes visited
+            dec_res = (
+                db.table("practice_decisions")
+                .select("node_id")
+                .eq("session_id", session_id)
+                .execute()
+            )
+            path_max_score = 0
+            for d_row in dec_res.data or []:
+                node_id = d_row["node_id"]
+                node_def = nodes.get(node_id)
+                if node_def and node_def.get("choices"):
+                    node_max = max(
+                        (c.get("score", 0) for c in node_def["choices"]),
+                        default=0,
+                    )
+                    path_max_score += node_max
+
+            # Update session in db
+            db.table("practice_sessions").update({"max_score": path_max_score}).eq(
+                "id", session_id
+            ).execute()
+            sess["max_score"] = path_max_score
+
             from app.shared.events import sync_emit
 
             sync_emit(

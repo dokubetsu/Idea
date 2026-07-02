@@ -61,12 +61,13 @@ export default function RegisterPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err: any) {
-      await sb.auth.signOut();
-      setApiErr(err.detail ?? "Profile setup failed. Please try signing in.");
+      // Don't sign out to avoid orphaning auth accounts.
+      // Instead, redirect to login page with recovery query parameters.
+      router.replace(`/login?notice=profile-incomplete&email=${encodeURIComponent(data.email)}`);
       return;
     }
     if (role === "lawyer") {
-      router.replace("/user/dashboard?notice=lawyer-pending");
+      router.replace("/lawyer/pending-verification");
     } else {
       router.replace("/user/dashboard");
     }

@@ -22,6 +22,7 @@ from slowapi import _rate_limit_exceeded_handler
 from app.config import settings
 from app.shared.limiter import limiter
 from app.shared.middleware import RequestTracingMiddleware, request_id_var
+from app.shared.body_size_limit import BodySizeLimitMiddleware
 from app.domains.identity.router import router as identity_router
 from app.domains.intake.router import router as intake_router
 from app.domains.matters.router import router as matters_router
@@ -45,11 +46,13 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────────
-    from app.shared.database import get_db
+    from app.shared.database import get_service_role_db
     from app.domains.assessment.service import get_provider
     from app.domains.notifications.subscriber import init_subscriber
+    from app.shared.events import start_outbox_worker
 
     init_subscriber()
+    start_outbox_worker()
 
     log.info("Environment: %s", settings.APP_ENV)
 
@@ -65,7 +68,7 @@ async def lifespan(app: FastAPI):
         )
 
     try:
-        get_db().table("profiles").select("id").limit(1).execute()
+        get_service_role_db().table("profiles").select("id").limit(1).execute()
         log.info("✅ Supabase connection verified")
     except Exception as exc:
         log.warning("⚠️  Supabase check failed: %s", exc)
@@ -125,7 +128,16 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # ── Middleware ────────────────────────────────────────────────────
 
 
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(RequestTracingMiddleware)
+
+if settings.is_production:
+    if "*" in settings.CORS_ORIGINS or any(
+        origin == "*" for origin in settings.CORS_ORIGINS
+    ):
+        raise ValueError(
+            "CORS misconfiguration: Wildcard origins ('*') are not allowed in production when allow_credentials=True."
+        )
 
 app.add_middleware(
     CORSMiddleware,

@@ -29,6 +29,8 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
   const factsJson = JSON.stringify(facts.map((f) => ({ key: f.key, value: f.value })));
 
   useEffect(() => {
+    let active = true;
+
     async function calculateTimeline() {
       // 1. Cheque Bounce Category
       if (category === "cheque_bounce") {
@@ -49,11 +51,11 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
             notice_receipt_date: noticeReceiptDate || null,
             complaint_filed_date: complaintFiledDate || null,
           });
-          setResult(res);
+          if (active) setResult(res);
         } catch (err) {
           console.error("Failed to calculate cheque bounce timelines:", err);
         } finally {
-          setLoading(false);
+          if (active) setLoading(false);
         }
       }
       // 2. RERA Category
@@ -76,11 +78,11 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
             actual_possession_date: actualDate || null,
             custom_interest_rate: customRateVal ? parseFloat(customRateVal) : null,
           });
-          setResult(res);
+          if (active) setResult(res);
         } catch (err) {
           console.error("Failed to calculate RERA delay interest:", err);
         } finally {
-          setLoading(false);
+          if (active) setLoading(false);
         }
       }
       // 3. Check for general Debt Recovery / Summary Suit (CPC Order 37) if facts match
@@ -101,16 +103,20 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
             due_date: dueDate,
             state: state,
           });
-          setResult(res);
+          if (active) setResult(res);
         } catch (err) {
           console.error("Failed to calculate summary suit limitation:", err);
         } finally {
-          setLoading(false);
+          if (active) setLoading(false);
         }
       }
     }
 
     calculateTimeline();
+
+    return () => {
+      active = false;
+    };
   }, [category, factsJson]);
 
   if (loading) {
@@ -141,7 +147,7 @@ export function LimitationBanner({ category, facts }: LimitationBannerProps) {
       <Icon className="h-5 w-5 shrink-0 mt-0.5" />
       <div>
         <h4 className="font-serif text-sm font-bold capitalize">
-          Timeline Status: {result.status.replace("_", " ")}
+          Timeline Status: {result.status.replaceAll("_", " ")}
         </h4>
         <p className="text-xs mt-1 leading-relaxed">{result.reason}</p>
         

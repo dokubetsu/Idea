@@ -164,6 +164,10 @@ export function IntakeWizard({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
       if (e.key !== "Tab") return;
 
       const currentFocusable = Array.from(
@@ -201,7 +205,7 @@ export function IntakeWizard({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [step]);
+  }, [step, onClose]);
 
   const hasMounted = useRef(false);
 
@@ -219,9 +223,23 @@ export function IntakeWizard({
           coreForm.reset(draft.coreFacts);
         }
         if (draft.catFacts) setCatFacts(draft.catFacts);
-        if (draft.session) setSess(draft.session);
+        if (draft.session) {
+          const expiresAt = new Date(draft.session.expires_at);
+          if (expiresAt < new Date()) {
+            sessionStorage.removeItem("lead_intake_wizard_draft");
+            return;
+          }
+          setSess(draft.session);
+        }
         if (draft.matterId) setMid(draft.matterId);
-        if (draft.pendingSession) setPending(draft.pendingSession);
+        if (draft.pendingSession) {
+          const expiresAt = new Date(draft.pendingSession.expires_at);
+          if (expiresAt < new Date()) {
+            sessionStorage.removeItem("lead_intake_wizard_draft");
+            return;
+          }
+          setPending(draft.pendingSession);
+        }
         if (draft.descFacts) {
           descForm.reset(draft.descFacts);
         }

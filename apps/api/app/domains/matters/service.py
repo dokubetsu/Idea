@@ -7,16 +7,6 @@ from app.shared.dependencies import CurrentUser, UserRole, ensure_lawyer_verifie
 
 SELECT = "*, " "up:profiles!user_id(full_name), " "lp:profiles!lawyer_id(full_name)"
 
-VALID_TRANSITIONS: dict[str, list[str]] = {
-    "draft": ["intake"],
-    "intake": ["assessment", "matching"],
-    "assessment": ["matching", "active"],
-    "matching": ["active"],
-    "active": ["resolved"],
-    "resolved": ["archived"],
-    "archived": [],
-}
-
 
 def enrich(row: dict, with_facts: bool = False) -> dict:
     row["user_name"] = (row.pop("up", None) or {}).get("full_name")

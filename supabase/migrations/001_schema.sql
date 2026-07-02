@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS intake_sessions (
 -- Legal matter — the core entity. Started from intake.
 CREATE TABLE IF NOT EXISTS matters (
   id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id          UUID           NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id          UUID                    REFERENCES profiles(id) ON DELETE SET NULL,
   lawyer_id        UUID                    REFERENCES profiles(id) ON DELETE SET NULL,
   intake_session_id UUID                   UNIQUE REFERENCES intake_sessions(id),
   title            TEXT           NOT NULL,

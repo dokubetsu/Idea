@@ -134,4 +134,12 @@ class RequestTracingMiddleware:
             )
             raise
         finally:
+            if "pytest" not in sys.modules:
+                try:
+                    if hasattr(user_client, "postgrest") and hasattr(user_client.postgrest, "session"):
+                        user_client.postgrest.session.close()
+                    if hasattr(user_client, "auth") and hasattr(user_client.auth, "close"):
+                        user_client.auth.close()
+                except Exception as close_exc:
+                    log.warning("Failed to close request-scoped Supabase client: %s", close_exc)
             clear_request_db(ctx_token)

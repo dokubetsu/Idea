@@ -78,6 +78,10 @@ export default function LawyerMattersPage() {
           onSelect={(m) => {
             setSelected(m);
             setActiveTab("overview");
+            setNote("");
+            setInternal(false);
+            setReplyTarget(null);
+            setReplyText("");
           }}
           isLoading={isLoading}
         />

@@ -105,7 +105,7 @@ export default function AdminMattersPage() {
                       <td className="px-4 py-3 text-brand-blue-light/60">{m.up?.full_name || "—"}</td>
                       <td className="px-4 py-3 text-brand-blue-light/60">{m.lp?.full_name || "Unassigned"}</td>
                       <td className="px-4 py-3 text-brand-blue-light/60">
-                        {(m.category || "").replace("_", " ")}
+                        {(m.category || "").replaceAll("_", " ")}
                       </td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-1.5 text-xs">
@@ -114,7 +114,7 @@ export default function AdminMattersPage() {
                               STATUS_DOT[statusStr] || "bg-base-300"
                             }`}
                           />
-                          {statusStr.replace("_", " ")}
+                          {statusStr.replaceAll("_", " ")}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-brand-blue-light/50">

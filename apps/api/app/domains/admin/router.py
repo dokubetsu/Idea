@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from app.shared.database import get_db
-from app.shared.dependencies import AdminAuth
+from app.shared.dependencies import AdminAuth, UserRole
 from app.shared.events import emit, EventType
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -43,25 +43,6 @@ async def suspend_lawyer(lawyer_id: str, user: AdminAuth):
     db = get_db()
     db.rpc("suspend_lawyer_rpc", {"p_lawyer_id": lawyer_id}).execute()
 
-    # Clean up active matters assigned to this lawyer
-    active_matters = (
-        db.table("matters")
-        .select("id, user_id")
-        .eq("lawyer_id", lawyer_id)
-        .eq("status", "active")
-        .execute()
-    )
-    for matter in active_matters.data or []:
-        db.table("matters").update({"lawyer_id": None, "status": "matching"}).eq(
-            "id", matter["id"]
-        ).execute()
-        await emit(
-            EventType.LAWYER_REMOVED,
-            actor_id=user.id,
-            matter_id=matter["id"],
-            payload={"lawyer_id": lawyer_id, "reason": "Lawyer suspended"},
-        )
-
     await emit("lawyer.suspended", actor_id=user.id, payload={"lawyer_id": lawyer_id})
     return {"ok": True}
 
@@ -69,7 +50,7 @@ async def suspend_lawyer(lawyer_id: str, user: AdminAuth):
 @router.get("/users")
 async def list_users(
     user: AdminAuth,
-    role: str | None = Query(default=None),
+    role: UserRole | None = Query(default=None),
     cursor: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     page: int | None = Query(default=None, ge=1),

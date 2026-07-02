@@ -46,7 +46,7 @@ export function LawyerMattersList({ matters, selectedId, onSelect, isLoading }: 
           <div className="flex items-center gap-2 mb-2">
             <span className={`h-2 w-2 rounded-full ${STATUS_DOT[m.status] ?? "bg-base-300"}`} />
             <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">
-              {m.status.replace("_", " ")}
+              {m.status.replaceAll("_", " ")}
             </span>
           </div>
           <p className="font-serif text-base font-bold line-clamp-1">{m.title}</p>

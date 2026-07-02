@@ -22,8 +22,12 @@ function LoginForm() {
   const [showPw, setShowPw] = useState(false);
   const [apiErr, setApiErr] = useState<string | null>(null);
   const notice = params.get("notice");
+  const defaultEmail = params.get("email") || "";
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: defaultEmail, password: "" }
+  });
 
   async function onSubmit(data: Form) {
     setApiErr(null);
@@ -74,6 +78,11 @@ function LoginForm() {
           ✉️ Check your inbox — click the confirmation link, then sign in here.
         </div>
       )}
+      {notice === "profile-incomplete" && (
+        <div className="mt-4 rounded-xl border border-brand-gold/25 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠️ Your authentication account was created, but your profile setup did not complete. Please sign in here to complete setup.
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
         <Field label="Email" error={errors.email?.message} htmlFor="email">
           <input {...register("email")} id="email" type="email" placeholder="you@example.com" autoComplete="email" className={INPUT} />
@@ -81,7 +90,7 @@ function LoginForm() {
         <Field label="Password" error={errors.password?.message} htmlFor="password">
           <div className="relative">
             <input {...register("password")} id="password" type={showPw ? "text" : "password"} placeholder="••••••••" autoComplete="current-password" className={INPUT} />
-            <button type="button" tabIndex={-1} onClick={() => setShowPw(!showPw)}
+            <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"}
               className="absolute right-3 top-3 text-brand-blue-light/40 hover:text-brand-blue-dark">
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

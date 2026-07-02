@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/shared/lib/supabase/server";
+import { createClient } from "@/shared/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export const metadata = {
@@ -87,8 +87,12 @@ export default async function LawyerPendingVerificationPage() {
             </li>
           </ul>
 
-          {/* Sign out */}
-          <form action="/api/auth/signout" method="POST">
+          <form action={async () => {
+            "use server";
+            const sb = await createClient();
+            await sb.auth.signOut();
+            redirect("/login");
+          }}>
             <button
               type="submit"
               className="w-full rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white py-3 text-sm font-medium transition-all duration-200"

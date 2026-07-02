@@ -65,6 +65,14 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+  if (init.signal) {
+    if (init.signal.aborted) {
+      controller.abort();
+    } else {
+      init.signal.addEventListener("abort", () => controller.abort());
+    }
+  }
+
   try {
     const res = await fetch(`${BASE}${V}${path}`, {
       ...init,
@@ -134,6 +142,9 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
     
     const errName = error instanceof Error ? error.name : "";
     if (errName === "AbortError") {
+      if (init.signal?.aborted) {
+        throw error;
+      }
       throw new ApiError(408, "Request timeout");
     }
 

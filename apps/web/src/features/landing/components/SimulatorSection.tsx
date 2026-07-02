@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Cpu, Activity, CheckCircle2, UserCheck, Scale, Landmark } from "lucide-react";
 import { LANDING_COPY } from "@/app/landingCopy";
 
@@ -82,7 +82,21 @@ export function SimulatorSection() {
   const [simStep, setSimStep] = useState<"idle" | "analyze" | "facts" | "timeline" | "draft" | "lawyer">("idle");
   const simulatorPreset = PRESETS.find(p => p.id === activePresetId) || PRESETS[0];
 
+  const intervalRef = useRef<any>(null);
+  const timeoutsRef = useRef<any[]>([]);
+
+  const clearAllTimers = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    timeoutsRef.current.forEach(t => clearTimeout(t));
+    timeoutsRef.current = [];
+  };
+
   const triggerSimulation = (presetId: string = activePresetId) => {
+    clearAllTimers();
+
     const preset = PRESETS.find(p => p.id === presetId) || PRESETS[0];
     setActivePresetId(presetId);
     setSimStep("idle");
@@ -91,12 +105,15 @@ export function SimulatorSection() {
 
     // Typing simulation
     let index = 0;
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (index < preset.text.length) {
         setTypedText((prev) => prev + preset.text.charAt(index));
         index++;
       } else {
-        clearInterval(interval);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         setIsTyping(false);
         runWorkflowSteps();
       }
@@ -105,22 +122,29 @@ export function SimulatorSection() {
 
   const runWorkflowSteps = () => {
     setSimStep("analyze");
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       setSimStep("facts");
-      setTimeout(() => {
+      const t2 = setTimeout(() => {
         setSimStep("timeline");
-        setTimeout(() => {
+        const t3 = setTimeout(() => {
           setSimStep("draft");
-          setTimeout(() => {
+          const t4 = setTimeout(() => {
             setSimStep("lawyer");
           }, 1500);
+          timeoutsRef.current.push(t4);
         }, 1500);
+        timeoutsRef.current.push(t3);
       }, 1500);
+      timeoutsRef.current.push(t2);
     }, 1500);
+    timeoutsRef.current.push(t1);
   };
 
   useEffect(() => {
     triggerSimulation("cheque");
+    return () => {
+      clearAllTimers();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

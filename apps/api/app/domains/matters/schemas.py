@@ -7,6 +7,18 @@ MatterStatus = Literal[
     "draft", "intake", "assessment", "matching", "active", "resolved", "archived"
 ]
 MatterPriority = Literal["low", "medium", "high", "urgent"]
+MatterCategory = Literal[
+    "consumer",
+    "cheque_bounce",
+    "property",
+    "family",
+    "labour",
+    "criminal",
+    "cyber",
+    "rera",
+    "motor_vehicles",
+    "other",
+]
 
 
 class HearingOut(BaseModel):
@@ -136,30 +148,30 @@ class MatterOut(BaseModel):
 
 
 class MatterUpdateRequest(BaseModel):
-    title: str | None = None
-    summary: str | None = None
+    title: str | None = Field(None, max_length=255)
+    summary: str | None = Field(None, max_length=1000)
     status: MatterStatus | None = None
-    court_name: str | None = None
-    case_number: str | None = None
+    court_name: str | None = Field(None, max_length=255)
+    case_number: str | None = Field(None, max_length=100)
     next_hearing_at: date | None = None
     priority: MatterPriority | None = None
-    client_email: str | None = None
-    client_phone: str | None = None
+    client_email: str | None = Field(None, max_length=255)
+    client_phone: str | None = Field(None, max_length=50)
 
 
 class MatterCreateRequest(BaseModel):
-    title: str
-    summary: str = ""
-    category: str
+    title: str = Field(max_length=255)
+    summary: str = Field(default="", max_length=1000)
+    category: MatterCategory
     priority: MatterPriority = "medium"
-    client_email: str
-    client_phone: str | None = None
-    court_name: str | None = None
-    case_number: str | None = None
+    client_email: str = Field(max_length=255)
+    client_phone: str | None = Field(None, max_length=50)
+    court_name: str | None = Field(None, max_length=255)
+    case_number: str | None = Field(None, max_length=100)
 
 
 class PostUpdateRequest(BaseModel):
-    content: str = Field(min_length=5)
+    content: str = Field(min_length=5, max_length=2000)
     is_internal: bool = False
     parent_id: str | None = None
 

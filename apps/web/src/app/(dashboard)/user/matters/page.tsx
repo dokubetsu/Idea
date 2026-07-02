@@ -188,7 +188,7 @@ function CaseRow({ matter: m }: { matter: Matter }) {
   const health = HEALTH_CONFIG[m.matter_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
   const statusLabel = STATUS_LABEL[m.status] ?? m.status;
   const dot = STATUS_DOT[m.status] ?? "bg-base-300";
-  const catLabel = CATEGORY_LABEL[m.category] ?? m.category.replace("_", " ");
+  const catLabel = CATEGORY_LABEL[m.category] ?? m.category.replaceAll("_", " ");
 
   const updatedAt = new Date(m.updated_at ?? m.created_at);
   const daysAgo = Math.floor((Date.now() - updatedAt.getTime()) / 86400000);

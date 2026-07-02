@@ -47,8 +47,8 @@ async def handle_domain_event(
 
         for m in affected_matters:
             m_id = m["id"]
-            m_title = m["title"]
-            c_id = m["user_id"]
+            m_title = m.get("title") or "Unnamed Case"
+            c_id = m.get("user_id")
             try:
                 db.table("matters").update(
                     {"lawyer_id": None, "status": "matching"}
@@ -285,6 +285,109 @@ async def handle_domain_event(
                 data={
                     "matter_title": matter_title,
                     "author_name": author_name,
+                    "matter_id": matter_id,
+                },
+                action={"label": "View Case", "url": f"/lawyer/matters/{matter_id}"},
+            )
+
+    elif event_type == EventType.MATTER_STATUS_CHANGED:
+        old_status = payload.get("from") or payload.get("old_status") or "unknown"
+        new_status = payload.get("to") or payload.get("new_status") or "unknown"
+        reason = payload.get("reason")
+        reason_str = f" ({reason})" if reason else ""
+        
+        subject = f"Case Status Updated: {matter_title}"
+        body = f"The status of your case '{matter_title}' has changed from {old_status} to {new_status}{reason_str}."
+
+        # Notify client
+        if client_id and actor_id != client_id:
+            create_notification(
+                db,
+                user_id=client_id,
+                type_name="matter_status_changed",
+                data={
+                    "subject": subject,
+                    "body": body,
+                    "matter_title": matter_title,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "reason": reason,
+                    "matter_id": matter_id,
+                },
+                action={"label": "View Case", "url": f"/user/matters/{matter_id}"},
+            )
+        # Notify lawyer
+        if lawyer_id and actor_id != lawyer_id:
+            create_notification(
+                db,
+                user_id=lawyer_id,
+                type_name="matter_status_changed",
+                data={
+                    "subject": subject,
+                    "body": body,
+                    "matter_title": matter_title,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "reason": reason,
+                    "matter_id": matter_id,
+                },
+                action={"label": "View Case", "url": f"/lawyer/matters/{matter_id}"},
+            )
+
+    elif event_type == EventType.MEETING_SCHEDULED:
+        meeting_id = payload.get("meeting_id")
+        scheduled_at_str = "TBD"
+        if meeting_id:
+            try:
+                meet_resp = (
+                    db.table("meetings")
+                    .select("scheduled_at")
+                    .eq("id", meeting_id)
+                    .single()
+                    .execute()
+                )
+                if meet_resp.data:
+                    raw_date = meet_resp.data.get("scheduled_at")
+                    if raw_date:
+                        try:
+                            from datetime import datetime
+                            dt = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+                            scheduled_at_str = dt.strftime("%b %d, %Y at %I:%M %p")
+                        except Exception:
+                            scheduled_at_str = raw_date
+            except Exception:
+                pass
+
+        # If lawyer scheduled, notify client
+        if actor_id == lawyer_id and client_id:
+            subject = f"New Consultation Scheduled: {matter_title}"
+            body = f"Advocate has scheduled a new consultation meeting for your case '{matter_title}' on {scheduled_at_str}."
+            create_notification(
+                db,
+                user_id=client_id,
+                type_name="meeting_scheduled",
+                data={
+                    "subject": subject,
+                    "body": body,
+                    "matter_title": matter_title,
+                    "scheduled_at": scheduled_at_str,
+                    "matter_id": matter_id,
+                },
+                action={"label": "View Case", "url": f"/user/matters/{matter_id}"},
+            )
+        # If client scheduled, notify lawyer
+        elif actor_id == client_id and lawyer_id:
+            subject = f"New Consultation Scheduled: {matter_title}"
+            body = f"Client has scheduled a new consultation meeting for case '{matter_title}' on {scheduled_at_str}."
+            create_notification(
+                db,
+                user_id=lawyer_id,
+                type_name="meeting_scheduled",
+                data={
+                    "subject": subject,
+                    "body": body,
+                    "matter_title": matter_title,
+                    "scheduled_at": scheduled_at_str,
                     "matter_id": matter_id,
                 },
                 action={"label": "View Case", "url": f"/lawyer/matters/{matter_id}"},

@@ -14,7 +14,7 @@ from app.domains.legal_tools.services.calculators import (
 
 def test_interest_source():
     # RERA dynamic rate default
-    assert InterestSource.get_rera_rate() == 10.5
+    assert InterestSource.get_rera_rate() == 11.0
 
     # Custom rate override
     assert InterestSource.get_rera_rate(custom_rate=12.0) == 12.0
@@ -94,10 +94,10 @@ def test_rera_calculator_delay_interest():
         actual_possession_date=possession,
     )
     assert res["delay_days"] == 365
-    assert res["interest_rate"] == 10.5
-    # simple interest: 10 Lakh * 10.5% * 1 year = 1,05,000 INR
-    assert res["interest_accrued"] == 105000.0
-    assert res["total_claim"] == 1105000.0
+    assert res["interest_rate"] == 11.0
+    # simple interest: 10 Lakh * 11.0% * 1 year = 1,10,000 INR
+    assert res["interest_accrued"] == 110000.0
+    assert res["total_claim"] == 1110000.0
     assert res["status"] == "action_required"
 
     # Zero paid safety check

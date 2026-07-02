@@ -66,7 +66,7 @@ export default function UserMatterDetailPage() {
   // Filter scheduled hearings (court hearings — not in-platform meetings)
   const scheduledHearings = matter.hearings?.filter(h => h.status === "scheduled") || [];
   const health = HEALTH_CONFIG[matter.matter_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
-  const statusLabel = STATUS_LABEL[matter.status] ?? matter.status.replace("_", " ");
+  const statusLabel = STATUS_LABEL[matter.status] ?? matter.status.replaceAll("_", " ");
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -82,7 +82,7 @@ export default function UserMatterDetailPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-brand-gold/12 pb-6">
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
-            {matter.category.replace("_", " ")}
+            {matter.category.replaceAll("_", " ")}
           </p>
           <h1 className="font-serif text-3xl font-bold md:text-4xl">{matter.title}</h1>
           <div className="flex flex-wrap items-center gap-2 pt-1">

@@ -197,6 +197,18 @@ async def cancel_consultation(consultation_id: str, user: Auth):
     db = get_db()
     row = get_consultation_or_404(consultation_id)
     check_consultation_ownership(row, user)
+
+    scheduled_at_str = row.get("scheduled_at")
+    if scheduled_at_str:
+        from datetime import datetime, timezone
+        scheduled = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if (scheduled - now).total_seconds() < 24 * 3600:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot cancel within 24 hours of scheduled time. Contact support."
+            )
+
     if row["status"] != "pending":
         raise HTTPException(
             status_code=400, detail="Can only cancel pending consultations"
@@ -274,6 +286,32 @@ async def patch_consultation(
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         return get_consultation_or_404(consultation_id)
+
+    scheduled_at = updates.get("scheduled_at")
+    if scheduled_at and row.get("lawyer_id"):
+        from datetime import datetime, timedelta
+        if isinstance(scheduled_at, str):
+            scheduled_datetime = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        else:
+            scheduled_datetime = scheduled_at
+            
+        window_start = scheduled_datetime - timedelta(minutes=30)
+        window_end = scheduled_datetime + timedelta(minutes=30)
+        
+        conflicts = (
+            db.table("consultations")
+            .select("id")
+            .eq("lawyer_id", row["lawyer_id"])
+            .in_("status", ["pending", "confirmed"])
+            .neq("id", consultation_id)
+            .gte("scheduled_at", window_start.isoformat())
+            .lte("scheduled_at", window_end.isoformat())
+            .execute()
+        )
+        if conflicts.data:
+            raise HTTPException(status_code=400, detail="This time slot is already booked")
+            
+        updates["scheduled_at"] = scheduled_datetime.isoformat()
 
     res = (
         db.table("consultations")

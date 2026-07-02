@@ -1,12 +1,14 @@
 "use client";
 import { useState } from "react";
 import { CreditCard, CheckCircle2, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
-import { useMatter, useTriggerPaymentWebhook } from "../hooks/useMatters";
+import { useMatter, matterKeys } from "../hooks/useMatters";
 import { Button, Badge, Card, useToast } from "@/shared/components/ui";
+import { apiClient } from "@/shared/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
-  const triggerPayment = useTriggerPaymentWebhook(matterId);
+  const qc = useQueryClient();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const toast = useToast();
 
@@ -20,27 +22,16 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
   const handlePay = async (milestoneId: string) => {
     // Mock payment gateway flow
     setProcessingId(milestoneId);
-    const randomSuffix = Math.random().toString(36).substr(2, 9);
+    const randomSuffix = Math.random().toString(36).substring(2, 11);
     const paymentId = "pay_" + randomSuffix;
-    const idempotencyKey = `pay_key_${matterId}_${milestoneId}`;
     
     setTimeout(async () => {
       try {
-        await triggerPayment.mutateAsync({
-          event: "payment.captured",
-          payload: {
-            payment: {
-              entity: {
-                id: paymentId,
-                notes: {
-                  milestone_id: milestoneId,
-                  payment_idempotency_key: idempotencyKey
-                }
-              }
-            }
-          }
+        await apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, {
+          payment_gateway_ref: paymentId
         });
-        toast.success("Payment successful! Invoice generated.");
+        qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+        toast.success("Payment initiated! Awaiting gateway confirmation.");
       } catch (e: any) {
         toast.error("Payment failed: " + e.message);
       } finally {

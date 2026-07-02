@@ -13,7 +13,15 @@ export const matterKeys = {
 };
 
 export function useMatters(filters?: { status?: string; category?: string; cursor?: string; limit?: string }) {
-  const qs = filters ? "?" + new URLSearchParams(filters as Record<string,string>).toString() : "";
+  let qs = "";
+  if (filters) {
+    const cleaned = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== undefined && v !== null && v !== "")
+    );
+    if (Object.keys(cleaned).length > 0) {
+      qs = "?" + new URLSearchParams(cleaned as Record<string, string>).toString();
+    }
+  }
   return useQuery({
     queryKey: matterKeys.list(filters),
     queryFn:  () => apiClient.get<Matter[]>(`/matters${qs}`),
@@ -47,7 +55,7 @@ export function useVerifyFact(matterId: string) {
       toast.success("Fact verification updated successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to update fact verification");
+      toast.error(err.detail || err.message || "Failed to update fact verification");
     },
   });
 }
@@ -71,7 +79,7 @@ export function usePostUpdate(matterId: string) {
       toast.success("Case update posted successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to post case update");
+      toast.error(err.detail || err.message || "Failed to post case update");
     },
   });
 }
@@ -95,7 +103,7 @@ export function useCreateMatter() {
       toast.success("Matter created successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to create matter");
+      toast.error(err.detail || err.message || "Failed to create matter");
     },
   });
 }
@@ -117,7 +125,7 @@ export function useCreateHearing(matterId: string) {
       toast.success("Hearing scheduled successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to schedule hearing");
+      toast.error(err.detail || err.message || "Failed to schedule hearing");
     },
   });
 }
@@ -140,7 +148,7 @@ export function useUpdateHearing(matterId: string) {
       toast.success("Hearing details updated successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to update hearing");
+      toast.error(err.detail || err.message || "Failed to update hearing");
     },
   });
 }
@@ -161,7 +169,7 @@ export function useCreateMilestone(matterId: string) {
       toast.success("Milestone created successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to create milestone");
+      toast.error(err.detail || err.message || "Failed to create milestone");
     },
   });
 }
@@ -188,7 +196,7 @@ export function useUpdateMilestone(matterId: string) {
       toast.success("Milestone updated successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to update milestone");
+      toast.error(err.detail || err.message || "Failed to update milestone");
     },
   });
 }
@@ -216,7 +224,7 @@ export function useCreateMeeting(matterId: string) {
       toast.success("Meeting scheduled successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to schedule meeting");
+      toast.error(err.detail || err.message || "Failed to schedule meeting");
     },
   });
 }
@@ -238,40 +246,8 @@ export function useUpdateMeeting(matterId: string) {
       toast.success("Meeting updated successfully");
     },
     onError: (err: any) => {
-      toast.error(err.detail || "Failed to update meeting");
+      toast.error(err.detail || err.message || "Failed to update meeting");
     },
   });
 }
 
-export function useTriggerPaymentWebhook(matterId: string) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  return useMutation({
-    mutationFn: (body: {
-      event: string;
-      payload: {
-        payment: {
-          entity: {
-            id: string;
-            notes: {
-              milestone_id: string;
-              payment_idempotency_key: string;
-            };
-          };
-        };
-      };
-    }) =>
-      apiClient.post(`/matters/webhook/payment`, body, {
-        headers: {
-          ...(process.env.NODE_ENV !== "production" ? { "X-Razorpay-Signature": "mock" } : {}),
-        },
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
-      toast.success("Payment simulated successfully");
-    },
-    onError: (err: any) => {
-      toast.error(err.detail || "Payment simulation failed");
-    },
-  });
-}

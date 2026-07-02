@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     SUPABASE_SECRET_KEY: str | None = None
     SUPABASE_ANON_KEY: str | None = "placeholder-key"
     SUPABASE_PUBLISHABLE_KEY: str | None = None
-    SUPABASE_JWT_SECRET: str = "placeholder-secret-minimum-32-characters-long"
+    SUPABASE_JWT_SECRET: str
 
     # AI providers — at least one should be set; falls back to mock
     ANTHROPIC_API_KEY: str = ""
@@ -71,7 +71,8 @@ class Settings(BaseSettings):
     API_VERSION: str = "v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     REDIS_URL: str = "memory://"
-    TRUST_PROXY: bool = True
+    TRUST_PROXY: bool = False
+    PAYMENT_WEBHOOK_SKIP_VERIFICATION: bool = False
 
     @model_validator(mode="after")
     def validate_keys(self) -> "Settings":

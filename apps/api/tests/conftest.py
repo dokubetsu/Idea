@@ -2,6 +2,9 @@ import os
 
 os.environ.setdefault("PAYMENT_WEBHOOK_SECRET", "test_webhook_secret")
 os.environ.setdefault("CRON_SECRET", "test_cron_secret")
+os.environ.setdefault(
+    "SUPABASE_JWT_SECRET", "test_jwt_secret_minimum_32_characters_long"
+)
 
 import pytest
 import pytest_asyncio
@@ -60,6 +63,15 @@ def skip_if_no_test_database(request):
             )
 
 
+class MockNotBuilder:
+    def __init__(self, table):
+        self.table = table
+
+    def in_(self, column, values):
+        self.table.queries.append(("not_in", column, values))
+        return self.table
+
+
 class MockSupabaseTable:
     def __init__(self, name: str):
         self.name = name
@@ -67,6 +79,10 @@ class MockSupabaseTable:
         self.data = []
         self.last_inserted = None
         self._pending_update = None
+
+    @property
+    def not_(self):
+        return MockNotBuilder(self)
 
     def select(self, *args, **kwargs):
         is_returning = any(q[0] in ("update", "insert") for q in self.queries)
@@ -113,6 +129,10 @@ class MockSupabaseTable:
         self.queries.append(("eq", column, value))
         return self
 
+    def or_(self, filter_str):
+        self.queries.append(("or_", filter_str))
+        return self
+
     def single(self):
         self.queries.append(("single",))
         return self
@@ -136,9 +156,12 @@ class MockSupabaseTable:
         if is_update and getattr(self, "_pending_update", None) is not None:
             # Find the filters
             filters = []
+            not_in_filters = []
             for query in self.queries:
                 if query[0] == "eq":
                     filters.append((query[1], query[2]))
+                elif query[0] == "not_in":
+                    not_in_filters.append((query[1], query[2]))
 
             # Apply update only to rows in self.data matching the filters
             updated_rows = []
@@ -148,6 +171,11 @@ class MockSupabaseTable:
                     if row.get(column) != value:
                         match = False
                         break
+                if match:
+                    for column, values in not_in_filters:
+                        if row.get(column) in values:
+                            match = False
+                            break
                 if match:
                     row.update(self._pending_update)
                     updated_rows.append(row)
@@ -169,9 +197,28 @@ class MockSupabaseTable:
             if query[0] == "eq":
                 column, value = query[1], query[2]
                 data = [row for row in data if row.get(column) == value]
+            elif query[0] == "not_in":
+                column, values = query[1], query[2]
+                data = [row for row in data if row.get(column) not in values]
             elif query[0] == "range":
                 start, end = query[1], query[2]
                 data = data[start : end + 1]
+            elif query[0] == "or_":
+                filter_str = query[1]
+                parts = filter_str.split(",")
+                matching_rows = []
+                for row in data:
+                    any_match = False
+                    for part in parts:
+                        subparts = part.split(".")
+                        if len(subparts) == 3 and subparts[1] == "eq":
+                            col, op, val = subparts[0], subparts[1], subparts[2]
+                            if str(row.get(col)) == val:
+                                any_match = True
+                                break
+                    if any_match:
+                        matching_rows.append(row)
+                data = matching_rows
 
         if is_single:
             ret = data[0] if data else None
@@ -478,6 +525,8 @@ def mock_user():
 async def client(mock_user) -> AsyncGenerator[AsyncClient, None]:
     # Override authentication dependency to use mock user
     app.dependency_overrides[get_current_user] = lambda: mock_user
+    from app.domains.notifications.subscriber import init_subscriber
+    init_subscriber()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:

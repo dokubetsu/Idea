@@ -13,8 +13,8 @@ from typing import Optional
 
 class InterestSource:
     # H5: SBI 1-year MCLR rate (as of the date below). Update this monthly.
-    DEFAULT_SBI_MCLR = 8.5  # percent per annum
-    MCLR_LAST_UPDATED = date(2025, 6, 1)  # date when this rate was last verified
+    DEFAULT_SBI_MCLR = 9.0  # percent per annum
+    MCLR_LAST_UPDATED = date(2026, 7, 1)  # date when this rate was last verified
 
     # Rate is considered stale if not updated within 35 days (MCLR is monthly)
     STALE_AFTER_DAYS = 35

@@ -259,7 +259,7 @@ export function CalculatorsView() {
                   {chequeResult.color === "yellow" && <CircleAlert className="h-5 w-5 shrink-0 mt-0.5" />}
                   {chequeResult.color === "red" && <CircleX className="h-5 w-5 shrink-0 mt-0.5" />}
                   <div>
-                    <h4 className="font-bold text-sm capitalize">{chequeResult.status.replace("_", " ")}</h4>
+                    <h4 className="font-bold text-sm capitalize">{chequeResult.status.replaceAll("_", " ")}</h4>
                     <p className="text-xs mt-1 leading-relaxed">{chequeResult.reason}</p>
                   </div>
                 </div>

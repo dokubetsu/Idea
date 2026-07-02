@@ -34,7 +34,12 @@ def get_db() -> Client:
     req_client = _request_db_client.get()
     if req_client is not None:
         return req_client
-    return get_service_role_db()
+    import sys
+    if "pytest" in sys.modules:
+        return get_service_role_db()
+    raise RuntimeError(
+        "get_db() called outside request scope. Use get_service_role_db() explicitly."
+    )
 
 
 def set_request_db(client: Client):

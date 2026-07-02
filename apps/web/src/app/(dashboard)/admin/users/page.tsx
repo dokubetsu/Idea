@@ -11,14 +11,27 @@ export default function AdminUsersPage() {
   const perPage = 20;
 
   useEffect(() => {
-    setPage(1);
-  }, [filter]);
-
-  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
-    apiClient.get<Profile[]>(`/admin/users?role=${filter}&page=${page}&per_page=${perPage}`)
-      .then(setUsers)
-      .finally(() => setLoading(false));
+    apiClient.get<Profile[]>(
+      `/admin/users?role=${filter}&page=${page}&per_page=${perPage}`,
+      { signal: controller.signal }
+    )
+      .then((data) => {
+        setUsers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err.name === "AbortError" || (err instanceof Error && err.name === "AbortError")) {
+          return;
+        }
+        console.error(err);
+        setLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, [filter, page]);
   return (
     <div className="animate-fade-in-up space-y-7">
@@ -26,7 +39,7 @@ export default function AdminUsersPage() {
         <div><p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">User management</p><h1 className="mt-1 font-serif text-4xl font-bold">All users.</h1></div>
         <div className="flex gap-1.5 rounded-xl border border-brand-gold/15 bg-base-200/60 p-1.5">
           {["user","lawyer","admin"].map(r=>(
-            <button key={r} type="button" onClick={()=>setFilter(r)}
+            <button key={r} type="button" onClick={()=>{ setFilter(r); setPage(1); }}
               className={`rounded-xl px-3.5 py-1.5 text-[11px] font-semibold capitalize transition-all ${filter===r?"bg-brand-blue-dark text-brand-gold shadow-sm":"text-brand-blue-light/60 hover:text-brand-blue-dark"}`}>
               {r}s
             </button>

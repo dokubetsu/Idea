@@ -12,3 +12,4 @@ slowapi==0.1.9
 openai==2.41.1
 sse-starlette==2.2.1
 python-dateutil>=2.9.0
+redis>=5.0.0
