@@ -42,6 +42,7 @@ export interface SessionOut {
   started_at: string;
   completed_at: string | null;
   generated_facts: Record<string, any>;
+  estimated_decisions: number;
   current_node: SessionNodeState | null;
 }
 

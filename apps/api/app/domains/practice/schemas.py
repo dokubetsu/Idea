@@ -1,11 +1,11 @@
 from typing import Any
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # Requests
 class StartSessionRequest(BaseModel):
-    scenario_key: str
+    scenario_key: str = Field(..., pattern=r"^[a-z][a-z0-9_]{2,63}$")
 
 
 class DecisionRequest(BaseModel):

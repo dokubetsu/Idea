@@ -5,7 +5,6 @@ import { Bell, Check, BellRing } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { createClient } from "@/shared/lib/supabase/client";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "@/shared/lib/api/notifications";
 import { Notification } from "@/entities/types";
 import { apiClient } from "@/shared/lib/api/client";

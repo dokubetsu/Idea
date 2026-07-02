@@ -16,7 +16,7 @@ facts:
     values: ["AMRI Hospital", "Advance Medicare Research Institute", "Apollo Hospital"]
   steroid_dose_mg:
     type: "range"
-    min: 120
+    min: 80
     max: 200
     step: 40
   patient_age:

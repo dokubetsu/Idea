@@ -46,7 +46,6 @@ export function SessionView({
   useEffect(() => {
     if (session?.current_node) {
       setStartTime(Date.now());
-      setFeedbackData(null);
       submittingRef.current = false;
     }
   }, [session?.current_node?.node_id]);
@@ -154,7 +153,7 @@ export function SessionView({
 
       {/* Progress Bar */}
       <div className="max-w-3xl mx-auto">
-        <ProgressBar current={session.decisions_count} total={3} />
+        <ProgressBar current={session.decisions_count} total={session.estimated_decisions} />
       </div>
 
       {/* Narrative Panel */}

@@ -441,24 +441,32 @@ class PracticeService:
             next_node_state = render_node_state(leads_to, scenario, facts, player_input)
 
         # Call atomic RPC database function
-        db.rpc(
-            "submit_practice_decision",
-            {
-                "p_session_id": session_id,
-                "p_user_id": user_id,
-                "p_node_id": current_node_id,
-                "p_choice_id": matched_choice.get("id") or "",
-                "p_is_correct": is_correct,
-                "p_score_awarded": score_awarded,
-                "p_issue_tag": issue_tag or "",
-                "p_input_value": input_value,
-                "p_time_taken_ms": time_taken_ms or 0,
-                "p_new_node": leads_to or current_node_id,
-                "p_new_status": new_status,
-                "p_completed_at": completed_at,
-                "p_domain": scenario["meta"]["domain"],
-            },
-        ).execute()
+        try:
+            db.rpc(
+                "submit_practice_decision",
+                {
+                    "p_session_id": session_id,
+                    "p_user_id": user_id,
+                    "p_node_id": current_node_id,
+                    "p_choice_id": matched_choice.get("id") or "",
+                    "p_is_correct": is_correct,
+                    "p_score_awarded": score_awarded,
+                    "p_issue_tag": issue_tag or "",
+                    "p_input_value": input_value,
+                    "p_time_taken_ms": time_taken_ms or 0,
+                    "p_new_node": leads_to or current_node_id,
+                    "p_new_status": new_status,
+                    "p_completed_at": completed_at,
+                    "p_domain": scenario["meta"]["domain"],
+                },
+            ).execute()
+        except Exception as e:
+            if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+                raise HTTPException(
+                    status_code=409,
+                    detail="Decision already submitted for this node",
+                )
+            raise
 
         # Emit completed event if finished
         if new_status == "completed":

@@ -44,7 +44,7 @@ BEGIN
     correct_count = correct_count + CASE WHEN p_is_correct THEN 1 ELSE 0 END,
     completed_at = p_completed_at,
     updated_at = NOW()
-  WHERE id = p_session_id;
+  WHERE id = p_session_id AND user_id = p_user_id;
 
   -- 3. Upsert profile if issue_tag is present
   IF p_issue_tag IS NOT NULL AND p_issue_tag <> '' THEN
