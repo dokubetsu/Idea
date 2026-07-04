@@ -112,6 +112,20 @@ async def register_profile(
                 "Failed to link pending matters for email %s: %s", user_email, link_exc
             )
 
+    # If the user signed up intending to be a lawyer (user_metadata.role == "lawyer"),
+    # create an unverified lawyer_profiles row so the pending-verification banner shows.
+    user_meta = payload.get("user_metadata", {}) or {}
+    intended_role = user_meta.get("role")
+    if intended_role == "lawyer":
+        try:
+            db.table("lawyer_profiles").upsert(
+                {"id": user_id, "is_verified": False, "is_available": False},
+                on_conflict="id",
+            ).execute()
+            log.info("[Identity] Created unverified lawyer_profile for user %s", user_id)
+        except Exception as lp_exc:
+            log.warning("Failed to create lawyer_profile for %s: %s", user_id, lp_exc)
+
     return profile
 
 
@@ -121,9 +135,10 @@ async def get_me(user: Auth):
     profile = db.table("profiles").select("*").eq("id", user.id).single().execute().data
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    if user.role.value == "lawyer":
-        lp = db.table("lawyer_profiles").select("*").eq("id", user.id).execute().data
-        profile["lawyer_profile"] = lp[0] if lp else None
+    # Always check for lawyer_profile — covers both verified lawyers and
+    # user-role accounts that applied as lawyers (pending verification).
+    lp = db.table("lawyer_profiles").select("*").eq("id", user.id).execute().data
+    profile["lawyer_profile"] = lp[0] if lp else None
     return profile
 
 

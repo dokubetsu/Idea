@@ -1,55 +1,119 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { BookOpen, Users, FileText } from "lucide-react";
-import { createClient } from "@/shared/lib/supabase/server";
-import { QuickStartGuide } from "@/shared/components/ui";
-export const metadata = { title: "Lawyer Dashboard" };
-export default async function LawyerDashboard() {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) redirect("/login");
-  const name = (user.user_metadata?.full_name ?? "Advocate").split(" ")[0];
-  return (
-    <>
-      <QuickStartGuide />
-      <div className="animate-fade-in-up max-w-7xl mx-auto space-y-9">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">Advocate workspace</p>
-        <h1 className="mt-1 font-serif text-5xl font-bold">Welcome, {name}.</h1>
-        <p className="mt-2 text-sm text-brand-blue-light/55">Manage assigned matters and client requests.</p>
+"use client";
+
+import { useState } from "react";
+import { LayoutGrid, List, Calendar } from "lucide-react";
+import { Spinner, EmptyState, cn } from "@/shared/components/ui";
+import { useLawyerDashboard } from "@/features/docket/hooks/useLawyerDashboard";
+import { GreetingStrip } from "@/features/docket/components/lawyer/GreetingStrip";
+import { KpiStrip } from "@/features/docket/components/lawyer/KpiStrip";
+import { TodayInCourt } from "@/features/docket/components/lawyer/TodayInCourt";
+import { NeedsAttention } from "@/features/docket/components/lawyer/NeedsAttention";
+import { CaseGrid } from "@/features/docket/components/lawyer/CaseGrid";
+import { CaseTable } from "@/features/docket/components/lawyer/CaseTable";
+import { CalendarPeek } from "@/features/docket/components/lawyer/CalendarPeek";
+
+export default function LawyerDashboardPage() {
+  const { data, isLoading } = useLawyerDashboard();
+  const [view, setView] = useState<"grid" | "table">("grid");
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-32">
+        <Spinner className="h-8 w-8" />
       </div>
-      <div className="grid gap-5 md:grid-cols-3">
-        <Link href="/lawyer/matters" className="group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
-          <BookOpen className="h-6 w-6 text-brand-gold" />
-          <div>
-            <p className="font-serif text-xl font-bold">Assigned matters</p>
-            <p className="mt-1 text-sm text-brand-blue-light/55">View facts, post updates, manage timelines.</p>
-          </div>
-        </Link>
-        <Link href="/lawyer/clients" className="group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
-          <Users className="h-6 w-6 text-brand-teal" />
-          <div>
-            <p className="font-serif text-xl font-bold">Client requests</p>
-            <p className="mt-1 text-sm text-brand-blue-light/55">Accept or decline incoming contact requests.</p>
-          </div>
-        </Link>
-        <Link href="/lawyer/legal-notice" className="group flex flex-col gap-3 rounded-xl border border-brand-gold/12 bg-base-100 p-6 transition-all hover:border-brand-gold/25 hover:shadow-md hover:-translate-y-0.5">
-          <FileText className="h-6 w-6 text-brand-gold" />
-          <div>
-            <p className="font-serif text-xl font-bold">Draft Legal Notice</p>
-            <p className="mt-1 text-sm text-brand-blue-light/55">Draft a formal legal notice on behalf of your clients.</p>
-          </div>
-        </Link>
+    );
+  }
+
+  if (!data) {
+    return (
+      <EmptyState
+        icon={Calendar}
+        title="No data available"
+        body="We couldn't load your dashboard. Please try again."
+      />
+    );
+  }
+
+  // Extract hearing dates for calendar
+  const hearingDates = data.today_hearings.map((h) => {
+    // These are today's hearings; collect unique dates from cases for calendar
+    return new Date().toISOString().split("T")[0];
+  });
+
+  // Collect next_hearing_at from cases for the calendar
+  const calendarDates = data.cases
+    .map((c) => c.next_hearing_at)
+    .filter((d): d is string => !!d);
+
+  return (
+    <div className="animate-fade-in-up max-w-7xl mx-auto space-y-9">
+      {/* Greeting */}
+      <GreetingStrip
+        greeting={data.greeting}
+        dateDisplay={data.date_display}
+        summaryLine={data.summary_line}
+      />
+
+      {/* KPI strip */}
+      <KpiStrip kpis={data.kpis} />
+
+      {/* Today + Needs attention */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <TodayInCourt hearings={data.today_hearings} />
+        <NeedsAttention items={data.attention_items} />
       </div>
 
-      <div className="rounded-xl border border-brand-gold/12 bg-base-100 p-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-3">Your value as a lawyer on this platform</p>
-        <p className="text-sm leading-7 text-brand-blue-light/65">
-          Each matter you receive includes AI-extracted facts and an initial legal assessment. Your job is to verify those facts,
-          correct what needs correcting, and drive the matter to resolution — not to start from scratch.
-        </p>
+      {/* Cases section header with toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
+            My clients & cases
+          </p>
+          <p className="mt-0.5 text-xs text-brand-blue-light/45">
+            {data.cases.length} active matter{data.cases.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-brand-gold/12 p-0.5">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all",
+              view === "grid"
+                ? "bg-brand-gold/12 text-brand-gold"
+                : "text-brand-blue-light/40 hover:text-brand-blue-light/60"
+            )}
+            aria-label="Grid view"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Grid
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all",
+              view === "table"
+                ? "bg-brand-gold/12 text-brand-gold"
+                : "text-brand-blue-light/40 hover:text-brand-blue-light/60"
+            )}
+            aria-label="Table view"
+          >
+            <List className="h-3.5 w-3.5" />
+            Table
+          </button>
+        </div>
       </div>
-      </div>
-    </>
+
+      {/* Cases */}
+      {view === "grid" ? (
+        <CaseGrid cases={data.cases} />
+      ) : (
+        <CaseTable cases={data.cases} />
+      )}
+
+      {/* Calendar peek */}
+      <CalendarPeek hearingDates={calendarDates} />
+    </div>
   );
 }

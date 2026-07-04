@@ -1,0 +1,179 @@
+"""Docket domain — API router."""
+
+from __future__ import annotations
+from fastapi import APIRouter
+
+from app.shared.dependencies import Auth, LawyerVerifiedAuth, UserRole
+from app.shared.exceptions import Forbidden
+from app.domains.docket import service
+from app.domains.docket.schemas import (
+    TimeEntryCreate,
+    TimeEntryUpdate,
+    InvoiceCreate,
+    InvoiceUpdate,
+    NoteCreate,
+    TaskCreate,
+    TaskUpdate,
+    TimelineEventCreate,
+    FeeArrangementCreate,
+    FeeArrangementUpdate,
+    DisbursementCreate,
+)
+
+router = APIRouter(prefix="/docket", tags=["docket"])
+
+
+# ── Dashboard Endpoints ──────────────────────────────────────────
+
+@router.get("/lawyer/dashboard")
+async def lawyer_dashboard(user: LawyerVerifiedAuth):
+    return service.get_lawyer_dashboard(user)
+
+
+@router.get("/client/dashboard")
+async def client_dashboard(user: Auth):
+    if user.role not in (UserRole.USER, UserRole.ADMIN):
+        raise Forbidden("Client dashboard is for petitioners only")
+    return service.get_client_dashboard(user)
+
+
+# ── Case Overview ────────────────────────────────────────────────
+
+@router.get("/matters/{matter_id}/overview")
+async def case_overview(matter_id: str, user: Auth):
+    return service.get_case_overview(matter_id, user)
+
+
+# ── Billing ──────────────────────────────────────────────────────
+
+@router.get("/matters/{matter_id}/billing")
+async def case_billing(matter_id: str, user: Auth):
+    return service.get_billing(matter_id, user)
+
+
+# ── Time Entries ─────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/time-entries", status_code=201)
+async def create_time_entry(matter_id: str, body: TimeEntryCreate, user: LawyerVerifiedAuth):
+    return service.create_time_entry(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/time-entries")
+async def list_time_entries(matter_id: str, user: LawyerVerifiedAuth):
+    return service.list_time_entries(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/time-entries/{entry_id}")
+async def update_time_entry(matter_id: str, entry_id: str, body: TimeEntryUpdate, user: LawyerVerifiedAuth):
+    return service.update_time_entry(matter_id, entry_id, user, body.model_dump(exclude_none=True))
+
+
+@router.delete("/matters/{matter_id}/time-entries/{entry_id}", status_code=204)
+async def delete_time_entry(matter_id: str, entry_id: str, user: LawyerVerifiedAuth):
+    service.delete_time_entry(matter_id, entry_id, user)
+
+
+# ── Invoices ─────────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/invoices", status_code=201)
+async def create_invoice(matter_id: str, body: InvoiceCreate, user: LawyerVerifiedAuth):
+    return service.create_invoice(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/invoices")
+async def list_invoices(matter_id: str, user: Auth):
+    return service.list_invoices(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/invoices/{invoice_id}")
+async def update_invoice(matter_id: str, invoice_id: str, body: InvoiceUpdate, user: LawyerVerifiedAuth):
+    return service.update_invoice(matter_id, invoice_id, user, body.model_dump(exclude_none=True))
+
+
+# ── Internal Notes ───────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/notes", status_code=201)
+async def create_note(matter_id: str, body: NoteCreate, user: LawyerVerifiedAuth):
+    return service.create_note(matter_id, user, body.content)
+
+
+@router.get("/matters/{matter_id}/notes")
+async def list_notes(matter_id: str, user: LawyerVerifiedAuth):
+    return service.list_notes(matter_id, user)
+
+
+# ── Tasks ────────────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/tasks", status_code=201)
+async def create_task(matter_id: str, body: TaskCreate, user: LawyerVerifiedAuth):
+    return service.create_task(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/tasks")
+async def list_tasks(matter_id: str, user: Auth):
+    return service.list_tasks(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/tasks/{task_id}")
+async def update_task(matter_id: str, task_id: str, body: TaskUpdate, user: Auth):
+    return service.update_task(matter_id, task_id, user, body.model_dump(exclude_none=True))
+
+
+# ── Timeline ─────────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/timeline", status_code=201)
+async def create_timeline_event(matter_id: str, body: TimelineEventCreate, user: LawyerVerifiedAuth):
+    return service.create_timeline_event(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/timeline")
+async def list_timeline_events(matter_id: str, user: Auth):
+    return service.list_timeline_events(matter_id, user)
+
+
+# ── Fee Arrangements ─────────────────────────────────────────────
+
+@router.get("/matters/{matter_id}/fee-arrangement")
+async def get_fee_arrangement(matter_id: str, user: Auth):
+    return service.get_fee_arrangement(matter_id, user)
+
+
+@router.post("/matters/{matter_id}/fee-arrangement", status_code=201)
+async def create_fee_arrangement(matter_id: str, body: FeeArrangementCreate, user: LawyerVerifiedAuth):
+    return service.create_fee_arrangement(matter_id, user, body.model_dump())
+
+
+@router.patch("/matters/{matter_id}/fee-arrangement")
+async def update_fee_arrangement(matter_id: str, body: FeeArrangementUpdate, user: LawyerVerifiedAuth):
+    return service.update_fee_arrangement(matter_id, user, body.model_dump(exclude_none=True))
+
+
+# ── Disbursements ────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/disbursements", status_code=201)
+async def create_disbursement(matter_id: str, body: DisbursementCreate, user: LawyerVerifiedAuth):
+    return service.create_disbursement(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/disbursements")
+async def list_disbursements(matter_id: str, user: Auth):
+    return service.list_disbursements(matter_id, user)
+
+
+# ── AI Chat ──────────────────────────────────────────────────────
+
+class AiChatRequest(TimelineEventCreate):
+    """Reuse for now — will get its own schema."""
+    pass
+
+
+from pydantic import BaseModel, Field
+
+
+class AskCaseAiRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.post("/matters/{matter_id}/ai-chat")
+async def ask_case_ai(matter_id: str, body: AskCaseAiRequest, user: Auth):
+    return await service.ask_case_ai(matter_id, body.prompt, user)

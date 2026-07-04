@@ -1,350 +1,223 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Calendar, CheckCircle2, Clock, FileText, Landmark, MessageSquare, Send, Shield, User, Scale } from "lucide-react";
-import Link from "next/link";
-import { useMatter, useUpdates, usePostUpdate, useFacts } from "@/features/matters/hooks/useMatters";
-import { FactsPanel } from "@/features/matters/components/FactsPanel";
-import { LimitationBanner, EMPTY_FACTS } from "@/features/legal-tools/components/LimitationBanner";
-import { DocumentDraftCard } from "@/features/legal-tools/components/DocumentDraftCard";
-import { DocumentVault } from "@/features/matters/components/DocumentVault";
-import { MeetingsPanel } from "@/features/matters/components/MeetingsPanel";
-import { MilestoneBillingCard } from "@/features/matters/components/MilestoneBillingCard";
-import { Badge, Button, Card, Spinner } from "@/shared/components/ui";
-import { useFeatures } from "@/shared/hooks/useFeatures";
-import { STATUS_LABEL, STATUS_TONE, HEALTH_CONFIG, PRIORITY_TONE } from "@/shared/lib/constants";
+import { useParams } from "next/navigation";
+import { FileText, ChevronRight, AlertCircle } from "lucide-react";
+import { Spinner, Card, EmptyState, cn } from "@/shared/components/ui";
+import { useCaseOverview } from "@/features/docket/hooks/useCaseOverview";
+import CaseBreadcrumb from "@/features/docket/components/shared/CaseBreadcrumb";
+import CaseTabs from "@/features/docket/components/shared/CaseTabs";
+import { StubTab } from "@/features/docket/components/shared/StubTab";
+import { StatusHero } from "@/features/docket/components/client/StatusHero";
+import { YourLawyerCard } from "@/features/docket/components/client/YourLawyerCard";
 
-export default function UserMatterDetailPage() {
-  const { id } = useParams() as { id: string };
-  const { features } = useFeatures();
-  
-  // Fetch details
-  const { data: matter, isLoading, error, refetch: refetchDetails } = useMatter(id);
-  const { data: facts = EMPTY_FACTS } = useFacts(id);
-  const { data: updates = [], isLoading: updatesLoading, refetch: refetchUpdates } = useUpdates(id);
-  
-  // Reply states
-  const postUpdate = usePostUpdate(id);
-  const [replyTarget, setReplyTarget] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-
-  async function submitReply(parentId: string) {
-    if (!replyText.trim() || replyText.trim().length < 5) return;
-    await postUpdate.mutateAsync({ content: replyText.trim(), is_internal: false, parent_id: parentId });
-    setReplyText("");
-    setReplyTarget(null);
-    refetchUpdates();
-  }
+export default function ClientCaseDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data, isLoading } = useCaseOverview(id);
+  const [activeTab, setActiveTab] = useState("overview");
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
-        <Spinner className="h-10 w-10" />
-        <p className="text-sm text-brand-blue-light/50">Loading your case details...</p>
+      <div className="flex justify-center items-center py-32">
+        <Spinner className="h-8 w-8" />
       </div>
     );
   }
 
-  if (error || !matter) {
+  if (!data) {
     return (
-      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="rounded-2xl border border-red-500/20 bg-red-50 p-5 text-red-500">
-          <Scale className="h-8 w-8" />
-        </div>
-        <h2 className="font-serif text-2xl font-bold">Case not found</h2>
-        <p className="text-sm text-brand-blue-light/65 max-w-sm">
-          This case doesn&apos;t exist or you don&apos;t have permission to view it.
-        </p>
-        <Link href="/user/matters">
-          <Button variant="secondary" size="sm">Back to my cases</Button>
-        </Link>
-      </div>
+      <EmptyState
+        icon={FileText}
+        title="Case not found"
+        body="This case doesn't exist or you don't have access to it."
+      />
     );
   }
 
-  // Filter scheduled hearings (court hearings — not in-platform meetings)
-  const scheduledHearings = matter.hearings?.filter(h => h.status === "scheduled") || [];
-  const health = HEALTH_CONFIG[matter.matter_health ?? "in_progress"] ?? HEALTH_CONFIG.in_progress;
-  const statusLabel = STATUS_LABEL[matter.status] ?? matter.status.replaceAll("_", " ");
+  const overview = data as Record<string, any>;
+  const matterId = id;
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      {/* Navigation */}
-      <Link
-        href="/user/matters"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-gold hover:text-brand-gold-light transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to my cases
-      </Link>
+    <div className="animate-fade-in-up max-w-3xl mx-auto space-y-6">
+      {/* Breadcrumb */}
+      <CaseBreadcrumb role="user" caseName="Your case" />
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-brand-gold/12 pb-6">
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
-            {matter.category.replaceAll("_", " ")}
-          </p>
-          <h1 className="font-serif text-3xl font-bold md:text-4xl">{matter.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Badge tone={STATUS_TONE[matter.status] ?? "muted"}>{statusLabel}</Badge>
-            {/* Case Health badge */}
-            <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${health.bg}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${health.dot}`} />
-              {health.label}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Title */}
+      <h1 className="font-serif text-3xl font-bold">Your case</h1>
 
-      {/* Case Progress Stepper */}
-      {features.milestones && matter.milestones && matter.milestones.length > 0 && (
-        <Card className="p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-5">
-            Case Progress Milestones
-          </p>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-2">
-            {matter.milestones.map((m, idx) => (
-              <div key={m.id} className="flex-1 flex flex-col md:flex-row items-center gap-2 relative">
-                {/* Horizontal line connector */}
-                {idx < matter.milestones.length - 1 && (
-                  <div className="hidden md:block absolute left-[calc(50%+16px)] right-[-50%] top-4 h-0.5 bg-brand-gold/15" />
-                )}
-                
-                {/* Step Circle */}
-                <div className={`h-8 w-8 rounded-full border-2 flex items-center justify-center shrink-0 z-10 ${
-                  m.status === "completed" ? "bg-brand-teal border-brand-teal text-white font-bold" :
-                  m.status === "current" ? "bg-brand-gold/20 border-brand-gold text-brand-gold font-bold scale-110" :
-                  "bg-base-100 border-brand-gold/15 text-brand-blue-light/30"
-                }`}>
-                  {m.status === "completed" ? "✓" : m.order_index}
-                </div>
+      {/* Tabs */}
+      <CaseTabs
+        role="user"
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        matterId={matterId}
+      />
 
-                <div className="text-center md:text-left min-w-[120px] max-w-[160px]">
-                  <p className={`text-[11px] font-bold ${
-                    m.status === "completed" ? "text-brand-blue-dark/60" :
-                    m.status === "current" ? "text-brand-blue-dark font-extrabold" :
-                    "text-brand-blue-light/40"
-                  }`}>{m.title}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <LimitationBanner category={matter.category} facts={facts} />
-
-      {/* Main Content Layout */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Details, Documents & Timeline (2/3 width) */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Summary */}
-          <Card className="p-6 space-y-4">
-            <h3 className="font-serif text-xl font-bold">Case Overview & Rationale</h3>
-            <div className="h-px bg-brand-gold/12" />
-            <p className="text-sm leading-relaxed text-brand-blue-dark/80 whitespace-pre-line">
-              {matter.summary || "No summary details have been provided for this matter."}
-            </p>
-          </Card>
-
-          <DocumentVault matterId={matter.id} />
-          <MeetingsPanel matterId={matter.id} />
-          {features.billing && <MilestoneBillingCard matterId={matter.id} isLawyer={false} />}
-
-          {/* Document Templates Card */}
-          <DocumentDraftCard matterId={matter.id} category={matter.category} />
-
-          {/* Trust Timeline (replaces raw activity) */}
-          <Card className="p-6 space-y-4">
-            <div>
-              <h3 className="font-serif text-xl font-bold">Case Timeline</h3>
-              <p className="text-xs text-brand-blue-light/50 mt-1">Everything that has happened on your case, in order.</p>
-            </div>
-            <div className="h-px bg-brand-gold/12" />
-
-            {updatesLoading ? (
-              <div className="flex justify-center py-6"><Spinner className="h-6 w-6" /></div>
-            ) : updates.length === 0 ? (
-              <p className="py-6 text-center text-sm text-brand-blue-light/40">No activity yet on this case.</p>
-            ) : (
-              <div className="space-y-0 relative">
-                {/* Vertical line */}
-                <div className="absolute left-3.5 top-4 bottom-4 w-[2px] bg-brand-gold/8" />
-                {updates.map((u, idx) => {
-                  const isUser = u.author_name && u.author_name !== "System";
-                  const timeAgo = (() => {
-                    const d = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86400000);
-                    if (d === 0) return new Date(u.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-                    if (d === 1) return "Yesterday";
-                    return new Date(u.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-                  })();
-                  return (
-                    <div key={u.id} className="flex gap-4 py-3 relative">
-                      {/* Timeline dot */}
-                      <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 border ${
-                        isUser
-                          ? "bg-brand-gold/10 border-brand-gold/30"
-                          : "bg-brand-blue-dark/50 border-white/10"
-                      }`}>
-                        {isUser
-                          ? <User className="h-3 w-3 text-brand-gold" />
-                          : <CheckCircle2 className="h-3 w-3 text-brand-blue-light/40" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-xs font-bold text-brand-blue-dark">
-                            {u.author_name || "LeAd"}
-                          </p>
-                          <p className="text-[10px] text-brand-blue-light/40 shrink-0">{timeAgo}</p>
-                        </div>
-                        <p className="text-sm leading-relaxed text-brand-blue-dark/80 whitespace-pre-line">
-                          {u.content}
-                        </p>
-                        {/* Reply */}
-                        <div className="mt-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplyTarget(replyTarget === u.id ? null : u.id);
-                              setReplyText("");
-                            }}
-                            className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold hover:text-brand-gold-light flex items-center gap-1.5"
-                          >
-                            <MessageSquare className="h-3 w-3" /> {replyTarget === u.id ? "Cancel" : "Reply"}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Reply box — floated below timeline */}
-            {replyTarget && (
-              <div className="flex gap-2 pt-2 border-t border-brand-gold/8">
-                <input
-                  type="text"
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type your message... (min 5 characters)"
-                  minLength={5}
-                  className="flex-1 rounded-lg border border-brand-gold/15 bg-base-100 px-3 py-1.5 text-xs outline-none focus:border-brand-gold"
-                />
-                <Button size="sm" onClick={() => submitReply(replyTarget)} disabled={replyText.trim().length < 5 || postUpdate.isPending}>
-                  <Send className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-          </Card>
-
-
-        </div>
-
-        {/* Right Column: Metadata, Hearings & Facts (1/3 width) */}
+      {/* Overview tab */}
+      {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* Upcoming Court Hearings */}
-          {features.hearings && scheduledHearings.length > 0 && (
-            <Card className="p-6 space-y-4 border-brand-gold/25 bg-brand-gold/5 shadow-md">
-              <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-brand-blue-dark">
-                <Clock className="h-5 w-5 text-brand-gold animate-float" /> Upcoming Court Date
-              </h3>
-              <div className="h-px bg-brand-gold/12" />
+          {/* Status hero */}
+          <StatusHero
+            stage={overview.stage || "filed"}
+            statusText={
+              overview.status_text ||
+              "Your case is being handled by your lawyer."
+            }
+          />
 
-              <div className="space-y-4">
-                {scheduledHearings.map(h => (
-                  <div key={h.id} className="space-y-2">
-                    <p className="text-sm font-bold text-brand-blue-dark">
-                      {new Date(h.hearing_date).toLocaleDateString("en-IN", {
+          {/* Two-column row: next hearing + your lawyer */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Next hearing (informational, accent border) */}
+            {overview.next_hearing && (
+              <Card className="p-5 border-l-4 border-l-brand-accent">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-accent">
+                  Next hearing
+                </p>
+                <p className="mt-1 font-serif text-lg font-bold">
+                  {overview.next_hearing.date
+                    ? new Date(
+                        overview.next_hearing.date
+                      ).toLocaleDateString("en-IN", {
                         weekday: "short",
-                        month: "long",
                         day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </p>
-                    <div className="space-y-1.5 text-xs text-brand-blue-light/65">
-                      {h.courtroom && <p>Courtroom: <span className="font-semibold text-brand-blue-dark">{h.courtroom}</span></p>}
-                      {h.judge && <p>Judge: <span className="font-semibold text-brand-blue-dark">{h.judge}</span></p>}
-                      {h.purpose && <p>Purpose: <span className="font-semibold text-brand-blue-dark">{h.purpose}</span></p>}
-                    </div>
-                    {h.notes && (
-                      <p className="text-[11px] bg-white/70 p-2 border border-brand-gold/10 rounded-lg whitespace-pre-line text-brand-blue-dark/80">
-                        {h.notes}
-                      </p>
+                        month: "long",
+                      })
+                    : "Date pending"}
+                </p>
+                <p className="mt-1 text-sm text-brand-blue-light/55">
+                  {overview.next_hearing.description ||
+                    "Court hearing scheduled"}
+                </p>
+                <p className="mt-2 text-xs text-brand-blue-light/40 italic">
+                  You don&apos;t need to attend unless your lawyer asks you to.
+                </p>
+              </Card>
+            )}
+
+            {/* Your lawyer */}
+            {overview.lawyer && (
+              <YourLawyerCard
+                name={overview.lawyer.name}
+                avatar={overview.lawyer.avatar}
+              />
+            )}
+          </div>
+
+          {/* "You need to" action cards */}
+          {overview.pending_tasks && overview.pending_tasks.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-3">
+                You need to
+              </p>
+              <div className="space-y-3">
+                {overview.pending_tasks.map((task: any) => (
+                  <Card
+                    key={task.id}
+                    className={cn(
+                      "flex items-center gap-3 p-4",
+                      task.is_overdue && "border-l-4 border-l-amber-400"
                     )}
-                  </div>
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gold/8">
+                      <AlertCircle className="h-4 w-4 text-brand-gold" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">
+                        {task.title}
+                      </p>
+                      {task.due_date && (
+                        <p
+                          className={cn(
+                            "text-[11px]",
+                            task.is_overdue
+                              ? "text-amber-600 font-semibold"
+                              : "text-brand-blue-light/45"
+                          )}
+                        >
+                          {task.is_overdue
+                            ? "Overdue"
+                            : `Due ${new Date(task.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-brand-blue-light/20" />
+                  </Card>
                 ))}
               </div>
-            </Card>
+            </div>
           )}
 
-          {/* Metadata Card */}
-          <Card className="p-6 space-y-4">
-            <h3 className="font-serif text-lg font-bold">Case Details</h3>
-            <div className="h-px bg-brand-gold/12" />
-
-            <div className="space-y-3.5">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 shrink-0 text-brand-gold" />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">Created Date</p>
-                  <p className="text-xs font-bold text-brand-blue-dark">
-                    {new Date(matter.created_at).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
+          {/* Recent updates timeline */}
+          {overview.recent_updates && overview.recent_updates.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold mb-3">
+                Recent updates
+              </p>
+              <Card className="overflow-hidden">
+                <div className="divide-y divide-brand-gold/6">
+                  {overview.recent_updates.map((update: any) => (
+                    <div
+                      key={update.id}
+                      className="flex items-start gap-3 px-5 py-3.5"
+                    >
+                      <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold/40" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-brand-blue-light/70 leading-relaxed">
+                          {update.description}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-brand-blue-light/35">
+                          {new Date(
+                            update.occurred_at
+                          ).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              {matter.lawyer_name ? (
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 shrink-0 text-brand-gold" />
-                  <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">Your Lawyer</p>
-                    <p className="text-xs font-bold text-brand-blue-dark">{matter.lawyer_name}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Shield className="h-4 w-4 shrink-0 text-brand-gold/40 animate-pulse" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">Your Lawyer</p>
-                    <p className="text-xs font-medium text-brand-gold">Finding the right lawyer for you...</p>
-                  </div>
-                </div>
-              )}
-
-              {matter.court_name && (
-                <div className="flex items-center gap-3">
-                  <Landmark className="h-4 w-4 shrink-0 text-brand-gold" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">Court Name</p>
-                    <p className="text-xs font-bold text-brand-blue-dark">{matter.court_name}</p>
-                  </div>
-                </div>
-              )}
-
-              {matter.case_number && (
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 shrink-0 text-brand-gold" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-blue-light/45">Case Number</p>
-                    <p className="text-xs font-bold text-brand-blue-dark">{matter.case_number}</p>
-                  </div>
-                </div>
-              )}
+              </Card>
             </div>
-          </Card>
+          )}
 
-          {/* Facts Panel */}
-          <Card className="p-6">
-            <FactsPanel matterId={matter.id} canVerify={false} />
-          </Card>
+          {/* Quick stats row (3 cards) */}
+          {overview.stats && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Card className="p-4 text-center">
+                <p className="font-serif text-2xl font-bold">
+                  {overview.stats.hearings_count}
+                </p>
+                <p className="mt-0.5 text-[11px] text-brand-blue-light/45">
+                  Hearings so far
+                </p>
+              </Card>
+              <Card className="p-4 text-center">
+                <p className="font-serif text-2xl font-bold">
+                  {overview.stats.documents_count}
+                </p>
+                <p className="mt-0.5 text-[11px] text-brand-blue-light/45">
+                  Documents
+                </p>
+              </Card>
+              <Card className="p-4 text-center">
+                <p className="font-serif text-2xl font-bold">
+                  {overview.stats.months_running}
+                </p>
+                <p className="mt-0.5 text-[11px] text-brand-blue-light/45">
+                  Month{overview.stats.months_running !== 1 ? "s" : ""} running
+                </p>
+              </Card>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {activeTab === "billing" && <StubTab tabName="Billing" />}
+      {activeTab === "documents" && <StubTab tabName="Documents" />}
+      {activeTab === "messages" && <StubTab tabName="Messages" />}
+      {activeTab === "timeline" && <StubTab tabName="Timeline" />}
     </div>
   );
 }
