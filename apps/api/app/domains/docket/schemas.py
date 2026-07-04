@@ -292,6 +292,37 @@ class ClientDashboardOut(BaseModel):
     stats: dict  # hearings_count, documents_count, months_running
 
 
+# ── Documents ───────────────────────────────────────────────────
+
+class DocumentReview(BaseModel):
+    status: str = Field(..., pattern=r"^(approved|rejected)$")
+    lawyer_note: Optional[str] = Field(None, max_length=2000)
+
+
+class DocumentUpdateNote(BaseModel):
+    lawyer_note: str = Field(..., min_length=1, max_length=2000)
+
+
+# ── Messages ────────────────────────────────────────────────────
+
+class MessageCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+    message_type: str = Field(default="text", pattern=r"^(text|file|system)$")
+    attachment_path: Optional[str] = None
+
+
+# ── Hearings (expanded) ─────────────────────────────────────────
+
+class HearingUpdate(BaseModel):
+    courtroom: Optional[str] = None
+    judge: Optional[str] = None
+    purpose: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = Field(None, pattern=r"^(scheduled|adjourned|completed|cancelled)$")
+    outcome: Optional[str] = None
+    next_date: Optional[str] = None  # If adjourned, the new date
+
+
 # ── Billing Aggregation ──────────────────────────────────────────
 
 class LawyerBillingOut(BaseModel):

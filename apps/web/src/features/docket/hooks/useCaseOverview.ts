@@ -11,6 +11,15 @@ import {
   createTask,
   updateTask,
   askCaseAi,
+  nudgeClient,
+  scheduleHearing,
+  listHearings,
+  updateHearing,
+  listDocuments,
+  reviewDocument,
+  updateDocumentNote,
+  listMessages,
+  sendMessage,
 } from "../api/case-overview";
 
 export function useCaseOverview(matterId: string) {
@@ -103,5 +112,114 @@ export function useToggleTask(matterId: string) {
 export function useAskCaseAi(matterId: string) {
   return useMutation({
     mutationFn: (prompt: string) => askCaseAi(matterId, prompt),
+  });
+}
+
+export function useNudgeClient(matterId: string) {
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (taskId: string) => nudgeClient(matterId, taskId),
+    onSuccess: () => toast.success("Nudge sent to client"),
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to send nudge"),
+  });
+}
+
+export function useScheduleHearing(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (data: { hearing_date: string; courtroom?: string; judge?: string; purpose?: string }) =>
+      scheduleHearing(matterId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: docketKeys.overview(matterId) });
+      qc.invalidateQueries({ queryKey: docketKeys.lawyerDashboard() });
+      toast.success("Hearing scheduled");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to schedule hearing"),
+  });
+}
+
+// ── Hearings ─────────────────────────────────────────────────────
+
+export function useHearings(matterId: string) {
+  return useQuery({
+    queryKey: ["docket", matterId, "hearings"],
+    queryFn: () => listHearings(matterId),
+    enabled: !!matterId,
+  });
+}
+
+export function useUpdateHearing(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ hearingId, ...data }: { hearingId: string; status?: string; notes?: string; outcome?: string; next_date?: string }) =>
+      updateHearing(matterId, hearingId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "hearings"] });
+      qc.invalidateQueries({ queryKey: docketKeys.overview(matterId) });
+      toast.success("Hearing updated");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to update hearing"),
+  });
+}
+
+// ── Documents ────────────────────────────────────────────────────
+
+export function useDocuments(matterId: string) {
+  return useQuery({
+    queryKey: ["docket", matterId, "documents"],
+    queryFn: () => listDocuments(matterId),
+    enabled: !!matterId,
+  });
+}
+
+export function useReviewDocument(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ docId, ...data }: { docId: string; status: string; lawyer_note?: string }) =>
+      reviewDocument(matterId, docId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "documents"] });
+      toast.success("Document reviewed");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to review document"),
+  });
+}
+
+export function useUpdateDocumentNote(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ docId, note }: { docId: string; note: string }) =>
+      updateDocumentNote(matterId, docId, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "documents"] });
+      toast.success("Note saved");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to save note"),
+  });
+}
+
+// ── Messages ─────────────────────────────────────────────────────
+
+export function useMessages(matterId: string) {
+  return useQuery({
+    queryKey: ["docket", matterId, "messages"],
+    queryFn: () => listMessages(matterId),
+    enabled: !!matterId,
+    refetchInterval: 15000, // Poll every 15s for new messages
+  });
+}
+
+export function useSendMessage(matterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { content: string; message_type?: string }) =>
+      sendMessage(matterId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "messages"] });
+    },
   });
 }

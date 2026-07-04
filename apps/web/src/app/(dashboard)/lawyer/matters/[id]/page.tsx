@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { FileText } from "lucide-react";
 import { Spinner, Card, EmptyState } from "@/shared/components/ui";
-import { useCaseOverview } from "@/features/docket/hooks/useCaseOverview";
+import { useToast } from "@/shared/components/ui/Toast";
+import { useCaseOverview, useNudgeClient } from "@/features/docket/hooks/useCaseOverview";
 import CaseBreadcrumb from "@/features/docket/components/shared/CaseBreadcrumb";
 import CaseTabs from "@/features/docket/components/shared/CaseTabs";
 import ContactBar from "@/features/docket/components/shared/ContactBar";
@@ -16,11 +17,17 @@ import QuickLogCard from "@/features/docket/components/lawyer/QuickLogCard";
 import MyTasksCard from "@/features/docket/components/lawyer/MyTasksCard";
 import InternalNotesCard from "@/features/docket/components/lawyer/InternalNotesCard";
 import AiChatPanel from "@/features/docket/components/lawyer/AiChatPanel";
+import DocumentsTab from "@/features/docket/components/lawyer/DocumentsTab";
+import HearingsTab from "@/features/docket/components/lawyer/HearingsTab";
+import CommunicationsTab from "@/features/docket/components/lawyer/CommunicationsTab";
+import BillingTab from "@/features/docket/components/lawyer/BillingTab";
 
 export default function LawyerCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useCaseOverview(id);
   const [activeTab, setActiveTab] = useState("overview");
+  const nudge = useNudgeClient(id);
+  const toast = useToast();
 
   if (isLoading) {
     return (
@@ -88,7 +95,7 @@ export default function LawyerCaseDetailPage() {
           <div className="grid gap-5 lg:grid-cols-[1fr_0.72fr]">
             {/* Left column */}
             <div className="space-y-5">
-              <NextHearingCard hearing={overview.next_hearing} />
+              <NextHearingCard hearing={overview.next_hearing} matterId={matterId} />
 
               {/* From the client card */}
               {((overview.client_uploads && overview.client_uploads.length > 0) ||
@@ -120,6 +127,9 @@ export default function LawyerCaseDetailPage() {
                                 </span>
                                 <button
                                   type="button"
+                                  onClick={() => {
+                                    toast.success(`Opened ${doc.name} for review`);
+                                  }}
                                   className="text-[11px] font-semibold text-brand-gold hover:text-brand-gold-light transition-colors"
                                   aria-label={`Review ${doc.name}`}
                                 >
@@ -149,10 +159,12 @@ export default function LawyerCaseDetailPage() {
                               </span>
                               <button
                                 type="button"
-                                className="text-[11px] font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors"
+                                onClick={() => nudge.mutate(task.id)}
+                                disabled={nudge.isPending}
+                                className="text-[11px] font-semibold text-brand-accent hover:text-brand-accent/80 transition-colors disabled:opacity-50"
                                 aria-label={`Nudge client about ${task.title}`}
                               >
-                                Nudge
+                                {nudge.isPending ? "Sending…" : "Nudge"}
                               </button>
                             </div>
                           ))}
@@ -209,10 +221,10 @@ export default function LawyerCaseDetailPage() {
         </div>
       )}
 
-      {activeTab === "billing" && <StubTab tabName="Billing" />}
-      {activeTab === "hearings" && <StubTab tabName="Hearings" />}
-      {activeTab === "documents" && <StubTab tabName="Documents" />}
-      {activeTab === "communications" && <StubTab tabName="Communications" />}
+      {activeTab === "billing" && <BillingTab matterId={matterId} />}
+      {activeTab === "hearings" && <HearingsTab matterId={matterId} />}
+      {activeTab === "documents" && <DocumentsTab matterId={matterId} />}
+      {activeTab === "communications" && <CommunicationsTab matterId={matterId} />}
       {activeTab === "timeline" && <StubTab tabName="Timeline" />}
     </div>
   );

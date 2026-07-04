@@ -34,16 +34,20 @@ export default function LawyerDashboardPage() {
     );
   }
 
-  // Extract hearing dates for calendar
-  const hearingDates = data.today_hearings.map((h) => {
-    // These are today's hearings; collect unique dates from cases for calendar
-    return new Date().toISOString().split("T")[0];
-  });
-
   // Collect next_hearing_at from cases for the calendar
   const calendarDates = data.cases
     .map((c) => c.next_hearing_at)
     .filter((d): d is string => !!d);
+
+  // Build enriched hearing details for calendar tooltips & navigation
+  const hearingDetails = data.cases
+    .filter((c) => c.next_hearing_at)
+    .map((c) => ({
+      date: c.next_hearing_at!,
+      matter_id: c.id,
+      case_name: c.case_name,
+      purpose: c.category,
+    }));
 
   return (
     <div className="animate-fade-in-up max-w-7xl mx-auto space-y-9">
@@ -113,7 +117,7 @@ export default function LawyerDashboardPage() {
       )}
 
       {/* Calendar peek */}
-      <CalendarPeek hearingDates={calendarDates} />
+      <CalendarPeek hearingDates={calendarDates} hearingDetails={hearingDetails} />
     </div>
   );
 }

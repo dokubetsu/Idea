@@ -1,21 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   FileText,
   MessageSquare,
   Receipt,
   ChevronRight,
+  ChevronLeft,
   Calendar,
-  Clock,
   AlertCircle,
   Scale,
+  Shield,
+  Bell,
+  TrendingUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/shared/lib/api/client";
-import { Spinner, Card, Badge, EmptyState, cn } from "@/shared/components/ui";
+import { Spinner, Card, EmptyState, cn } from "@/shared/components/ui";
 import { useClientDashboard } from "@/features/docket/hooks/useClientDashboard";
-import type { ClientDashboard } from "@/features/docket/types";
+import type { ClientCase } from "@/features/docket/types";
 
 const STAGES = ["filed", "reply", "evidence", "arguments", "judgment"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -71,6 +75,90 @@ function ProgressIndicator({ currentStage }: { currentStage: string }) {
   );
 }
 
+function CaseCarouselCard({ caseItem, isActive }: { caseItem: ClientCase; isActive: boolean }) {
+  const caseStats = caseItem.stats || { hearings_count: 0, documents_count: 0, months_running: 0 };
+
+  return (
+    <Link href={`/user/matters/${caseItem.id}`} className="block group">
+      <Card className={cn(
+        "p-6 sm:p-8 transition-all duration-200",
+        isActive && "group-hover:border-brand-gold/25 group-hover:shadow-md group-hover:-translate-y-0.5"
+      )}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
+              Your case
+            </p>
+            <h2 className="mt-2 font-serif text-2xl font-bold">
+              {caseItem.plain_title}
+            </h2>
+          </div>
+          {caseItem.case_number && (
+            <span className="text-[10px] font-mono text-brand-blue-light/40 shrink-0">
+              {caseItem.case_number}
+            </span>
+          )}
+        </div>
+
+        <p className="mt-2 text-sm text-brand-blue-light/55 leading-relaxed">
+          {caseItem.status_text}
+        </p>
+
+        {/* Progress indicator */}
+        <div className="mt-6">
+          <ProgressIndicator currentStage={caseItem.stage} />
+        </div>
+
+        {/* Per-case quick stats */}
+        <div className="mt-5 grid grid-cols-3 gap-3 pt-4 border-t border-brand-gold/8">
+          <div className="text-center">
+            <p className="font-serif text-lg font-bold">{caseStats.hearings_count}</p>
+            <p className="text-[10px] text-brand-blue-light/45">Hearings</p>
+          </div>
+          <div className="text-center">
+            <p className="font-serif text-lg font-bold">{caseStats.documents_count}</p>
+            <p className="text-[10px] text-brand-blue-light/45">Documents</p>
+          </div>
+          <div className="text-center">
+            <p className="font-serif text-lg font-bold">{caseStats.months_running}</p>
+            <p className="text-[10px] text-brand-blue-light/45">
+              Month{caseStats.months_running !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+
+        {/* Lawyer info */}
+        {caseItem.lawyer_name && (
+          <div className="mt-5 flex items-center gap-3 pt-4 border-t border-brand-gold/8">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold font-semibold text-sm">
+              {caseItem.lawyer_name.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{caseItem.lawyer_name}</p>
+              <p className="text-[11px] text-brand-blue-light/45">Your lawyer</p>
+            </div>
+            <span className="text-xs font-semibold text-brand-gold group-hover:text-brand-gold-light transition-colors">
+              View case →
+            </span>
+          </div>
+        )}
+
+        {!caseItem.lawyer_name && (
+          <div className="mt-5 flex items-center gap-3 pt-4 border-t border-brand-gold/8">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-accent/10 text-brand-accent">
+              <Scale className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-brand-blue-light/70">Awaiting lawyer assignment</p>
+              <p className="text-[11px] text-brand-blue-light/45">We&apos;re finding the right lawyer for you</p>
+            </div>
+          </div>
+        )}
+      </Card>
+    </Link>
+  );
+}
+
 export default function ClientDashboardPage() {
   const { data, isLoading } = useClientDashboard();
   const { data: me } = useQuery({
@@ -78,6 +166,7 @@ export default function ClientDashboardPage() {
     queryFn: () => apiClient.get<{ lawyer_profile?: { is_verified: boolean } | null }>("/identity/me"),
   });
 
+  const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
   const lawyerProfile = me?.lawyer_profile;
 
   if (isLoading) {
@@ -98,8 +187,12 @@ export default function ClientDashboardPage() {
     );
   }
 
+  const cases = data.cases || (data.case ? [data.case] : []);
+  const currentCase = cases[currentCaseIndex] || null;
+  const currentStats = currentCase?.stats || data.stats;
+
   return (
-    <div className="animate-fade-in-up max-w-3xl mx-auto space-y-9">
+    <div className="animate-fade-in-up max-w-4xl mx-auto space-y-7">
       {/* Greeting */}
       <div>
         <h1 className="font-serif text-4xl font-bold">{data.greeting}.</h1>
@@ -124,42 +217,84 @@ export default function ClientDashboardPage() {
         </div>
       )}
 
-      {/* Your case card (hero) */}
-      {data.case ? (
-        <Link href={`/user/matters/${data.case.id}`} className="block group">
-          <Card className="p-6 sm:p-8 transition-all duration-200 group-hover:border-brand-gold/25 group-hover:shadow-md group-hover:-translate-y-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
-              Your case
-            </p>
-            <h2 className="mt-2 font-serif text-2xl font-bold">
-              {data.case.plain_title}
-            </h2>
-            <p className="mt-2 text-sm text-brand-blue-light/55 leading-relaxed">
-              {data.case.status_text}
-            </p>
-
-            {/* Progress indicator */}
-            <div className="mt-6">
-              <ProgressIndicator currentStage={data.case.stage} />
-            </div>
-
-            {/* Lawyer info */}
-            {data.case.lawyer_name && (
-              <div className="mt-6 flex items-center gap-3 pt-5 border-t border-brand-gold/8">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold font-semibold text-sm">
-                  {data.case.lawyer_name.charAt(0)}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{data.case.lawyer_name}</p>
-                  <p className="text-[11px] text-brand-blue-light/45">Your lawyer</p>
-                </div>
-                <span className="text-xs font-semibold text-brand-gold group-hover:text-brand-gold-light transition-colors">
-                  View case →
-                </span>
+      {/* Quick links — Documents, Messages, Billing (ABOVE case cards) */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { href: currentCase ? `/user/matters/${currentCase.id}` : "/user/matters", icon: FileText, label: "Documents", count: currentStats.documents_count, tab: "documents" },
+          { href: currentCase ? `/user/matters/${currentCase.id}` : "/user/matters", icon: MessageSquare, label: "Messages", count: null, tab: "messages" },
+          { href: currentCase ? `/user/matters/${currentCase.id}` : "/user/matters", icon: Receipt, label: "Billing", count: null, tab: "billing" },
+        ].map(({ href, icon: Icon, label, count, tab }) => (
+          <Link key={label} href={`${href}?tab=${tab}`}>
+            <Card className="flex items-center gap-3 p-4 transition-all hover:border-brand-gold/25 hover:shadow-sm hover:-translate-y-0.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/8">
+                <Icon className="h-4 w-4 text-brand-gold" />
               </div>
-            )}
-          </Card>
-        </Link>
+              <div>
+                <p className="text-sm font-semibold">{label}</p>
+                {count !== null && (
+                  <p className="text-[11px] text-brand-blue-light/45">{count} files</p>
+                )}
+              </div>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Case carousel */}
+      {cases.length > 0 ? (
+        <div>
+          {/* Carousel controls */}
+          {cases.length > 1 && (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
+                {currentCaseIndex + 1} of {cases.length} cases
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentCaseIndex((i) => Math.max(0, i - 1))}
+                  disabled={currentCaseIndex === 0}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/8 disabled:opacity-30 disabled:cursor-default transition-all"
+                  aria-label="Previous case"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentCaseIndex((i) => Math.min(cases.length - 1, i + 1))}
+                  disabled={currentCaseIndex === cases.length - 1}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-brand-gold/20 text-brand-gold hover:bg-brand-gold/8 disabled:opacity-30 disabled:cursor-default transition-all"
+                  aria-label="Next case"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Active case card */}
+          <CaseCarouselCard caseItem={cases[currentCaseIndex]} isActive={true} />
+
+          {/* Dot indicators for multiple cases */}
+          {cases.length > 1 && (
+            <div className="flex justify-center gap-1.5 mt-3">
+              {cases.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setCurrentCaseIndex(i)}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    i === currentCaseIndex
+                      ? "w-4 bg-brand-gold"
+                      : "w-1.5 bg-brand-gold/30 hover:bg-brand-gold/50"
+                  )}
+                  aria-label={`Go to case ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <EmptyState
           icon={FileText}
@@ -168,8 +303,8 @@ export default function ClientDashboardPage() {
         />
       )}
 
-      {/* Next hearing */}
-      {data.case?.next_hearing_date && (
+      {/* Next hearing (from active case) */}
+      {currentCase?.next_hearing_date && (
         <Card className="p-5 border-l-4 border-l-brand-accent">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10">
@@ -180,16 +315,16 @@ export default function ClientDashboardPage() {
                 Next hearing
               </p>
               <p className="mt-1 font-serif text-lg font-bold">
-                {new Date(data.case.next_hearing_date).toLocaleDateString("en-IN", {
+                {new Date(currentCase.next_hearing_date).toLocaleDateString("en-IN", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
                   year: "numeric",
                 })}
               </p>
-              {data.case.next_hearing_description && (
+              {currentCase.next_hearing_description && (
                 <p className="mt-1 text-sm text-brand-blue-light/55">
-                  {data.case.next_hearing_description}
+                  {currentCase.next_hearing_description}
                 </p>
               )}
               <p className="mt-2 text-xs text-brand-blue-light/40 italic">
@@ -199,6 +334,32 @@ export default function ClientDashboardPage() {
           </div>
         </Card>
       )}
+
+      {/* Two-column info row: Case safety + Response time */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="p-4 flex items-start gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-teal/10">
+            <Shield className="h-4 w-4 text-brand-teal" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Your data is secure</p>
+            <p className="text-[11px] text-brand-blue-light/55 leading-relaxed mt-0.5">
+              All documents and communications are encrypted and only shared with your assigned lawyer.
+            </p>
+          </div>
+        </Card>
+        <Card className="p-4 flex items-start gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gold/10">
+            <Bell className="h-4 w-4 text-brand-gold" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Stay updated</p>
+            <p className="text-[11px] text-brand-blue-light/55 leading-relaxed mt-0.5">
+              You&apos;ll receive notifications for hearing dates, document requests, and case updates.
+            </p>
+          </div>
+        </Card>
+      </div>
 
       {/* You need to */}
       {data.pending_tasks.length > 0 && (
@@ -268,47 +429,17 @@ export default function ClientDashboardPage() {
         </div>
       )}
 
-      {/* Quick links */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          { href: data.case ? `/user/matters/${data.case.id}` : "/user/matters", icon: FileText, label: "Documents", count: data.stats.documents_count },
-          { href: data.case ? `/user/matters/${data.case.id}` : "/user/matters", icon: MessageSquare, label: "Messages", count: null },
-          { href: data.case ? `/user/matters/${data.case.id}` : "/user/matters", icon: Receipt, label: "Billing", count: null },
-        ].map(({ href, icon: Icon, label, count }) => (
-          <Link key={label} href={href}>
-            <Card className="flex items-center gap-3 p-4 transition-all hover:border-brand-gold/25 hover:shadow-sm hover:-translate-y-0.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gold/8">
-                <Icon className="h-4 w-4 text-brand-gold" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{label}</p>
-                {count !== null && (
-                  <p className="text-[11px] text-brand-blue-light/45">{count} files</p>
-                )}
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* Quick stats */}
-      {data.case && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Card className="p-4 text-center">
-            <p className="font-serif text-2xl font-bold">{data.stats.hearings_count}</p>
-            <p className="mt-0.5 text-[11px] text-brand-blue-light/45">Hearings so far</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="font-serif text-2xl font-bold">{data.stats.documents_count}</p>
-            <p className="mt-0.5 text-[11px] text-brand-blue-light/45">Documents</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <p className="font-serif text-2xl font-bold">{data.stats.months_running}</p>
-            <p className="mt-0.5 text-[11px] text-brand-blue-light/45">
-              Month{data.stats.months_running !== 1 ? "s" : ""} running
-            </p>
-          </Card>
-        </div>
+      {/* Case progress overview (when no updates/tasks, fills the empty space) */}
+      {data.pending_tasks.length === 0 && data.recent_updates.length === 0 && currentCase && (
+        <Card className="p-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-teal/10 mx-auto mb-3">
+            <TrendingUp className="h-5 w-5 text-brand-teal" />
+          </div>
+          <p className="font-serif text-lg font-bold">Everything&apos;s on track</p>
+          <p className="mt-1 text-sm text-brand-blue-light/55 max-w-sm mx-auto">
+            No pending actions from your side. Your lawyer is handling things. We&apos;ll notify you if anything needs your attention.
+          </p>
+        </Card>
       )}
     </div>
   );

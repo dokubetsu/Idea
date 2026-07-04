@@ -30,3 +30,40 @@ export const createTimelineEvent = (matterId: string, data: { event_type: string
 
 export const askCaseAi = (matterId: string, prompt: string) =>
   apiClient.post<AiChatResponse>(`/docket/matters/${matterId}/ai-chat`, { prompt });
+
+export const nudgeClient = (matterId: string, taskId: string) =>
+  apiClient.post(`/docket/matters/${matterId}/tasks/${taskId}/nudge`, {});
+
+export const scheduleHearing = (
+  matterId: string,
+  data: { hearing_date: string; courtroom?: string; judge?: string; purpose?: string }
+) => apiClient.post(`/docket/matters/${matterId}/hearings`, data);
+
+export const listHearings = (matterId: string) =>
+  apiClient.get<any[]>(`/docket/matters/${matterId}/hearings`);
+
+export const updateHearing = (
+  matterId: string,
+  hearingId: string,
+  data: { status?: string; notes?: string; outcome?: string; next_date?: string }
+) => apiClient.patch(`/docket/matters/${matterId}/hearings/${hearingId}`, data);
+
+export const listDocuments = (matterId: string) =>
+  apiClient.get<any[]>(`/docket/matters/${matterId}/documents`);
+
+export const reviewDocument = (
+  matterId: string,
+  docId: string,
+  data: { status: string; lawyer_note?: string }
+) => apiClient.patch(`/docket/matters/${matterId}/documents/${docId}/review`, data);
+
+export const updateDocumentNote = (matterId: string, docId: string, lawyer_note: string) =>
+  apiClient.patch(`/docket/matters/${matterId}/documents/${docId}/note`, { lawyer_note });
+
+export const listMessages = (matterId: string) =>
+  apiClient.get<any[]>(`/docket/matters/${matterId}/messages`);
+
+export const sendMessage = (
+  matterId: string,
+  data: { content: string; message_type?: string; attachment_path?: string }
+) => apiClient.post(`/docket/matters/${matterId}/messages`, data);

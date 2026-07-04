@@ -146,7 +146,8 @@ def _build_attention_items(db, matters: list, lawyer_id: str) -> list:
             try:
                 hearing_date = date.fromisoformat(str(nha))
                 days_until = (hearing_date - today).days
-                if days_until <= 7 and days_until >= 0:
+                if days_until <= 7 and days_until >= 1:
+                    # Exclude today (days_until == 0) — those already show in "Today in Court"
                     severity = "danger" if days_until <= 3 else "warning"
                     items.append({
                         "id": m["id"],
@@ -266,24 +267,23 @@ def _build_hearing_rows(today_hearings: list, matters: list) -> list:
 # ── Client Dashboard ─────────────────────────────────────────────
 
 def get_client_dashboard(user: CurrentUser) -> dict:
-    """Aggregate dashboard data for a client (single-case v1)."""
+    """Aggregate dashboard data for a client (multi-case)."""
     db = get_db()
     today = _today()
 
-    # Fetch the client's active matter (v1: single case)
+    # Fetch ALL client's active matters (not just one)
     matters_result = db.table("matters").select(
         "id,title,summary,status,category,case_number,court_name,lawyer_id,next_hearing_at,created_at"
     ).eq("user_id", user.id).is_("deleted_at", "null").neq(
         "status", "archived"
-    ).order("created_at", desc=True).limit(1).execute()
+    ).order("created_at", desc=True).execute()
 
-    case_data = None
+    cases_data = []
     pending_tasks = []
     recent_updates = []
-    stats = {"hearings_count": 0, "documents_count": 0, "months_running": 0}
+    total_stats = {"hearings_count": 0, "documents_count": 0, "months_running": 0}
 
-    if matters_result.data:
-        matter = matters_result.data[0]
+    for matter in (matters_result.data or []):
         matter_id = matter["id"]
 
         # Get lawyer info
@@ -298,13 +298,18 @@ def get_client_dashboard(user: CurrentUser) -> dict:
         # Map status to plain stage
         stage = _status_to_stage(matter["status"])
 
+        # Determine status text based on lawyer assignment
+        if not matter.get("lawyer_id"):
+            status_text = "Your case has been filed. We're looking for the right lawyer for you."
+        else:
+            status_text = _stage_to_client_text(stage)
+
         # Next hearing
         next_hearing_date = None
         next_hearing_desc = None
         next_hearing_attend = False
         if matter.get("next_hearing_at"):
             next_hearing_date = matter["next_hearing_at"]
-            # Fetch the actual hearing for description
             nh_result = db.table("hearings").select("purpose,notes").eq(
                 "matter_id", matter_id
             ).gte("hearing_date", today.isoformat()).order(
@@ -313,60 +318,7 @@ def get_client_dashboard(user: CurrentUser) -> dict:
             if nh_result.data:
                 next_hearing_desc = nh_result.data[0].get("purpose")
 
-        # Plain language title
-        plain_title = matter["title"]
-
-        # Status text
-        status_text = _stage_to_client_text(stage)
-
-        case_data = {
-            "id": matter_id,
-            "title": matter["title"],
-            "plain_title": plain_title,
-            "status_text": status_text,
-            "stage": stage,
-            "case_number": matter.get("case_number"),
-            "lawyer_name": lawyer_name,
-            "lawyer_avatar": lawyer_avatar,
-            "next_hearing_date": next_hearing_date,
-            "next_hearing_description": next_hearing_desc,
-            "next_hearing_attend": next_hearing_attend,
-        }
-
-        # Pending tasks for client
-        tasks_result = db.table("case_tasks").select(
-            "id,title,due_date,is_completed"
-        ).eq("matter_id", matter_id).eq("assigned_to", user.id).eq(
-            "is_completed", False
-        ).order("due_date").limit(3).execute()
-        for t in (tasks_result.data or []):
-            is_overdue = False
-            if t.get("due_date"):
-                try:
-                    is_overdue = date.fromisoformat(t["due_date"]) < today
-                except (ValueError, TypeError):
-                    pass
-            pending_tasks.append({
-                "id": t["id"],
-                "title": t["title"],
-                "due_date": t.get("due_date"),
-                "is_overdue": is_overdue,
-            })
-
-        # Recent timeline events (client-visible only)
-        timeline_result = db.table("timeline_events").select(
-            "id,client_description,occurred_at"
-        ).eq("matter_id", matter_id).not_.is_("client_description", "null").order(
-            "occurred_at", desc=True
-        ).limit(5).execute()
-        for ev in (timeline_result.data or []):
-            recent_updates.append({
-                "id": ev["id"],
-                "description": ev["client_description"],
-                "occurred_at": ev["occurred_at"],
-            })
-
-        # Stats
+        # Per-case stats
         hearings_count_result = db.table("hearings").select(
             "id", count="exact"
         ).eq("matter_id", matter_id).execute()
@@ -383,22 +335,85 @@ def get_client_dashboard(user: CurrentUser) -> dict:
             except (ValueError, TypeError):
                 pass
 
-        stats = {
+        case_stats = {
             "hearings_count": hearings_count_result.count or 0,
             "documents_count": docs_count_result.count or 0,
             "months_running": months_running,
         }
 
+        cases_data.append({
+            "id": matter_id,
+            "title": matter["title"],
+            "plain_title": matter["title"],
+            "status_text": status_text,
+            "stage": stage,
+            "case_number": matter.get("case_number"),
+            "court_name": matter.get("court_name"),
+            "category": matter.get("category"),
+            "lawyer_name": lawyer_name,
+            "lawyer_avatar": lawyer_avatar,
+            "next_hearing_date": next_hearing_date,
+            "next_hearing_description": next_hearing_desc,
+            "next_hearing_attend": next_hearing_attend,
+            "stats": case_stats,
+        })
+
+        # Aggregate stats
+        total_stats["hearings_count"] += case_stats["hearings_count"]
+        total_stats["documents_count"] += case_stats["documents_count"]
+        total_stats["months_running"] = max(total_stats["months_running"], months_running)
+
+    # Pending tasks across all matters for client
+    if matters_result.data:
+        matter_ids = [m["id"] for m in matters_result.data]
+        tasks_result = db.table("case_tasks").select(
+            "id,title,due_date,is_completed"
+        ).eq("assigned_to", user.id).eq(
+            "is_completed", False
+        ).in_("matter_id", matter_ids).order("due_date").limit(5).execute()
+        for t in (tasks_result.data or []):
+            is_overdue = False
+            if t.get("due_date"):
+                try:
+                    is_overdue = date.fromisoformat(t["due_date"]) < today
+                except (ValueError, TypeError):
+                    pass
+            pending_tasks.append({
+                "id": t["id"],
+                "title": t["title"],
+                "due_date": t.get("due_date"),
+                "is_overdue": is_overdue,
+            })
+
+    # Recent timeline events (client-visible) across all matters
+    if matters_result.data:
+        matter_ids = [m["id"] for m in matters_result.data]
+        timeline_result = db.table("timeline_events").select(
+            "id,client_description,occurred_at"
+        ).in_("matter_id", matter_ids).not_.is_("client_description", "null").order(
+            "occurred_at", desc=True
+        ).limit(5).execute()
+        for ev in (timeline_result.data or []):
+            recent_updates.append({
+                "id": ev["id"],
+                "description": ev["client_description"],
+                "occurred_at": ev["occurred_at"],
+            })
+
     # Build greeting
     first_name = user.full_name.split(" ")[0] if user.full_name else "there"
+
+    # For backward compat, also set `case` to the first (most recent) case
+    first_case = cases_data[0] if cases_data else None
 
     return {
         "greeting": f"Hello, {first_name}",
         "date_display": today.strftime("%A, %d %B %Y"),
-        "case": case_data,
+        "case": first_case,
+        "cases": cases_data,
         "pending_tasks": pending_tasks,
         "recent_updates": recent_updates,
-        "stats": stats,
+        "stats": total_stats,
     }
 
 
@@ -538,7 +553,12 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
 
     # Stage
     stage = _status_to_stage(matter["status"])
-    status_text = _stage_to_client_text(stage)
+
+    # Determine status text based on lawyer assignment
+    if not matter.get("lawyer_id"):
+        status_text = "Your case has been filed. We're looking for the right lawyer to represent you."
+    else:
+        status_text = _stage_to_client_text(stage)
 
     # Lawyer info
     lawyer_info = None
@@ -546,6 +566,16 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
         lp = db.table("profiles").select("full_name,avatar_url").eq("id", matter["lawyer_id"]).execute()
         if lp.data:
             lawyer_info = {"name": lp.data[0]["full_name"], "avatar": lp.data[0].get("avatar_url")}
+
+    # Case facts (client-facing subset)
+    case_facts = {
+        "case_number": matter.get("case_number"),
+        "court": matter.get("court_name"),
+        "category": matter.get("category"),
+        "filed_date": matter.get("created_at"),
+        "stage": stage,
+        "lawyer_name": lawyer_info["name"] if lawyer_info else None,
+    }
 
     # Next hearing (informational)
     next_hearing = None
@@ -585,7 +615,14 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
         "id,client_description,occurred_at"
     ).eq("matter_id", matter_id).not_.is_("client_description", "null").order(
         "occurred_at", desc=True
-    ).limit(4).execute()
+    ).limit(6).execute()
+
+    # Documents (client-visible)
+    docs_result = db.table("documents").select(
+        "id,name,created_at"
+    ).eq("matter_id", matter_id).neq(
+        "visibility", "lawyer_only"
+    ).order("created_at", desc=True).limit(10).execute()
 
     # Quick stats
     hearings_count = db.table("hearings").select("id", count="exact").eq("matter_id", matter_id).execute()
@@ -606,6 +643,7 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
         "role": "client",
         "stage": stage,
         "status_text": status_text,
+        "case_facts": case_facts,
         "lawyer": lawyer_info,
         "next_hearing": next_hearing,
         "pending_tasks": pending_tasks,
@@ -613,6 +651,7 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
             {"id": e["id"], "description": e["client_description"], "occurred_at": e["occurred_at"]}
             for e in (timeline_result.data or [])
         ],
+        "documents": docs_result.data or [],
         "stats": {
             "hearings_count": hearings_count.count or 0,
             "documents_count": docs_count.count or 0,
@@ -1116,6 +1155,283 @@ def _format_inr(amount: float) -> str:
         return f"₹{lakhs:,.2f}L"
     return f"₹{amount:,.0f}"
 
+
+# ── Nudge Client ────────────────────────────────────────────────
+
+def nudge_client(matter_id: str, task_id: str, user: CurrentUser) -> dict:
+    """Send a nudge to the client about a pending task."""
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+
+    # Verify task exists and is incomplete
+    task_result = db.table("case_tasks").select("id,title,assigned_to").eq(
+        "id", task_id
+    ).eq("matter_id", matter_id).eq("is_completed", False).execute()
+    if not task_result.data:
+        raise NotFound("Task")
+
+    task = task_result.data[0]
+
+    # Create a timeline event recording the nudge
+    db.table("timeline_events").insert({
+        "matter_id": matter_id,
+        "event_type": "nudge",
+        "lawyer_description": f"Sent reminder to client about: {task['title']}",
+        "client_description": f"Your lawyer sent a reminder: {task['title']}",
+        "occurred_at": _now().isoformat(),
+        "metadata": {"task_id": task_id},
+    }).execute()
+
+    return {"nudged": True, "task_id": task_id, "title": task["title"]}
+
+
+# ── Hearings ────────────────────────────────────────────────────
+
+def schedule_hearing(matter_id: str, user: CurrentUser, data: dict) -> dict:
+    """Schedule a hearing for a matter."""
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+
+    payload = {
+        "matter_id": matter_id,
+        "hearing_date": data["hearing_date"],
+        "courtroom": data.get("courtroom"),
+        "judge": data.get("judge"),
+        "purpose": data.get("purpose"),
+        "status": "scheduled",
+    }
+
+    result = db.table("hearings").insert(payload).execute()
+    if not result.data:
+        raise BadRequest("Failed to schedule hearing")
+
+    hearing = result.data[0]
+
+    # Update next_hearing_at on the matter
+    db.table("matters").update(
+        {"next_hearing_at": data["hearing_date"]}
+    ).eq("id", matter_id).execute()
+
+    # Record timeline event
+    hearing_date_fmt = data["hearing_date"][:10]
+    db.table("timeline_events").insert({
+        "matter_id": matter_id,
+        "event_type": "hearing_scheduled",
+        "lawyer_description": f"Hearing scheduled for {hearing_date_fmt}",
+        "client_description": f"A court hearing has been scheduled for {hearing_date_fmt}",
+        "occurred_at": _now().isoformat(),
+        "metadata": {"hearing_id": hearing["id"]},
+    }).execute()
+
+    return hearing
+
+
+# ── Documents (Review) ────────────────────────────────────────────
+
+def list_documents(matter_id: str, user: CurrentUser) -> list:
+    """List documents for a matter, role-filtered."""
+    matter = _get_matter_for_participant(matter_id, user)
+    db = get_db()
+
+    query = db.table("documents").select("*").eq("matter_id", matter_id)
+
+    # Clients don't see lawyer_only docs
+    if user.role == UserRole.USER:
+        query = query.neq("visibility", "lawyer_only")
+
+    result = query.order("created_at", desc=True).execute()
+    return result.data or []
+
+
+def review_document(matter_id: str, doc_id: str, user: CurrentUser, data: dict) -> dict:
+    """Approve or reject a document, notifying the client."""
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+
+    # Update metadata with review status and note
+    doc_result = db.table("documents").select("id,name,metadata").eq("id", doc_id).eq("matter_id", matter_id).execute()
+    if not doc_result.data:
+        raise NotFound("Document")
+
+    doc = doc_result.data[0]
+    meta = doc.get("metadata") or {}
+    meta["review_status"] = data["status"]
+    meta["reviewed_at"] = _now().isoformat()
+    meta["reviewed_by"] = user.id
+    if data.get("lawyer_note"):
+        meta["lawyer_note"] = data["lawyer_note"]
+
+    result = db.table("documents").update({"metadata": meta}).eq("id", doc_id).execute()
+    if not result.data:
+        raise BadRequest("Failed to update document")
+
+    # Create timeline event to notify client
+    action = "approved" if data["status"] == "approved" else "rejected"
+    db.table("timeline_events").insert({
+        "matter_id": matter_id,
+        "event_type": f"document_{action}",
+        "lawyer_description": f"Document '{doc['name']}' {action}",
+        "client_description": f"Your document '{doc['name']}' has been {action} by your lawyer."
+            + (f" Note: {data['lawyer_note']}" if data.get("lawyer_note") else ""),
+        "occurred_at": _now().isoformat(),
+        "metadata": {"document_id": doc_id},
+    }).execute()
+
+    return result.data[0]
+
+
+def update_document_note(matter_id: str, doc_id: str, user: CurrentUser, note: str) -> dict:
+    """Add or update a lawyer's note on a document."""
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+
+    doc_result = db.table("documents").select("id,metadata").eq("id", doc_id).eq("matter_id", matter_id).execute()
+    if not doc_result.data:
+        raise NotFound("Document")
+
+    meta = doc_result.data[0].get("metadata") or {}
+    meta["lawyer_note"] = note
+    meta["note_updated_at"] = _now().isoformat()
+
+    result = db.table("documents").update({"metadata": meta}).eq("id", doc_id).execute()
+    if not result.data:
+        raise BadRequest("Failed to update note")
+    return result.data[0]
+
+
+# ── Hearings (List/Update) ───────────────────────────────────────
+
+def list_hearings(matter_id: str, user: CurrentUser) -> list:
+    """List all hearings for a matter."""
+    _get_matter_for_participant(matter_id, user)
+    db = get_db()
+    result = db.table("hearings").select("*").eq(
+        "matter_id", matter_id
+    ).order("hearing_date", desc=True).execute()
+    return result.data or []
+
+
+def update_hearing(matter_id: str, hearing_id: str, user: CurrentUser, data: dict) -> dict:
+    """Update hearing details (add notes, change status, record outcome)."""
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+
+    # Handle outcome as metadata
+    metadata_update = {}
+    if "outcome" in data:
+        metadata_update["outcome"] = data.pop("outcome")
+    if "next_date" in data:
+        metadata_update["next_date"] = data.pop("next_date")
+
+    update_payload = {k: v for k, v in data.items()}
+    if metadata_update:
+        # Merge into existing hearing notes
+        existing = db.table("hearings").select("notes").eq("id", hearing_id).execute()
+        if existing.data:
+            current_notes = existing.data[0].get("notes") or ""
+            if metadata_update.get("outcome"):
+                outcome_text = f"\n[Outcome: {metadata_update['outcome']}]"
+                update_payload["notes"] = (current_notes + outcome_text).strip()
+
+    result = db.table("hearings").update(update_payload).eq(
+        "id", hearing_id
+    ).eq("matter_id", matter_id).execute()
+    if not result.data:
+        raise NotFound("Hearing")
+
+    # If adjourned with a new date, schedule the next hearing
+    if data.get("status") == "adjourned" and metadata_update.get("next_date"):
+        new_date = metadata_update["next_date"]
+        hearing = result.data[0]
+        db.table("hearings").insert({
+            "matter_id": matter_id,
+            "hearing_date": new_date,
+            "courtroom": hearing.get("courtroom"),
+            "judge": hearing.get("judge"),
+            "purpose": "Adjourned from " + (hearing.get("hearing_date") or "previous")[:10],
+            "status": "scheduled",
+        }).execute()
+        db.table("matters").update({"next_hearing_at": new_date}).eq("id", matter_id).execute()
+
+    # Record timeline event
+    if data.get("status") == "completed":
+        db.table("timeline_events").insert({
+            "matter_id": matter_id,
+            "event_type": "hearing_completed",
+            "lawyer_description": f"Hearing completed" + (f" — {metadata_update.get('outcome', '')}" if metadata_update.get('outcome') else ""),
+            "client_description": "A hearing was completed in your case.",
+            "occurred_at": _now().isoformat(),
+            "metadata": {"hearing_id": hearing_id},
+        }).execute()
+
+    return result.data[0]
+
+
+# ── Messages ────────────────────────────────────────────────────
+
+def list_messages(matter_id: str, user: CurrentUser) -> list:
+    """List chat messages for a matter."""
+    _get_matter_for_participant(matter_id, user)
+    db = get_db()
+
+    # Try to use case_messages table; if it doesn't exist, use timeline_events with event_type="message"
+    try:
+        result = db.table("case_messages").select(
+            "id,matter_id,sender_id,content,message_type,attachment_path,read_at,created_at"
+        ).eq("matter_id", matter_id).order("created_at").execute()
+        messages = result.data or []
+
+        # Mark unread messages as read
+        unread_ids = [
+            m["id"] for m in messages
+            if m.get("sender_id") != user.id and not m.get("read_at")
+        ]
+        if unread_ids:
+            db.table("case_messages").update(
+                {"read_at": _now().isoformat()}
+            ).in_("id", unread_ids).execute()
+
+        return messages
+    except Exception:
+        # Fallback: return empty list if table doesn't exist yet
+        logger.warning("[Docket] case_messages table not available, returning empty")
+        return []
+
+
+def send_message(matter_id: str, user: CurrentUser, data: dict) -> dict:
+    """Send a chat message in a matter."""
+    _get_matter_for_participant(matter_id, user)
+    db = get_db()
+
+    payload = {
+        "matter_id": matter_id,
+        "sender_id": user.id,
+        "content": data["content"],
+        "message_type": data.get("message_type", "text"),
+        "attachment_path": data.get("attachment_path"),
+    }
+
+    try:
+        result = db.table("case_messages").insert(payload).execute()
+        if not result.data:
+            raise BadRequest("Failed to send message")
+        return result.data[0]
+    except Exception as e:
+        # If table doesn't exist, create timeline event as fallback
+        logger.warning("[Docket] case_messages insert failed: %s, using timeline fallback", e)
+        role_label = "Lawyer" if user.role in (UserRole.LAWYER, UserRole.ADMIN) else "Client"
+        db.table("timeline_events").insert({
+            "matter_id": matter_id,
+            "event_type": "message",
+            "lawyer_description": f"[{role_label}] {data['content'][:200]}",
+            "client_description": f"[{role_label}] {data['content'][:200]}",
+            "occurred_at": _now().isoformat(),
+            "metadata": {"sender_id": user.id, "message_type": data.get("message_type", "text")},
+        }).execute()
+        return {"id": "fallback", "content": data["content"], "sender_id": user.id, "created_at": _now().isoformat()}
+
+
+# ── Helpers ──────────────────────────────────────────────────────
 
 def _status_to_stage(status: str) -> str:
     """Map matter_status enum to 5-stage client progress."""

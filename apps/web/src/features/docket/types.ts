@@ -181,11 +181,18 @@ export interface ClientCase {
   status_text: string;
   stage: "filed" | "reply" | "evidence" | "arguments" | "judgment";
   case_number: string | null;
+  court_name: string | null;
+  category: string | null;
   lawyer_name: string | null;
   lawyer_avatar: string | null;
   next_hearing_date: string | null;
   next_hearing_description: string | null;
   next_hearing_attend: boolean;
+  stats?: {
+    hearings_count: number;
+    documents_count: number;
+    months_running: number;
+  };
 }
 
 export interface ClientTask {
@@ -205,6 +212,7 @@ export interface ClientDashboard {
   greeting: string;
   date_display: string;
   case: ClientCase | null;
+  cases: ClientCase[];
   pending_tasks: ClientTask[];
   recent_updates: ClientTimelineEntry[];
   stats: {

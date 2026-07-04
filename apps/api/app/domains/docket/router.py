@@ -18,6 +18,10 @@ from app.domains.docket.schemas import (
     FeeArrangementCreate,
     FeeArrangementUpdate,
     DisbursementCreate,
+    DocumentReview,
+    DocumentUpdateNote,
+    MessageCreate,
+    HearingUpdate,
 )
 
 router = APIRouter(prefix="/docket", tags=["docket"])
@@ -174,6 +178,66 @@ class AskCaseAiRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
 
 
+class ScheduleHearingRequest(BaseModel):
+    hearing_date: str = Field(..., min_length=10)
+    courtroom: str | None = None
+    judge: str | None = None
+    purpose: str | None = None
+
+
 @router.post("/matters/{matter_id}/ai-chat")
 async def ask_case_ai(matter_id: str, body: AskCaseAiRequest, user: Auth):
     return await service.ask_case_ai(matter_id, body.prompt, user)
+
+
+# ── Nudge Client ────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/tasks/{task_id}/nudge", status_code=200)
+async def nudge_client(matter_id: str, task_id: str, user: LawyerVerifiedAuth):
+    return service.nudge_client(matter_id, task_id, user)
+
+
+# ── Hearings ────────────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/hearings", status_code=201)
+async def schedule_hearing(matter_id: str, body: ScheduleHearingRequest, user: LawyerVerifiedAuth):
+    return service.schedule_hearing(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/hearings")
+async def list_hearings(matter_id: str, user: Auth):
+    return service.list_hearings(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/hearings/{hearing_id}")
+async def update_hearing(matter_id: str, hearing_id: str, body: HearingUpdate, user: LawyerVerifiedAuth):
+    return service.update_hearing(matter_id, hearing_id, user, body.model_dump(exclude_none=True))
+
+
+# ── Documents (Review) ──────────────────────────────────────────
+
+@router.get("/matters/{matter_id}/documents")
+async def list_documents(matter_id: str, user: Auth):
+    return service.list_documents(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/documents/{doc_id}/review")
+async def review_document(matter_id: str, doc_id: str, body: DocumentReview, user: LawyerVerifiedAuth):
+    return service.review_document(matter_id, doc_id, user, body.model_dump())
+
+
+@router.patch("/matters/{matter_id}/documents/{doc_id}/note")
+async def update_document_note(matter_id: str, doc_id: str, body: DocumentUpdateNote, user: LawyerVerifiedAuth):
+    return service.update_document_note(matter_id, doc_id, user, body.lawyer_note)
+
+
+# ── Messages ────────────────────────────────────────────────────
+
+@router.get("/matters/{matter_id}/messages")
+async def list_messages(matter_id: str, user: Auth):
+    return service.list_messages(matter_id, user)
+
+
+@router.post("/matters/{matter_id}/messages", status_code=201)
+async def send_message(matter_id: str, body: MessageCreate, user: Auth):
+    return service.send_message(matter_id, user, body.model_dump())

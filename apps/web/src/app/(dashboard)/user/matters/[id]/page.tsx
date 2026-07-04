@@ -1,20 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { FileText, ChevronRight, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import {
+  FileText,
+  ChevronRight,
+  AlertCircle,
+  Clock,
+} from "lucide-react";
 import { Spinner, Card, EmptyState, cn } from "@/shared/components/ui";
 import { useCaseOverview } from "@/features/docket/hooks/useCaseOverview";
 import CaseBreadcrumb from "@/features/docket/components/shared/CaseBreadcrumb";
 import CaseTabs from "@/features/docket/components/shared/CaseTabs";
-import { StubTab } from "@/features/docket/components/shared/StubTab";
 import { StatusHero } from "@/features/docket/components/client/StatusHero";
 import { YourLawyerCard } from "@/features/docket/components/client/YourLawyerCard";
+import ClientDocumentsTab from "@/features/docket/components/client/ClientDocumentsTab";
+import ClientMessagesTab from "@/features/docket/components/client/ClientMessagesTab";
+import ClientBillingTab from "@/features/docket/components/client/ClientBillingTab";
+import ClientTimelineTab from "@/features/docket/components/client/ClientTimelineTab";
+
+function ClientCaseFactsStrip({ facts }: { facts: Record<string, any> }) {
+  const filed = facts.filed_date
+    ? new Date(facts.filed_date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
+
+  return (
+    <Card className="rounded-xl border border-brand-gold/12 bg-base-100 shadow-sm p-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground font-sans">
+            Case no.
+          </span>
+          <span className="block text-[11px] font-sans text-foreground mt-0.5">
+            {facts.case_number || "Pending"}
+          </span>
+        </div>
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground font-sans">
+            Court
+          </span>
+          <span className="block text-[11px] font-sans text-foreground mt-0.5">
+            {facts.court || "—"}
+          </span>
+        </div>
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground font-sans">
+            Type
+          </span>
+          <span className="block text-[11px] font-sans text-foreground mt-0.5">
+            {facts.category || "—"}
+          </span>
+        </div>
+        <div>
+          <span className="block text-[10px] uppercase tracking-wide text-muted-foreground font-sans">
+            Filed
+          </span>
+          <span className="block text-[11px] font-sans text-foreground mt-0.5">
+            {filed}
+          </span>
+        </div>
+      </div>
+      {facts.lawyer_name && (
+        <>
+          <div className="border-t border-dashed border-brand-gold/12 my-3" />
+          <div>
+            <span className="block text-[10px] uppercase tracking-wide text-muted-foreground font-sans">
+              Your lawyer
+            </span>
+            <span className="block text-[11px] font-sans text-foreground mt-0.5">
+              {facts.lawyer_name}
+            </span>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
 
 export default function ClientCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useCaseOverview(id);
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Allow deep-linking to a tab via ?tab= query param
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["overview", "documents", "messages", "billing", "timeline"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   if (isLoading) {
     return (
@@ -36,14 +115,25 @@ export default function ClientCaseDetailPage() {
 
   const overview = data as Record<string, any>;
   const matterId = id;
+  const caseFacts = overview.case_facts || {};
 
   return (
-    <div className="animate-fade-in-up max-w-3xl mx-auto space-y-6">
+    <div className="animate-fade-in-up max-w-5xl mx-auto space-y-6">
       {/* Breadcrumb */}
-      <CaseBreadcrumb role="user" caseName="Your case" />
+      <CaseBreadcrumb role="user" caseName={caseFacts.case_number || "Your case"} />
 
-      {/* Title */}
-      <h1 className="font-serif text-3xl font-bold">Your case</h1>
+      {/* Title + case number */}
+      <div>
+        <h1 className="font-serif text-3xl font-bold">Your case</h1>
+        {caseFacts.case_number && (
+          <p className="mt-1 text-sm text-brand-blue-light/50 font-mono">
+            {caseFacts.case_number}
+          </p>
+        )}
+      </div>
+
+      {/* Case facts strip (like lawyer dashboard) */}
+      {caseFacts && <ClientCaseFactsStrip facts={caseFacts} />}
 
       {/* Tabs */}
       <CaseTabs
@@ -94,12 +184,46 @@ export default function ClientCaseDetailPage() {
               </Card>
             )}
 
+            {/* No next hearing - info card */}
+            {!overview.next_hearing && !overview.lawyer && (
+              <Card className="p-5 border-l-4 border-l-brand-accent/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-accent/70">
+                  Status
+                </p>
+                <p className="mt-1 font-serif text-base font-bold">
+                  Awaiting lawyer assignment
+                </p>
+                <p className="mt-1 text-sm text-brand-blue-light/55">
+                  Once a lawyer is assigned, they will schedule court hearings.
+                </p>
+              </Card>
+            )}
+
             {/* Your lawyer */}
-            {overview.lawyer && (
+            {overview.lawyer ? (
               <YourLawyerCard
                 name={overview.lawyer.name}
                 avatar={overview.lawyer.avatar}
               />
+            ) : (
+              <Card className="p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-blue-light/50">
+                  Your lawyer
+                </p>
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-base-300 border border-brand-gold/10">
+                    <Clock className="h-5 w-5 text-brand-blue-light/40" />
+                  </div>
+                  <div>
+                    <p className="font-serif text-base font-bold text-brand-blue-dark">
+                      Being assigned
+                    </p>
+                    <p className="mt-0.5 text-xs text-brand-blue-light/55">
+                      We&apos;re finding the right lawyer for your case
+                    </p>
+                  </div>
+                </div>
+              </Card>
             )}
           </div>
 
@@ -214,10 +338,17 @@ export default function ClientCaseDetailPage() {
         </div>
       )}
 
-      {activeTab === "billing" && <StubTab tabName="Billing" />}
-      {activeTab === "documents" && <StubTab tabName="Documents" />}
-      {activeTab === "messages" && <StubTab tabName="Messages" />}
-      {activeTab === "timeline" && <StubTab tabName="Timeline" />}
+      {/* Documents tab */}
+      {activeTab === "documents" && <ClientDocumentsTab matterId={matterId} />}
+
+      {/* Timeline tab */}
+      {activeTab === "timeline" && <ClientTimelineTab matterId={matterId} />}
+
+      {/* Billing tab */}
+      {activeTab === "billing" && <ClientBillingTab matterId={matterId} />}
+
+      {/* Messages tab */}
+      {activeTab === "messages" && <ClientMessagesTab matterId={matterId} />}
     </div>
   );
 }
