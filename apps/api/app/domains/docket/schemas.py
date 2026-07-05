@@ -5,8 +5,8 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field
 from typing import Optional
 
-
 # ── Time Entries ─────────────────────────────────────────────────
+
 
 class TimeEntryCreate(BaseModel):
     activity: str = Field(..., min_length=1, max_length=500)
@@ -40,6 +40,7 @@ class TimeEntryOut(BaseModel):
 
 # ── Invoices ─────────────────────────────────────────────────────
 
+
 class InvoiceCreate(BaseModel):
     period_start: Optional[date] = None
     period_end: Optional[date] = None
@@ -50,7 +51,9 @@ class InvoiceCreate(BaseModel):
 
 
 class InvoiceUpdate(BaseModel):
-    status: Optional[str] = Field(None, pattern=r"^(draft|sent|paid|overdue|cancelled)$")
+    status: Optional[str] = Field(
+        None, pattern=r"^(draft|sent|paid|overdue|cancelled)$"
+    )
     work_summary: Optional[str] = None
     due_date: Optional[date] = None
     paid_at: Optional[datetime] = None
@@ -89,6 +92,7 @@ class InvoiceClientOut(BaseModel):
 
 # ── Disbursements ────────────────────────────────────────────────
 
+
 class DisbursementCreate(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     amount_inr: float = Field(..., ge=0)
@@ -107,6 +111,7 @@ class DisbursementOut(BaseModel):
 
 
 # ── Tasks ────────────────────────────────────────────────────────
+
 
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
@@ -138,6 +143,7 @@ class TaskOut(BaseModel):
 
 # ── Timeline Events ──────────────────────────────────────────────
 
+
 class TimelineEventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=100)
     lawyer_description: str = Field(..., min_length=1)
@@ -158,6 +164,7 @@ class TimelineEventOut(BaseModel):
 
 # ── Internal Notes ───────────────────────────────────────────────
 
+
 class NoteCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=10000)
 
@@ -172,6 +179,7 @@ class NoteOut(BaseModel):
 
 
 # ── Fee Arrangements ─────────────────────────────────────────────
+
 
 class FeeArrangementCreate(BaseModel):
     type: str = Field(..., pattern=r"^(hourly|fixed|retainer|contingency)$")
@@ -207,6 +215,7 @@ class FeeArrangementOut(BaseModel):
 
 
 # ── Dashboard Aggregation ────────────────────────────────────────
+
 
 class KpiCard(BaseModel):
     value: str
@@ -294,6 +303,7 @@ class ClientDashboardOut(BaseModel):
 
 # ── Documents ───────────────────────────────────────────────────
 
+
 class DocumentReview(BaseModel):
     status: str = Field(..., pattern=r"^(approved|rejected)$")
     lawyer_note: Optional[str] = Field(None, max_length=2000)
@@ -311,6 +321,7 @@ class DocumentRequestCreate(BaseModel):
 
 # ── Messages ────────────────────────────────────────────────────
 
+
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     message_type: str = Field(default="text", pattern=r"^(text|file|system)$")
@@ -319,17 +330,21 @@ class MessageCreate(BaseModel):
 
 # ── Hearings (expanded) ─────────────────────────────────────────
 
+
 class HearingUpdate(BaseModel):
     courtroom: Optional[str] = None
     judge: Optional[str] = None
     purpose: Optional[str] = None
     notes: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(scheduled|adjourned|completed|cancelled)$")
+    status: Optional[str] = Field(
+        None, pattern=r"^(scheduled|adjourned|completed|cancelled)$"
+    )
     outcome: Optional[str] = None
     next_date: Optional[str] = None  # If adjourned, the new date
 
 
 # ── Billing Aggregation ──────────────────────────────────────────
+
 
 class LawyerBillingOut(BaseModel):
     unbilled_wip: float

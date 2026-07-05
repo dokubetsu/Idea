@@ -122,7 +122,9 @@ async def register_profile(
                 {"id": user_id, "is_verified": False, "is_available": False},
                 on_conflict="id",
             ).execute()
-            log.info("[Identity] Created unverified lawyer_profile for user %s", user_id)
+            log.info(
+                "[Identity] Created unverified lawyer_profile for user %s", user_id
+            )
         except Exception as lp_exc:
             log.warning("Failed to create lawyer_profile for %s: %s", user_id, lp_exc)
 

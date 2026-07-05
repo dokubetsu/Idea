@@ -104,7 +104,14 @@ def _resolve_subscriber(name: str):
 # C2 fix: atomic event + outbox write via single DB transaction RPC
 # ---------------------------------------------------------------------------
 
-def _emit_event_with_outbox(event_str: str, actor_id: str | None, matter_id: str | None, payload: dict, pending_rows: list[dict]) -> None:
+
+def _emit_event_with_outbox(
+    event_str: str,
+    actor_id: str | None,
+    matter_id: str | None,
+    payload: dict,
+    pending_rows: list[dict],
+) -> None:
     """Write the event record and all outbox rows in one DB transaction.
 
     Uses the emit_event_with_outbox() plpgsql function (migration 036) so
@@ -119,7 +126,9 @@ def _emit_event_with_outbox(event_str: str, actor_id: str | None, matter_id: str
             "p_actor_id": actor_id,
             "p_matter_id": matter_id,
             "p_payload": payload,
-            "p_pending": [{"subscriber_name": r["subscriber_name"]} for r in pending_rows],
+            "p_pending": [
+                {"subscriber_name": r["subscriber_name"]} for r in pending_rows
+            ],
         },
     ).execute()
 
@@ -127,6 +136,7 @@ def _emit_event_with_outbox(event_str: str, actor_id: str | None, matter_id: str
 # ---------------------------------------------------------------------------
 # C1 fix: atomic outbox claim using FOR UPDATE SKIP LOCKED
 # ---------------------------------------------------------------------------
+
 
 async def process_pending_notifications() -> None:
     """Claim and process outbox rows.
@@ -334,7 +344,9 @@ def sync_emit(
             pending_rows.append({"subscriber_name": sub_name})
 
         # C2: single atomic write — event + outbox rows in one DB transaction
-        _emit_event_with_outbox(event_str, actor_id, matter_id, payload or {}, pending_rows)
+        _emit_event_with_outbox(
+            event_str, actor_id, matter_id, payload or {}, pending_rows
+        )
 
         if pending_rows:
             # C1: immediate processing with row-level locking
