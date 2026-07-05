@@ -100,13 +100,16 @@ async def register_profile(
     except Exception as e:
         log.warning("Failed to sync role to app_metadata: %s", e)
 
-    # Link any pending matters created by a lawyer using this email
+    # Link any pending matters created by a lawyer using this email.
+    # Require email_verified to prevent an attacker pre-registering with a
+    # victim's address and claiming their cases before real owner signs up.
     user_email = payload.get("email")
-    if user_email:
+    email_verified = payload.get("email_verified", False)
+    if user_email and email_verified:
         try:
             db.table("matters").update({"user_id": user_id}).eq(
                 "client_email", user_email
-            ).execute()
+            ).is_("user_id", "null").execute()  # Only link still-unlinked matters
         except Exception as link_exc:
             log.warning(
                 "Failed to link pending matters for email %s: %s", user_email, link_exc

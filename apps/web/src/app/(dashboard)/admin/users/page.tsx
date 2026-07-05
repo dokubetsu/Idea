@@ -4,10 +4,11 @@ import { ShieldOff } from "lucide-react";
 import { apiClient } from "@/shared/lib/api/client";
 import type { Profile } from "@/entities/types";
 export default function AdminUsersPage() {
-  const [users, setUsers]   = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState("user");
-  const [page, setPage]       = useState(1);
+  const [users, setUsers]       = useState<Profile[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState("user");
+  const [page, setPage]         = useState(1);
+  const [suspendingId, setSuspendingId] = useState<string | null>(null);
   const perPage = 20;
 
   useEffect(() => {
@@ -66,8 +67,29 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {u.is_active && <button type="button" onClick={()=>apiClient.patch(`/admin/users/${u.id}/suspend`,{}).then(()=>setUsers(p=>p.filter(x=>x.id!==u.id)))}
-                      className="rounded-lg p-1.5 hover:bg-red-50 text-red-400 transition-colors"><ShieldOff className="h-3.5 w-3.5"/></button>}
+                    {u.is_active && (
+                      <button
+                        type="button"
+                        disabled={suspendingId === u.id}
+                        onClick={async () => {
+                          if (!window.confirm(`Suspend ${u.full_name}? They will lose access immediately.`)) return;
+                          setSuspendingId(u.id);
+                          try {
+                            await apiClient.patch(`/admin/users/${u.id}/suspend`, {});
+                            setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: false } : x));
+                          } catch (err: any) {
+                            alert("Failed to suspend: " + (err?.message || "Unknown error"));
+                          } finally {
+                            setSuspendingId(null);
+                          }
+                        }}
+                        className="rounded-lg p-1.5 hover:bg-red-50 text-red-400 transition-colors disabled:opacity-50"
+                      >
+                        {suspendingId === u.id
+                          ? <span className="h-3.5 w-3.5 block rounded-full border-2 border-red-300 border-t-red-500 animate-spin" />
+                          : <ShieldOff className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

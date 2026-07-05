@@ -117,6 +117,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "REDIS_URL must be set to a valid Redis URL when APP_ENV is production."
             )
+        if self.APP_ENV == "production" and self.PAYMENT_WEBHOOK_SKIP_VERIFICATION:
+            raise ValueError(
+                "PAYMENT_WEBHOOK_SKIP_VERIFICATION must be False in production. "
+                "Signature verification cannot be disabled in a live environment."
+            )
         return self
 
     @property

@@ -66,7 +66,10 @@ class ChequeBounceCalculator:
         if notice_receipt_date:
             wait_end_date = notice_receipt_date + timedelta(days=15)
             filing_start_date = wait_end_date + timedelta(days=1)
-            raw_deadline = wait_end_date + relativedelta(months=1)
+            # S.142(1)(b): complaint must be filed within one month of the
+            # cause of action arising, which is filing_start_date (the day
+            # AFTER the 15-day grace period), not wait_end_date itself.
+            raw_deadline = filing_start_date + relativedelta(months=1)
             filing_deadline = next_working_day(raw_deadline)
 
             if complaint_filed_date:

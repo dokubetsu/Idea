@@ -61,22 +61,17 @@ class RedisTicketStore:
     def pop_ticket(self, ticket_id: str) -> dict | None:
         if self.use_redis:
             try:
-                val = self.client.get(f"sse_ticket:{ticket_id}")
+                # GETDEL is atomic (Redis 6.2+): reads and removes in one round-trip.
+                # A separate GET then DELETE has a race window where two workers both
+                # read the same ticket before either deletes it.
+                val = self.client.getdel(f"sse_ticket:{ticket_id}")
                 if val:
-                    self.client.delete(f"sse_ticket:{ticket_id}")
                     return json.loads(val)
-                # Check local dict in case of earlier fallback
-                with self._lock:
-                    ticket_data = self.tickets.pop(ticket_id, None)
-                    if ticket_data and time.time() <= ticket_data["expires_at"]:
-                        return ticket_data
                 return None
             except Exception as e:
                 log.error("Failed to pop ticket from Redis: %s", e)
-                with self._lock:
-                    ticket_data = self.tickets.pop(ticket_id, None)
-                    if ticket_data and time.time() <= ticket_data["expires_at"]:
-                        return ticket_data
+                # Do NOT fall back to local dict in a multi-worker deployment.
+                # Returning None fails closed rather than opening a replay window.
                 return None
         else:
             with self._lock:

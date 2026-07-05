@@ -1,14 +1,12 @@
 "use client";
 import { useState } from "react";
 import { CreditCard, CheckCircle2, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
-import { useMatter, matterKeys } from "../hooks/useMatters";
+import { useMatter } from "../hooks/useMatters";
 import { Button, Badge, Card, useToast } from "@/shared/components/ui";
 import { apiClient } from "@/shared/lib/api/client";
-import { useQueryClient } from "@tanstack/react-query";
 
 export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
-  const qc = useQueryClient();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const toast = useToast();
 
@@ -20,24 +18,17 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
   }
 
   const handlePay = async (milestoneId: string) => {
-    // Mock payment gateway flow
     setProcessingId(milestoneId);
-    const randomSuffix = Math.random().toString(36).substring(2, 11);
-    const paymentId = "pay_" + randomSuffix;
-    
-    setTimeout(async () => {
-      try {
-        await apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, {
-          payment_gateway_ref: paymentId
-        });
-        qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
-        toast.success("Payment initiated! Awaiting gateway confirmation.");
-      } catch (e: any) {
-        toast.error("Payment failed: " + e.message);
-      } finally {
-        setProcessingId(null);
-      }
-    }, 1500);
+    try {
+      const { checkout_url } = await apiClient.post<{ checkout_url: string }>(
+        `/matters/${matterId}/milestones/${milestoneId}/initiate-payment`,
+        {}
+      );
+      window.location.href = checkout_url; // Redirect to real payment gateway
+    } catch (e: any) {
+      toast.error("Could not initiate payment: " + (e?.message || "Unknown error"));
+      setProcessingId(null);
+    }
   };
 
   const totalBilled = billableMilestones.reduce((acc, m) => acc + (m.amount_inr || 0), 0);
