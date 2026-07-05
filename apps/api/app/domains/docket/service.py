@@ -7,7 +7,8 @@ import uuid
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 
-from app.shared.database import get_db, get_service_role_db
+from app.domains.docket.schemas import InvoiceCreate
+from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
 from app.shared.exceptions import NotFound, Forbidden, BadRequest
 
@@ -878,7 +879,7 @@ def _client_overview(db, matter: dict, user: CurrentUser, today: date) -> dict:
 
 def get_billing(matter_id: str, user: CurrentUser) -> dict:
     """Get role-filtered billing data."""
-    matter = _get_matter_for_participant(matter_id, user)
+    _get_matter_for_participant(matter_id, user)
     db = get_db()
 
     if user.role in (UserRole.LAWYER, UserRole.ADMIN):
@@ -1095,7 +1096,7 @@ def delete_time_entry(matter_id: str, entry_id: str, user: CurrentUser) -> None:
 # ── CRUD: Invoices ───────────────────────────────────────────────
 
 
-def create_invoice(matter_id: str, user: CurrentUser, data: dict) -> dict:
+def create_invoice(matter_id: str, user: CurrentUser, data: InvoiceCreate) -> dict:
     _ensure_lawyer_on_matter(matter_id, user)
     db = get_db()
 
@@ -1122,8 +1123,8 @@ def create_invoice(matter_id: str, user: CurrentUser, data: dict) -> dict:
 
     # Calculate totals from time entries and disbursements
     subtotal = 0.0
-    time_entry_ids = data.get("time_entry_ids", [])
-    disbursement_ids = data.get("disbursement_ids", [])
+    time_entry_ids = data.time_entry_ids or []
+    disbursement_ids = data.disbursement_ids or []
 
     if time_entry_ids:
         te_result = (
@@ -1152,18 +1153,14 @@ def create_invoice(matter_id: str, user: CurrentUser, data: dict) -> dict:
     invoice_payload = {
         "matter_id": matter_id,
         "invoice_number": invoice_number,
-        "period_start": (
-            data.get("period_start").isoformat() if data.get("period_start") else None
-        ),
-        "period_end": (
-            data.get("period_end").isoformat() if data.get("period_end") else None
-        ),
+        "period_start": (data.period_start.isoformat() if data.period_start else None),
+        "period_end": (data.period_end.isoformat() if data.period_end else None),
         "subtotal_inr": subtotal,
         "gst_percent": gst_percent,
         "gst_amount_inr": gst_amount,
         "total_inr": total,
-        "work_summary": data.get("work_summary"),
-        "due_date": data.get("due_date").isoformat() if data.get("due_date") else None,
+        "work_summary": data.work_summary,
+        "due_date": data.due_date.isoformat() if data.due_date else None,
     }
 
     result = db.table("invoices").insert(invoice_payload).execute()
@@ -1332,7 +1329,7 @@ def create_timeline_event(matter_id: str, user: CurrentUser, data: dict) -> dict
 
 
 def list_timeline_events(matter_id: str, user: CurrentUser) -> list:
-    matter = _get_matter_for_participant(matter_id, user)
+    _get_matter_for_participant(matter_id, user)
     db = get_db()
     result = (
         db.table("timeline_events")
@@ -1769,7 +1766,7 @@ def fulfill_document_request(
     file_bytes: bytes,
 ) -> dict:
     """Client uploads a file to fulfill a lawyer's document request."""
-    matter = _get_matter_for_participant(matter_id, user)
+    _get_matter_for_participant(matter_id, user)
     if user.role == UserRole.LAWYER:
         raise Forbidden("Only the client on this matter can fulfill a document request")
 
@@ -1951,7 +1948,7 @@ def update_hearing(
             {
                 "matter_id": matter_id,
                 "event_type": "hearing_completed",
-                "lawyer_description": f"Hearing completed"
+                "lawyer_description": "Hearing completed"
                 + (
                     f" — {metadata_update.get('outcome', '')}"
                     if metadata_update.get("outcome")

@@ -6,13 +6,17 @@ os.environ.setdefault(
     "SUPABASE_JWT_SECRET", "test_jwt_secret_minimum_32_characters_long"
 )
 
-import pytest
-import pytest_asyncio
-import asyncio
-from typing import AsyncGenerator
-from httpx import AsyncClient, ASGITransport
-from app.main import app
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+import asyncio  # noqa: E402
+from typing import AsyncGenerator  # noqa: E402
+from httpx import AsyncClient, ASGITransport  # noqa: E402
+from app.main import app  # noqa: E402
+from app.shared.dependencies import (  # noqa: E402
+    get_current_user,
+    CurrentUser,
+    UserRole,
+)
 
 
 def pytest_configure(config):

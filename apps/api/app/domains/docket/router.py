@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from app.shared.dependencies import Auth, LawyerVerifiedAuth, UserRole
 from app.shared.exceptions import Forbidden
@@ -94,7 +95,7 @@ async def delete_time_entry(matter_id: str, entry_id: str, user: LawyerVerifiedA
 
 @router.post("/matters/{matter_id}/invoices", status_code=201)
 async def create_invoice(matter_id: str, body: InvoiceCreate, user: LawyerVerifiedAuth):
-    return service.create_invoice(matter_id, user, body.model_dump())
+    return service.create_invoice(matter_id, user, body)
 
 
 @router.get("/matters/{matter_id}/invoices")
@@ -205,9 +206,6 @@ class AiChatRequest(TimelineEventCreate):
     """Reuse for now — will get its own schema."""
 
     pass
-
-
-from pydantic import BaseModel, Field
 
 
 class AskCaseAiRequest(BaseModel):
