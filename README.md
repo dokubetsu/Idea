@@ -88,6 +88,7 @@ apps/api/app/
 │   ├── matters/      ← matter lifecycle, facts CRUD, updates, events
 │   ├── assessment/   ← pluggable AI provider (claude/gemini/mock)
 │   ├── matching/     ← lawyer discovery + contact requests
+│   ├── docket/       ← dashboards, billing, timeline, tasks, AI chat
 │   └── admin/        ← platform stats, verify lawyers, manage users
 └── shared/
     ├── events.py     ← event bus (every state change → events table)
@@ -101,7 +102,15 @@ apps/web/src/
 ├── features/
 │   ├── intake/       ← IntakeWizard (5 steps: describe→facts→assess→confirm→done)
 │   ├── matters/      ← matter list, FactsPanel, timeline hooks
-│   └── matching/     ← lawyer discovery hooks
+│   ├── matching/     ← lawyer discovery hooks
+│   └── docket/       ← lawyer/client dashboards, case detail, billing
+│       ├── api/      ← API client modules (dashboard, overview, billing)
+│       ├── hooks/    ← React Query hooks (useLawyerDashboard, useCaseOverview, etc.)
+│       ├── components/
+│       │   ├── lawyer/ ← Lawyer dashboard + case detail components
+│       │   ├── client/ ← Client dashboard + case detail components
+│       │   └── shared/ ← CaseTabs, ContactBar, CaseBreadcrumb, StubTab
+│       └── types.ts  ← TypeScript types for all docket entities
 ├── shared/
 │   ├── components/
 │   │   ├── ui/       ← Button, Badge, Card, Input, Spinner, EmptyState, etc.
@@ -149,7 +158,53 @@ The platform is fully functional without any AI API key.
 | Matters | `/api/v1/matters` | CRUD · `/facts` · `PATCH /facts/:id` (verify) · `/updates` · `/events` · `/assign` |
 | Assessment | `/api/v1/assessment` | `GET /provider` · `POST /run` |
 | Matching | `/api/v1/matching` | `GET /lawyers` · `POST /lawyers/:id/contact` · `GET /requests/incoming` · `PATCH /requests/:id` |
+| Docket | `/api/v1/docket` | `GET /lawyer/dashboard` · `GET /client/dashboard` · `GET /matters/:id/overview` · `GET /matters/:id/billing` · CRUD for time-entries, invoices, notes, tasks, timeline, fee-arrangement · `POST /matters/:id/ai-chat` |
 | Admin | `/api/v1/admin` | `GET /stats` · `/lawyers/pending` · verify/suspend |
+
+---
+
+## Docket — Lawyer & Client Dashboards
+
+### New routes
+
+| Route | Role | Surface |
+|---|---|---|
+| `/lawyer/dashboard` | lawyer | Lawyer's practice home — KPIs, today's hearings, case grid/table, calendar |
+| `/user/dashboard` | user | Client's single-case home — progress, tasks, updates |
+| `/lawyer/matters/[id]` | lawyer | Case detail (docket) — full workbench with Overview, Billing, stub tabs |
+| `/user/matters/[id]` | user | Case detail (docket) — client's filtered view with progress, tasks, updates |
+
+### Role-projection architecture
+
+The docket uses a **shared case record** projected to two role-filtered views:
+
+1. **Backend serializers**: Every endpoint in `apps/api/app/domains/docket/service.py` checks `user.role` and returns different data shapes. The lawyer sees time entries, internal notes, and full timeline. The client sees invoices (amount only, no hours), tasks, and plain-language timeline events.
+
+2. **RLS enforcement**: Even if the client's UI were compromised, Supabase RLS policies block access:
+   - `time_entries` → lawyer/admin only (no client SELECT policy)
+   - `internal_notes` → lawyer/admin only (no client SELECT policy)
+   - `timeline_events` → client can only SELECT where `client_description IS NOT NULL`
+
+3. **TypeScript types**: `src/features/docket/types.ts` defines separate types per role. The client types (`InvoiceClient`, `ClientBilling`, `ClientDashboard`) do not contain privileged fields at all — making accidental leaks impossible to compile.
+
+### Demo credentials
+
+| Role | Email | Password |
+|---|---|---|
+| Lawyer | `adv.mehta@lead.ai` | `Password123!` |
+| Client (Priya) | `priya.patel@lead.ai` | `Password123!` |
+| Client (Rahul) | `rahul.sharma@lead.ai` | `Password123!` |
+
+After running `supabase db reset` (which loads `seed.sql` + `seed_docket.sql`), log in with either account to see the dashboards populated with realistic data.
+
+### RLS verification
+
+```bash
+# From repo root — requires SUPABASE_URL and SUPABASE_ANON_KEY in env
+npx tsx scripts/verify-rls.ts
+```
+
+The script signs in as the client and verifies that time entries, internal notes, and lawyer-only timeline events are inaccessible.
 
 API docs (dev only): http://localhost:8000/docs
 

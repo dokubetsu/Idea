@@ -73,12 +73,14 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
     }
   }
 
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+
   try {
     const res = await fetch(`${BASE}${V}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...(t ? { Authorization: `Bearer ${t}` } : {}),
         ...init.headers,
       },
@@ -92,7 +94,7 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
         const retryRes = await fetch(`${BASE}${V}${path}`, {
           ...init,
           headers: {
-            "Content-Type": "application/json",
+            ...(isFormData ? {} : { "Content-Type": "application/json" }),
             Authorization: `Bearer ${newToken}`,
             ...init.headers,
           },
@@ -163,8 +165,9 @@ async function request<T>(path: string, init: RequestInit = {}, retries = 2): Pr
 }
 
 export const apiClient = {
-  get:    <T>(p: string, init?: RequestInit)             => request<T>(p, init),
-  post:   <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "POST",  body: JSON.stringify(b) }),
-  patch:  <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "PATCH", body: JSON.stringify(b) }),
-  delete: <T>(p: string, init?: RequestInit)             => request<T>(p, { ...init, method: "DELETE" }),
+  get:      <T>(p: string, init?: RequestInit)             => request<T>(p, init),
+  post:     <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "POST",  body: JSON.stringify(b) }),
+  patch:    <T>(p: string, b: unknown, init?: RequestInit) => request<T>(p, { ...init, method: "PATCH", body: JSON.stringify(b) }),
+  delete:   <T>(p: string, init?: RequestInit)             => request<T>(p, { ...init, method: "DELETE" }),
+  postForm: <T>(p: string, formData: FormData, init?: RequestInit) => request<T>(p, { ...init, method: "POST", body: formData }),
 };

@@ -68,7 +68,7 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = ["./seed.sql", "./seed_docket.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -212,7 +212,7 @@ web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
 [auth.captcha]
-enabled = true
+enabled = false
 provider = "turnstile"
 # SECURITY: Use env(TURNSTILE_SECRET_KEY) — never hardcode the real secret.
 # For local dev with captcha disabled, set TURNSTILE_SECRET_KEY to the Cloudflare

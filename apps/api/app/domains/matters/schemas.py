@@ -99,6 +99,8 @@ class MeetingOut(BaseModel):
     duration_minutes: int
     status: str
     meeting_link: str | None = None
+    mode: str | None = None
+    location: str | None = None
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -109,6 +111,8 @@ class MeetingCreate(BaseModel):
     duration_minutes: int = 30
     notes: str | None = None
     meeting_link: str | None = None
+    mode: str = "video"  # video | phone | in_person
+    location: str | None = None
 
 
 class MeetingUpdate(BaseModel):
@@ -116,6 +120,8 @@ class MeetingUpdate(BaseModel):
     duration_minutes: int | None = None
     status: str | None = None
     meeting_link: str | None = None
+    mode: str | None = None
+    location: str | None = None
     notes: str | None = None
 
 

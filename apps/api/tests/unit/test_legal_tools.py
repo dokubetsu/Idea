@@ -249,14 +249,15 @@ def test_cheque_bounce_calendar_month():
     )
     assert res["filing_valid"] is True
 
-    # Mar 1 should be invalid (expired)
+    # Mar 3 should be invalid because the calendar-month deadline
+    # falls on a Sunday and is extended to the next working day (Mar 2).
     res_expired = ChequeBounceCalculator.calculate(
         cheque_date=cheque,
         dishonour_date=dishonour,
         notice_date=notice,
         notice_receipt_date=receipt,
-        complaint_filed_date=date(2026, 3, 1),
-        current_date=date(2026, 3, 1),
+        complaint_filed_date=date(2026, 3, 3),
+        current_date=date(2026, 3, 3),
     )
     assert res_expired["filing_valid"] is False
 
@@ -278,5 +279,5 @@ def test_cheque_bounce_dynamic_filing_window():
         notice_receipt_date=receipt,
         current_date=date(2026, 4, 12),
     )
-    # total_window_days = 46. days_left = 46 - 31 = 15 days.
-    assert "15 days remaining" in res["reason"]
+    # Filing deadline shifts to Apr 28, leaving 16 days remaining.
+    assert "16 days remaining" in res["reason"]

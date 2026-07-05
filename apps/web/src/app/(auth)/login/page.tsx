@@ -42,7 +42,6 @@ function LoginForm() {
     // where the profile POST was skipped during registration).
     if (token) {
       await apiClient.post("/identity/profile", {
-        role,
         full_name: result.user.user_metadata?.full_name ?? result.user.email ?? "User",
       }, {
         headers: { Authorization: `Bearer ${token}` }

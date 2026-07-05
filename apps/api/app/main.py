@@ -34,6 +34,7 @@ from app.domains.notifications.router import router as notifications_router
 from app.domains.consultations.router import router as consultations_router
 from app.domains.system.router import router as system_router
 from app.domains.practice import practice_router
+from app.domains.docket import docket_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -166,6 +167,7 @@ app.include_router(legal_tools_router, prefix=PREFIX)
 app.include_router(notifications_router, prefix=PREFIX)
 app.include_router(consultations_router, prefix=PREFIX)
 app.include_router(practice_router, prefix=PREFIX)
+app.include_router(docket_router, prefix=PREFIX)
 app.include_router(system_router, prefix=PREFIX)
 
 

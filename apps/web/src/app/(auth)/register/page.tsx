@@ -53,7 +53,6 @@ export default function RegisterPage() {
 
     try {
       await apiClient.post("/identity/profile", {
-        role,
         full_name: data.full_name,
         city: data.city,
         state: data.state,
@@ -66,11 +65,9 @@ export default function RegisterPage() {
       router.replace(`/login?notice=profile-incomplete&email=${encodeURIComponent(data.email)}`);
       return;
     }
-    if (role === "lawyer") {
-      router.replace("/lawyer/pending-verification");
-    } else {
-      router.replace("/user/dashboard");
-    }
+    // All users (including pending lawyers) start on the user dashboard.
+    // The dashboard detects pending lawyer status via lawyer_profile.is_verified.
+    router.replace("/user/dashboard");
   }
 
   return (

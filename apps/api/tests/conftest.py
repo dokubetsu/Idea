@@ -6,13 +6,17 @@ os.environ.setdefault(
     "SUPABASE_JWT_SECRET", "test_jwt_secret_minimum_32_characters_long"
 )
 
-import pytest
-import pytest_asyncio
-import asyncio
-from typing import AsyncGenerator
-from httpx import AsyncClient, ASGITransport
-from app.main import app
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+import asyncio  # noqa: E402
+from typing import AsyncGenerator  # noqa: E402
+from httpx import AsyncClient, ASGITransport  # noqa: E402
+from app.main import app  # noqa: E402
+from app.shared.dependencies import (  # noqa: E402
+    get_current_user,
+    CurrentUser,
+    UserRole,
+)
 
 
 def pytest_configure(config):
@@ -461,7 +465,43 @@ class MockSupabaseClient:
                     "already_exists": False,
                 }
             )
+        if name == "emit_event_with_outbox":
+            pending = self.table("pending_notifications")
 
+            event_type = params.get("p_event_type")
+            actor_id = params.get("p_actor_id")
+            matter_id = params.get("p_matter_id")
+            payload = params.get("p_payload") or {}
+
+            for idx, row in enumerate(params.get("p_pending", [])):
+                pending.data.append(
+                    {
+                        "id": f"pending-{len(pending.data) + idx}",
+                        "event_type": event_type,
+                        "actor_id": actor_id,
+                        "matter_id": matter_id,
+                        "payload": payload,
+                        "subscriber_name": row["subscriber_name"],
+                        "status": "pending",
+                        "attempts": 0,
+                    }
+                )
+
+            return MockRpcBuilder([])
+        if name == "claim_pending_notifications":
+            batch_size = params.get("p_batch_size", 50)
+
+            claimed = []
+
+            for row in self.table("pending_notifications").data:
+                if row.get("status") == "pending":
+                    row["status"] = "processing"
+                    claimed.append(row)
+
+                if len(claimed) >= batch_size:
+                    break
+
+            return MockRpcBuilder(claimed)
         return MockRpcBuilder([])
 
 
