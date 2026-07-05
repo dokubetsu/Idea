@@ -22,7 +22,7 @@ from slowapi import _rate_limit_exceeded_handler
 from app.config import settings
 from app.shared.limiter import limiter
 from app.shared.middleware import RequestTracingMiddleware, request_id_var
-from app.shared.body_size_limit import BodySizeLimitMiddleware
+from app.shared.body_size_limit import BodySizeLimitMiddleware, SizeLimitError
 from app.domains.identity.router import router as identity_router
 from app.domains.intake.router import router as intake_router
 from app.domains.matters.router import router as matters_router
@@ -106,6 +106,11 @@ app = FastAPI(
 # Register rate limiter instance and handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
+
+
+@app.exception_handler(SizeLimitError)
+async def size_limit_handler(request: Request, exc: SizeLimitError) -> JSONResponse:
+    return JSONResponse(status_code=413, content={"detail": "Payload too large"})
 
 
 @app.exception_handler(Exception)
