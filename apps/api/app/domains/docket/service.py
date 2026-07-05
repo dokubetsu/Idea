@@ -1129,19 +1129,25 @@ def create_invoice(matter_id: str, user: CurrentUser, data: InvoiceCreate) -> di
     if time_entry_ids:
         te_result = (
             db.table("time_entries")
-            .select("amount_inr")
+            .select("amount_inr, matter_id")
             .in_("id", time_entry_ids)
             .execute()
         )
+        for te in (te_result.data or []):
+            if te.get("matter_id") != matter_id:
+                raise BadRequest(f"Time entry {te.get('id')} does not belong to this matter")
         subtotal += sum(float(e.get("amount_inr") or 0) for e in (te_result.data or []))
 
     if disbursement_ids:
         disb_result = (
             db.table("disbursements")
-            .select("amount_inr")
+            .select("amount_inr, matter_id")
             .in_("id", disbursement_ids)
             .execute()
         )
+        for disb in (disb_result.data or []):
+            if disb.get("matter_id") != matter_id:
+                raise BadRequest(f"Disbursement {disb.get('id')} does not belong to this matter")
         subtotal += sum(
             float(d.get("amount_inr") or 0) for d in (disb_result.data or [])
         )

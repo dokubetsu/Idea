@@ -66,27 +66,34 @@ export function InviteClientModal({ isOpen, onClose, onSuccess }: InviteClientMo
   async function handleCreateMatter(e: React.FormEvent) {
     e.preventDefault();
     if (!newMatter.title || !newMatter.client_email) return;
-    await createMatter.mutateAsync({
-      title: newMatter.title,
-      client_email: newMatter.client_email,
-      client_phone: newMatter.client_phone || undefined,
-      category: newMatter.category,
-      priority: newMatter.priority,
-      court_name: newMatter.court_name || undefined,
-      case_number: newMatter.case_number || undefined,
-      summary: newMatter.summary
-    });
-    setNewMatter({
-      title: "",
-      client_email: "",
-      client_phone: "",
-      category: "cheque_bounce",
-      priority: "medium",
-      court_name: "",
-      case_number: "",
-      summary: ""
-    });
-    onSuccess();
+    try {
+      await createMatter.mutateAsync({
+        title: newMatter.title,
+        client_email: newMatter.client_email,
+        client_phone: newMatter.client_phone || undefined,
+        category: newMatter.category,
+        priority: newMatter.priority,
+        court_name: newMatter.court_name || undefined,
+        case_number: newMatter.case_number || undefined,
+        summary: newMatter.summary
+      });
+      setNewMatter({
+        title: "",
+        client_email: "",
+        client_phone: "",
+        category: "cheque_bounce",
+        priority: "medium",
+        court_name: "",
+        case_number: "",
+        summary: ""
+      });
+      onSuccess();
+      // Error already shown via toast in hook's onError
+    } catch {
+      // Error toast is handled by the mutation's onError callback.
+      // We intentionally do nothing here so the modal stays open
+      // and the user can correct their input or retry.
+    }
   }
 
   return (
