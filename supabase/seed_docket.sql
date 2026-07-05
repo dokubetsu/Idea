@@ -6,14 +6,114 @@
 
 -- ── Demo Users ──────────────────────────────────────────────────
 
-INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, aud, confirmation_token)
+INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    created_at,
+    updated_at,
+    role,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change
+)
 VALUES
-  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'adv.mehta@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"lawyer"}', '{"full_name":"Adv. A. Mehta"}', 'authenticated', ''),
-  ('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000000', 'priya.patel@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Priya Patel"}', 'authenticated', ''),
-  ('10000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000000', 'rahul.sharma@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Rahul Sharma"}', 'authenticated', ''),
-  ('10000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000000', 'sunita.desai@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Sunita Desai"}', 'authenticated', ''),
-  ('10000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000000', 'vikram.joshi@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Vikram Joshi"}', 'authenticated', ''),
-  ('10000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000000', 'anita.gupta@lead.ai', crypt('Password123!', gen_salt('bf')), now(), now(), now(), 'authenticated', '{"provider":"email","providers":["email"],"role":"user"}', '{"full_name":"Anita Gupta"}', 'authenticated', '')
+(
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'adv.mehta@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"lawyer"}',
+    '{"full_name":"Adv. A. Mehta"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+),
+(
+    '10000000-0000-0000-0000-000000000010',
+    '00000000-0000-0000-0000-000000000000',
+    'priya.patel@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"user"}',
+    '{"full_name":"Priya Patel"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+),
+(
+    '10000000-0000-0000-0000-000000000011',
+    '00000000-0000-0000-0000-000000000000',
+    'rahul.sharma@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"user"}',
+    '{"full_name":"Rahul Sharma"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+),
+(
+    '10000000-0000-0000-0000-000000000012',
+    '00000000-0000-0000-0000-000000000000',
+    'sunita.desai@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"user"}',
+    '{"full_name":"Sunita Desai"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+),
+(
+    '10000000-0000-0000-0000-000000000013',
+    '00000000-0000-0000-0000-000000000000',
+    'vikram.joshi@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"user"}',
+    '{"full_name":"Vikram Joshi"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+),
+(
+    '10000000-0000-0000-0000-000000000014',
+    '00000000-0000-0000-0000-000000000000',
+    'anita.gupta@lead.ai',
+    crypt('Password123!', gen_salt('bf')),
+    now(), now(), now(),
+    'authenticated',
+    '{"provider":"email","providers":["email"],"role":"user"}',
+    '{"full_name":"Anita Gupta"}',
+    'authenticated',
+    '',
+    '',
+    '',
+    ''
+)
 ON CONFLICT (id) DO NOTHING;
 
 -- Profiles

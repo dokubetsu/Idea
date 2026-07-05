@@ -20,6 +20,11 @@ import {
   updateDocumentNote,
   listMessages,
   sendMessage,
+  getDocketDocumentDownloadUrl,
+  listDocumentRequests,
+  createDocumentRequest,
+  cancelDocumentRequest,
+  fulfillDocumentRequest,
 } from "../api/case-overview";
 
 export function useCaseOverview(matterId: string) {
@@ -221,5 +226,72 @@ export function useSendMessage(matterId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["docket", matterId, "messages"] });
     },
+  });
+}
+
+// ── Document Download ───────────────────────────────────────────
+
+export function useDownloadDocument(matterId: string) {
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (docId: string) => getDocketDocumentDownloadUrl(matterId, docId),
+    onSuccess: ({ url }) => {
+      if (typeof window !== "undefined") {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to download document"),
+  });
+}
+
+// ── Document Requests ────────────────────────────────────────────
+
+export function useDocumentRequests(matterId: string) {
+  return useQuery({
+    queryKey: ["docket", matterId, "document-requests"],
+    queryFn: () => listDocumentRequests(matterId),
+    enabled: !!matterId,
+  });
+}
+
+export function useCreateDocumentRequest(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (data: { title: string; description?: string; label: string }) =>
+      createDocumentRequest(matterId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "document-requests"] });
+      toast.success("Document request sent to client");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to request document"),
+  });
+}
+
+export function useCancelDocumentRequest(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (requestId: string) => cancelDocumentRequest(matterId, requestId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "document-requests"] });
+      toast.success("Request cancelled");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to cancel request"),
+  });
+}
+
+export function useFulfillDocumentRequest(matterId: string) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ requestId, file }: { requestId: string; file: File }) =>
+      fulfillDocumentRequest(matterId, requestId, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "document-requests"] });
+      qc.invalidateQueries({ queryKey: ["docket", matterId, "documents"] });
+      toast.success("Document uploaded");
+    },
+    onError: (err: any) => toast.error(err.detail || err.message || "Failed to upload document"),
   });
 }

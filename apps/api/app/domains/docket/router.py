@@ -20,9 +20,11 @@ from app.domains.docket.schemas import (
     DisbursementCreate,
     DocumentReview,
     DocumentUpdateNote,
+    DocumentRequestCreate,
     MessageCreate,
     HearingUpdate,
 )
+from fastapi import UploadFile, File
 
 router = APIRouter(prefix="/docket", tags=["docket"])
 
@@ -229,6 +231,46 @@ async def review_document(matter_id: str, doc_id: str, body: DocumentReview, use
 @router.patch("/matters/{matter_id}/documents/{doc_id}/note")
 async def update_document_note(matter_id: str, doc_id: str, body: DocumentUpdateNote, user: LawyerVerifiedAuth):
     return service.update_document_note(matter_id, doc_id, user, body.lawyer_note)
+
+
+@router.get("/matters/{matter_id}/documents/{doc_id}/download-url")
+async def get_document_download_url(matter_id: str, doc_id: str, user: Auth):
+    return service.get_document_download_url(matter_id, doc_id, user)
+
+
+# ── Document Requests ────────────────────────────────────────────
+
+@router.post("/matters/{matter_id}/document-requests", status_code=201)
+async def create_document_request(matter_id: str, body: DocumentRequestCreate, user: LawyerVerifiedAuth):
+    return service.create_document_request(matter_id, user, body.model_dump())
+
+
+@router.get("/matters/{matter_id}/document-requests")
+async def list_document_requests(matter_id: str, user: Auth):
+    return service.list_document_requests(matter_id, user)
+
+
+@router.patch("/matters/{matter_id}/document-requests/{request_id}/cancel")
+async def cancel_document_request(matter_id: str, request_id: str, user: LawyerVerifiedAuth):
+    return service.cancel_document_request(matter_id, request_id, user)
+
+
+@router.post("/matters/{matter_id}/document-requests/{request_id}/fulfill", status_code=201)
+async def fulfill_document_request(
+    matter_id: str,
+    request_id: str,
+    user: Auth,
+    file: UploadFile = File(...),
+):
+    file_bytes = await file.read()
+    return service.fulfill_document_request(
+        matter_id,
+        request_id,
+        user,
+        filename=file.filename or "document",
+        content_type=file.content_type or "application/octet-stream",
+        file_bytes=file_bytes,
+    )
 
 
 # ── Messages ────────────────────────────────────────────────────

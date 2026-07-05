@@ -747,6 +747,8 @@ async def create_meeting(matter_id: str, body: MeetingCreate, user: Auth):
                     "p_duration_minutes": body.duration_minutes,
                     "p_notes": body.notes,
                     "p_meeting_link": body.meeting_link,
+                    "p_mode": body.mode,
+                    "p_location": body.location,
                 },
             )
             .execute()

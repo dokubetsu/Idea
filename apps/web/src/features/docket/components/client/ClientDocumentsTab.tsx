@@ -1,12 +1,43 @@
 "use client";
 
-import { FileText, Upload, Download, CheckCircle, XCircle, Clock, FileUp } from "lucide-react";
-import { useDocuments } from "@/features/docket/hooks/useCaseOverview";
-import { Card, Badge, Spinner, EmptyState } from "@/shared/components/ui";
+import { useRef, useState } from "react";
+import {
+  FileText,
+  Upload,
+  Download,
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileUp,
+  Loader2,
+  Ban,
+} from "lucide-react";
+import {
+  useDocuments,
+  useDownloadDocument,
+  useDocumentRequests,
+  useFulfillDocumentRequest,
+} from "@/features/docket/hooks/useCaseOverview";
+import { Card, Badge, Button, Spinner, EmptyState } from "@/shared/components/ui";
 
 interface Props {
   matterId: string;
 }
+
+interface DocumentRequestRecord {
+  id: string;
+  title: string;
+  description?: string | null;
+  label: "evidence" | "research" | "other";
+  status: "pending" | "fulfilled" | "cancelled";
+  created_at: string;
+}
+
+const LABEL_TEXT: Record<string, string> = {
+  evidence: "Evidence",
+  research: "Research",
+  other: "Other",
+};
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-IN", {
@@ -44,15 +75,92 @@ function ReviewStatusBadge({ status }: { status?: string }) {
   }
 }
 
+function PendingRequestRow({
+  request,
+  matterId,
+}: {
+  request: DocumentRequestRecord;
+  matterId: string;
+}) {
+  const fulfill = useFulfillDocumentRequest(matterId);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    fulfill.mutate(
+      { requestId: request.id, file },
+      {
+        onSettled: () => {
+          if (inputRef.current) inputRef.current.value = "";
+        },
+      }
+    );
+  };
+
+  return (
+    <Card className="p-3">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-gold/20 bg-brand-gold/8">
+          <FileUp className="h-4 w-4 text-brand-gold" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-brand-blue-dark">{request.title}</p>
+            <Badge tone="muted" className="text-[9px] shrink-0">
+              {LABEL_TEXT[request.label] ?? request.label}
+            </Badge>
+          </div>
+          {request.description && (
+            <p className="mt-0.5 text-[12px] leading-relaxed text-brand-blue-light/60">
+              {request.description}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0">
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-label={`Upload file for ${request.title}`}
+          />
+          <Button
+            size="sm"
+            variant="gold"
+            onClick={() => inputRef.current?.click()}
+            disabled={fulfill.isPending}
+          >
+            {fulfill.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            Upload
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function ClientDocumentsTab({ matterId }: Props) {
   const { data: documents = [], isLoading } = useDocuments(matterId);
+  const { data: requests = [], isLoading: requestsLoading } = useDocumentRequests(matterId);
+  const downloadMutation = useDownloadDocument(matterId);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const sharedDocs = documents.filter(
-    (doc: any) => doc.uploaded_by !== "client"
+  const handleDownload = (docId: string) => {
+    setDownloadingId(docId);
+    downloadMutation.mutate(docId, { onSettled: () => setDownloadingId(null) });
+  };
+
+  const pendingRequests: DocumentRequestRecord[] = (requests as DocumentRequestRecord[]).filter(
+    (r) => r.status === "pending"
   );
-  const myUploads = documents.filter(
-    (doc: any) => doc.uploaded_by === "client"
-  );
+
+  const sharedDocs = documents.filter((doc: any) => !doc.uploaded_by_client);
+  const myUploads = documents.filter((doc: any) => doc.uploaded_by_client);
 
   if (isLoading) {
     return (
@@ -81,6 +189,30 @@ export default function ClientDocumentsTab({ matterId }: Props) {
           </div>
         </div>
       </Card>
+
+      {/* Section: Requested documents */}
+      <section>
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-gold">
+          Requested from you
+        </p>
+
+        {requestsLoading ? (
+          <div className="flex justify-center py-4">
+            <Spinner className="h-4 w-4" />
+          </div>
+        ) : pendingRequests.length === 0 ? (
+          <Card className="flex items-center gap-2 p-3 text-[12px] text-brand-blue-light/50">
+            <Ban className="h-3.5 w-3.5" />
+            No pending document requests right now.
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {pendingRequests.map((req) => (
+              <PendingRequestRow key={req.id} request={req} matterId={matterId} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Section: Documents shared with you */}
       <section>
@@ -114,10 +246,16 @@ export default function ClientDocumentsTab({ matterId }: Props) {
                   </p>
                 </div>
                 <button
+                  onClick={() => handleDownload(doc.id)}
+                  disabled={downloadingId === doc.id}
                   aria-label={`Download ${doc.name}`}
-                  className="shrink-0 rounded-lg p-2 text-brand-blue-light/40 transition-colors hover:bg-brand-gold/10 hover:text-brand-gold"
+                  className="shrink-0 rounded-lg p-2 text-brand-blue-light/40 transition-colors hover:bg-brand-gold/10 hover:text-brand-gold disabled:opacity-40"
                 >
-                  <Download className="h-4 w-4" />
+                  {downloadingId === doc.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
                 </button>
               </Card>
             ))}
@@ -162,6 +300,18 @@ export default function ClientDocumentsTab({ matterId }: Props) {
                       </p>
                     </div>
                     <ReviewStatusBadge status={reviewStatus} />
+                    <button
+                      onClick={() => handleDownload(doc.id)}
+                      disabled={downloadingId === doc.id}
+                      aria-label={`Download ${doc.name}`}
+                      className="shrink-0 rounded-lg p-2 text-brand-blue-light/40 transition-colors hover:bg-brand-gold/10 hover:text-brand-gold disabled:opacity-40"
+                    >
+                      {downloadingId === doc.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Lawyer note shown when rejected */}

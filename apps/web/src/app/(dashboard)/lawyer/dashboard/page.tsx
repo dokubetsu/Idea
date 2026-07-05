@@ -117,7 +117,7 @@ export default function LawyerDashboardPage() {
       )}
 
       {/* Calendar peek */}
-      <CalendarPeek hearingDates={calendarDates} hearingDetails={hearingDetails} />
+      <CalendarPeek hearingDates={calendarDates} hearingDetails={hearingDetails} cases={data.cases} />
     </div>
   );
 }

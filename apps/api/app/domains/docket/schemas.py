@@ -303,6 +303,12 @@ class DocumentUpdateNote(BaseModel):
     lawyer_note: str = Field(..., min_length=1, max_length=2000)
 
 
+class DocumentRequestCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    label: str = Field(default="other", pattern=r"^(evidence|research|other)$")
+
+
 # ── Messages ────────────────────────────────────────────────────
 
 class MessageCreate(BaseModel):

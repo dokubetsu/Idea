@@ -218,9 +218,12 @@ export function useCreateMeeting(matterId: string) {
       duration_minutes?: number;
       notes?: string;
       meeting_link?: string;
+      mode?: "video" | "phone" | "in_person";
+      location?: string;
     }) => apiClient.post(`/matters/${matterId}/meetings`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+      qc.invalidateQueries({ queryKey: ["docket", "lawyer-dashboard"] });
       toast.success("Meeting scheduled successfully");
     },
     onError: (err: any) => {

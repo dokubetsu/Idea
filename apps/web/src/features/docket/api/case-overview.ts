@@ -67,3 +67,30 @@ export const sendMessage = (
   matterId: string,
   data: { content: string; message_type?: string; attachment_path?: string }
 ) => apiClient.post(`/docket/matters/${matterId}/messages`, data);
+
+export const getDocketDocumentDownloadUrl = (matterId: string, docId: string) =>
+  apiClient.get<{ url: string }>(`/docket/matters/${matterId}/documents/${docId}/download-url`);
+
+export const listDocumentRequests = (matterId: string) =>
+  apiClient.get<any[]>(`/docket/matters/${matterId}/document-requests`);
+
+export const createDocumentRequest = (
+  matterId: string,
+  data: { title: string; description?: string; label: string }
+) => apiClient.post(`/docket/matters/${matterId}/document-requests`, data);
+
+export const cancelDocumentRequest = (matterId: string, requestId: string) =>
+  apiClient.patch(`/docket/matters/${matterId}/document-requests/${requestId}/cancel`, {});
+
+export const fulfillDocumentRequest = (
+  matterId: string,
+  requestId: string,
+  file: File
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiClient.postForm(
+    `/docket/matters/${matterId}/document-requests/${requestId}/fulfill`,
+    formData
+  );
+};
