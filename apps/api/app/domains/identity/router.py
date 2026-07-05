@@ -109,7 +109,9 @@ async def register_profile(
         try:
             db.table("matters").update({"user_id": user_id}).eq(
                 "client_email", user_email
-            ).is_("user_id", "null").execute()  # Only link still-unlinked matters
+            ).is_(
+                "user_id", "null"
+            ).execute()  # Only link still-unlinked matters
         except Exception as link_exc:
             log.warning(
                 "Failed to link pending matters for email %s: %s", user_email, link_exc

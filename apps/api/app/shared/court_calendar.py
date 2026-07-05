@@ -11,16 +11,16 @@ NATIONAL_HOLIDAYS = {
     date(2025, 10, 20),
     date(2025, 12, 25),
     # 2026
-    date(2026, 1, 26),   # Republic Day
-    date(2026, 3, 10),   # Maha Shivaratri
-    date(2026, 3, 31),   # Id-ul-Fitr (tentative)
-    date(2026, 4, 2),    # Ram Navami
-    date(2026, 4, 3),    # Good Friday (Easter 2026 = April 5; GF = April 3)
-    date(2026, 4, 14),   # Dr. Ambedkar Jayanti
-    date(2026, 5, 25),   # Buddha Purnima
-    date(2026, 8, 15),   # Independence Day
-    date(2026, 10, 2),   # Gandhi Jayanti
-    date(2026, 10, 9),   # Diwali (tentative)
+    date(2026, 1, 26),  # Republic Day
+    date(2026, 3, 10),  # Maha Shivaratri
+    date(2026, 3, 31),  # Id-ul-Fitr (tentative)
+    date(2026, 4, 2),  # Ram Navami
+    date(2026, 4, 3),  # Good Friday (Easter 2026 = April 5; GF = April 3)
+    date(2026, 4, 14),  # Dr. Ambedkar Jayanti
+    date(2026, 5, 25),  # Buddha Purnima
+    date(2026, 8, 15),  # Independence Day
+    date(2026, 10, 2),  # Gandhi Jayanti
+    date(2026, 10, 9),  # Diwali (tentative)
     date(2026, 11, 19),  # Guru Nanak Jayanti
     date(2026, 12, 25),  # Christmas
 }
