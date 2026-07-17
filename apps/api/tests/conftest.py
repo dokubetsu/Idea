@@ -23,6 +23,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "integration: run integration tests against test Supabase"
     )
+    # Ensure APP_ENV never flips to production during unit tests
+    os.environ.setdefault("APP_ENV", "development")
+    os.environ.setdefault("START_OUTBOX_WORKER", "false")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -37,6 +40,8 @@ def configure_test_database():
         ):
             settings.SUPABASE_URL = settings.SUPABASE_TEST_PROJECT_URL
             settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_TEST_SERVICE_ROLE_KEY
+    if settings.SUPABASE_TEST_ANON_KEY:
+        settings.SUPABASE_ANON_KEY = settings.SUPABASE_TEST_ANON_KEY
 
 
 @pytest.fixture(autouse=True)
@@ -129,8 +134,46 @@ class MockSupabaseTable:
         self._pending_update = data
         return self
 
+    def delete(self, *args, **kwargs):
+        self.queries.clear()
+        self.queries.append(("delete",))
+        self._pending_delete = True
+        return self
+
     def eq(self, column, value):
         self.queries.append(("eq", column, value))
+        return self
+
+    def in_(self, column, values):
+        self.queries.append(("in_", column, values))
+        return self
+
+    def gte(self, column, value):
+        self.queries.append(("gte", column, value))
+        return self
+
+    def lte(self, column, value):
+        self.queries.append(("lte", column, value))
+        return self
+
+    def lt(self, column, value):
+        self.queries.append(("lt", column, value))
+        return self
+
+    def gt(self, column, value):
+        self.queries.append(("gt", column, value))
+        return self
+
+    def is_(self, column, value):
+        self.queries.append(("is_", column, value))
+        return self
+
+    def like(self, column, value):
+        self.queries.append(("like", column, value))
+        return self
+
+    def contains(self, column, value):
+        self.queries.append(("contains", column, value))
         return self
 
     def or_(self, filter_str):
@@ -156,16 +199,52 @@ class MockSupabaseTable:
     def execute(self):
         is_single = any(q[0] == "single" for q in self.queries)
         is_update = any(q[0] == "update" for q in self.queries)
+        is_delete = any(q[0] == "delete" for q in self.queries)
+
+        if is_delete and getattr(self, "_pending_delete", False):
+            eq_filters = []
+            lt_filters = []
+            for query in self.queries:
+                if query[0] == "eq":
+                    eq_filters.append((query[1], query[2]))
+                elif query[0] == "lt":
+                    lt_filters.append((query[1], query[2]))
+            deleted = []
+            remaining = []
+            for row in self.data:
+                match = all(row.get(c) == v for c, v in eq_filters)
+                if match:
+                    for c, v in lt_filters:
+                        if row.get(c) is None or not (row.get(c) < v):
+                            match = False
+                            break
+                if match:
+                    deleted.append(row)
+                else:
+                    remaining.append(row)
+            self.data = remaining
+            self._pending_delete = False
+            self.queries.clear()
+            return MockSupabaseResponse(deleted)
 
         if is_update and getattr(self, "_pending_update", None) is not None:
             # Find the filters
             filters = []
             not_in_filters = []
+            in_filters = []
+            is_filters = []
+            lt_filters = []
             for query in self.queries:
                 if query[0] == "eq":
                     filters.append((query[1], query[2]))
                 elif query[0] == "not_in":
                     not_in_filters.append((query[1], query[2]))
+                elif query[0] == "in_":
+                    in_filters.append((query[1], query[2]))
+                elif query[0] == "is_":
+                    is_filters.append((query[1], query[2]))
+                elif query[0] == "lt":
+                    lt_filters.append((query[1], query[2]))
 
             # Apply update only to rows in self.data matching the filters
             updated_rows = []
@@ -178,6 +257,26 @@ class MockSupabaseTable:
                 if match:
                     for column, values in not_in_filters:
                         if row.get(column) in values:
+                            match = False
+                            break
+                if match:
+                    for column, values in in_filters:
+                        if row.get(column) not in values:
+                            match = False
+                            break
+                if match:
+                    for column, value in is_filters:
+                        # PostgREST is_("col", "null") → SQL IS NULL
+                        if value in ("null", None):
+                            if row.get(column) is not None:
+                                match = False
+                                break
+                        elif row.get(column) != value:
+                            match = False
+                            break
+                if match:
+                    for column, value in lt_filters:
+                        if row.get(column) is None or not (row.get(column) < value):
                             match = False
                             break
                 if match:
@@ -201,6 +300,73 @@ class MockSupabaseTable:
             if query[0] == "eq":
                 column, value = query[1], query[2]
                 data = [row for row in data if row.get(column) == value]
+            elif query[0] == "in_":
+                column, values = query[1], query[2]
+                data = [row for row in data if row.get(column) in values]
+            elif query[0] == "gte":
+                column, value = query[1], query[2]
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and row.get(column) >= value
+                ]
+            elif query[0] == "lte":
+                column, value = query[1], query[2]
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and row.get(column) <= value
+                ]
+            elif query[0] == "lt":
+                column, value = query[1], query[2]
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and row.get(column) < value
+                ]
+            elif query[0] == "gt":
+                column, value = query[1], query[2]
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and row.get(column) > value
+                ]
+            elif query[0] == "is_":
+                column, value = query[1], query[2]
+                if value == "null" or value is None:
+                    data = [row for row in data if row.get(column) is None]
+                else:
+                    data = [row for row in data if row.get(column) == value]
+            elif query[0] == "like":
+                column, pattern = query[1], query[2]
+                import re
+
+                regex_pattern = (
+                    re.escape(pattern).replace(r"\%", ".*").replace(r"\_", ".")
+                )
+                regex = re.compile(f"^{regex_pattern}$", re.IGNORECASE)
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and regex.match(str(row.get(column)))
+                ]
+            elif query[0] == "contains":
+                column, value = query[1], query[2]
+
+                def _contains(row_val, check_val):
+                    if isinstance(row_val, list):
+                        if isinstance(check_val, list):
+                            return all(x in row_val for x in check_val)
+                        return check_val in row_val
+                    elif isinstance(row_val, dict) and isinstance(check_val, dict):
+                        return all(row_val.get(k) == v for k, v in check_val.items())
+                    return row_val == check_val
+
+                data = [
+                    row
+                    for row in data
+                    if row.get(column) is not None and _contains(row.get(column), value)
+                ]
             elif query[0] == "not_in":
                 column, values = query[1], query[2]
                 data = [row for row in data if row.get(column) not in values]
@@ -235,7 +401,15 @@ class MockSupabaseTable:
 class MockSupabaseResponse:
     def __init__(self, data, count=None):
         self.data = data
-        self.count = count or (len(data) if data is not None else 0)
+        if count is not None:
+            self.count = count
+        elif data is None:
+            self.count = 0
+        elif isinstance(data, (list, tuple, dict, str, bytes)):
+            self.count = len(data)
+        else:
+            # scalar RPC results (int/bool/etc.)
+            self.count = 1
 
 
 class MockRpcBuilder:
@@ -405,11 +579,329 @@ class MockSupabaseClient:
                 if row.get("id") == matter_id:
                     found = True
                     current_status = row.get("status", "intake")
-                    row["status"] = params.get("p_new_status")
+                    new_status = params.get("p_new_status")
+                    row["status"] = new_status
+                    if new_status == "matching" and current_status == "active":
+                        row["lawyer_id"] = None
+                        row["assigned_at"] = None
                     break
             if not found:
                 raise Exception("Matter not found")
             return MockRpcBuilder([{"old_status": current_status, "success": True}])
+
+        if name == "return_matter_to_matching":
+            matter_id = params.get("p_matter_id")
+            for row in self.table("matters").data:
+                if row.get("id") == matter_id:
+                    old = row.get("status", "active")
+                    if old in ("resolved", "archived"):
+                        return MockRpcBuilder(
+                            [
+                                {
+                                    "matter_id": matter_id,
+                                    "changed": False,
+                                    "old_status": old,
+                                    "new_status": old,
+                                }
+                            ]
+                        )
+                    prev_lawyer = row.get("lawyer_id")
+                    row["lawyer_id"] = None
+                    row["status"] = "matching"
+                    row["assigned_at"] = None
+                    return MockRpcBuilder(
+                        [
+                            {
+                                "matter_id": matter_id,
+                                "changed": True,
+                                "old_status": old,
+                                "new_status": "matching",
+                                "previous_lawyer_id": prev_lawyer,
+                            }
+                        ]
+                    )
+            raise Exception("Matter not found")
+
+        if name == "matching_accept_rpc":
+            request_id = params.get("p_request_id")
+            req = None
+            for r in self.table("lawyer_requests").data:
+                if r.get("id") == request_id:
+                    req = r
+                    break
+            if not req:
+                raise Exception("Request not found")
+            if req.get("status") != "pending":
+                raise Exception("Request has already been processed")
+            matter_id = req.get("matter_id")
+            if not matter_id:
+                req["status"] = "accepted"
+                return MockRpcBuilder(
+                    [
+                        {
+                            "request_id": request_id,
+                            "status": "accepted",
+                            "matter_id": None,
+                            "matter_assigned": False,
+                        }
+                    ]
+                )
+            matter = None
+            for m in self.table("matters").data:
+                if m.get("id") == matter_id:
+                    matter = m
+                    break
+            if not matter:
+                raise Exception("Matter not found")
+            if matter.get("status") != "matching":
+                raise Exception("This matter is no longer in the matching state")
+            if matter.get("lawyer_id"):
+                raise Exception(
+                    "This matter has already been assigned to another lawyer"
+                )
+            # Lawyer id comes from request target
+            lawyer_id = req.get("lawyer_id")
+            matter["lawyer_id"] = lawyer_id
+            matter["status"] = "active"
+            matter["assigned_at"] = "2026-01-01T00:00:00Z"
+            req["status"] = "accepted"
+            return MockRpcBuilder(
+                [
+                    {
+                        "request_id": request_id,
+                        "status": "accepted",
+                        "matter_id": matter_id,
+                        "matter_assigned": True,
+                        "old_status": "matching",
+                        "new_status": "active",
+                    }
+                ]
+            )
+
+        if name == "mark_consultation_paid":
+            cid = params.get("p_consultation_id")
+            for row in self.table("consultations").data:
+                if row.get("id") == cid:
+                    if row.get("payment_status") == "paid":
+                        return MockRpcBuilder(
+                            [
+                                {
+                                    "consultation_id": cid,
+                                    "payment_status": "paid",
+                                    "already_paid": True,
+                                    "payment_gateway_ref": row.get(
+                                        "payment_gateway_ref"
+                                    ),
+                                }
+                            ]
+                        )
+                    if row.get("package") == "free":
+                        raise Exception("Free consultations do not require payment")
+                    expected = float(row.get("amount_inr") or 0)
+                    actual = float(params.get("p_amount_inr") or 0)
+                    if abs(expected - actual) > 0.02:
+                        raise Exception(
+                            "Payment amount does not match consultation amount"
+                        )
+                    row["payment_status"] = "paid"
+                    row["payment_gateway_ref"] = params.get("p_payment_id")
+                    row["payment_idempotency_key"] = params.get("p_idemp_key")
+                    pay_id = "pay-" + str(params.get("p_payment_id"))
+                    self.table("payments").data.append(
+                        {
+                            "id": pay_id,
+                            "consultation_id": cid,
+                            "user_id": params.get("p_user_id"),
+                            "amount_inr": actual,
+                            "status": "completed",
+                            "payment_id": params.get("p_payment_id"),
+                            "payment_idempotency_key": params.get("p_idemp_key"),
+                        }
+                    )
+                    return MockRpcBuilder(
+                        [
+                            {
+                                "consultation_id": cid,
+                                "payment_status": "paid",
+                                "already_paid": False,
+                                "payment_record_id": pay_id,
+                                "payment_gateway_ref": params.get("p_payment_id"),
+                            }
+                        ]
+                    )
+            raise Exception("Consultation not found")
+
+        if name == "apply_payment_rpc":
+            mid = params.get("p_milestone_id")
+            for row in self.table("matter_milestones").data:
+                if row.get("id") == mid:
+                    if row.get("is_paid"):
+                        out = dict(row)
+                        out["already_paid"] = True
+                        return MockRpcBuilder([out])
+                    row["is_paid"] = True
+                    row["payment_gateway_ref"] = params.get("p_payment_id")
+                    row["payment_idempotency_key"] = params.get("p_idemp_key")
+                    pay_id = "pay-ms-" + str(params.get("p_payment_id"))
+                    amt = params.get("p_amount_inr")
+                    if amt and float(amt) > 0:
+                        self.table("payments").data.append(
+                            {
+                                "id": pay_id,
+                                "milestone_id": mid,
+                                "user_id": params.get("p_user_id"),
+                                "amount_inr": float(amt),
+                                "status": "completed",
+                                "payment_id": params.get("p_payment_id"),
+                                "payment_idempotency_key": params.get("p_idemp_key"),
+                            }
+                        )
+                        row["payment_record_id"] = pay_id
+                    out = dict(row)
+                    out["already_paid"] = False
+                    return MockRpcBuilder([out])
+            raise Exception("Milestone not found")
+
+        if name == "create_invoice_rpc":
+            import hashlib
+            from datetime import datetime, timezone
+
+            matter_id = params.get("p_matter_id")
+            te_ids = params.get("p_time_entry_ids") or []
+            disb_ids = params.get("p_disbursement_ids") or []
+            place = params.get("p_place_of_supply") or "Delhi"
+            supplier = params.get("p_supplier_state") or "Delhi"
+            draw_retainer = params.get("p_draw_retainer", True)
+            subtotal = 0.0
+            for te in self.table("time_entries").data:
+                if te.get("id") in te_ids:
+                    if (
+                        te.get("matter_id") != matter_id
+                        or te.get("status") != "unbilled"
+                    ):
+                        raise Exception(
+                            "One or more time entries are missing, already billed, or not on this matter"
+                        )
+                    subtotal += float(te.get("amount_inr") or 0)
+            for d in self.table("disbursements").data:
+                if d.get("id") in disb_ids:
+                    if d.get("matter_id") != matter_id or d.get("invoice_id"):
+                        raise Exception(
+                            "One or more disbursements are missing, already linked, or not on this matter"
+                        )
+                    subtotal += float(d.get("amount_inr") or 0)
+            inter = place.casefold() != supplier.casefold()
+            gst_amount = round(subtotal * 18 / 100, 2)
+            if inter:
+                cgst, sgst, igst = 0.0, 0.0, gst_amount
+            else:
+                cgst = round(subtotal * 9 / 100, 2)
+                sgst = gst_amount - cgst
+                igst = 0.0
+            total = round(subtotal + gst_amount, 2)
+            inv_num = f"INV-MOCK-{len(self.table('invoices').data) + 1}"
+            irn = hashlib.sha256(f"INV-{inv_num}".encode()).hexdigest()
+            invoice = {
+                "id": f"inv-{len(self.table('invoices').data) + 1}",
+                "matter_id": matter_id,
+                "invoice_number": inv_num,
+                "period_start": params.get("p_period_start"),
+                "period_end": params.get("p_period_end"),
+                "subtotal_inr": subtotal,
+                "gst_percent": 18.0,
+                "gst_amount_inr": gst_amount,
+                "total_inr": total,
+                "work_summary": params.get("p_work_summary"),
+                "due_date": params.get("p_due_date"),
+                "status": "draft",
+                "gstin": "07LEADG1234A1Z5",
+                "hsn_sac": "998211",
+                "place_of_supply": place,
+                "supplier_state": supplier,
+                "cgst_amount_inr": cgst,
+                "sgst_amount_inr": sgst,
+                "igst_amount_inr": igst,
+                "is_inter_state": inter,
+                "irn": irn,
+                "qr_code_data": f"GST-EINVOICE-MOCK-SIGNATURE-DATA-FOR-{inv_num}-IRN-{irn[:16]}",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            self.table("invoices").data.append(invoice)
+            for te in self.table("time_entries").data:
+                if te.get("id") in te_ids:
+                    te["status"] = "billed"
+                    te["invoice_id"] = invoice["id"]
+            for d in self.table("disbursements").data:
+                if d.get("id") in disb_ids:
+                    d["invoice_id"] = invoice["id"]
+            if draw_retainer and total > 0:
+                for fa in self.table("fee_arrangements").data:
+                    if fa.get("matter_id") == matter_id and fa.get("type") == "retainer":
+                        remaining = float(fa.get("retainer_amount") or 0) - float(
+                            fa.get("retainer_used") or 0
+                        )
+                        if remaining > 0:
+                            fa["retainer_used"] = float(
+                                fa.get("retainer_used") or 0
+                            ) + min(remaining, total)
+            return MockRpcBuilder(invoice)
+
+        if name == "mark_invoices_overdue":
+            as_of = params.get("p_as_of")
+            count = 0
+            for inv in self.table("invoices").data:
+                if (
+                    inv.get("status") == "sent"
+                    and inv.get("due_date")
+                    and as_of
+                    and inv["due_date"] < as_of
+                ):
+                    inv["status"] = "overdue"
+                    count += 1
+            return MockRpcBuilder(count)
+
+        if name == "post_retainer_ledger":
+            matter_id = params.get("p_matter_id")
+            entry_type = params.get("p_entry_type")
+            amount = float(params.get("p_amount_inr") or 0)
+            fa = None
+            for row in self.table("fee_arrangements").data:
+                if row.get("matter_id") == matter_id and row.get("type") == "retainer":
+                    fa = row
+                    break
+            if not fa:
+                raise Exception("No retainer fee arrangement for matter")
+            used = float(fa.get("retainer_used") or 0)
+            total = float(fa.get("retainer_amount") or 0)
+            if entry_type == "deposit":
+                fa["retainer_amount"] = total + amount
+            elif entry_type == "drawdown":
+                if total - used < amount:
+                    raise Exception("Insufficient retainer balance")
+                fa["retainer_used"] = used + amount
+            elif entry_type == "refund":
+                if total - used < amount:
+                    raise Exception("Refund exceeds available balance")
+                fa["retainer_amount"] = max(0.0, total - amount)
+            else:
+                fa["retainer_used"] = max(0.0, used + amount)
+            balance = float(fa.get("retainer_amount") or 0) - float(
+                fa.get("retainer_used") or 0
+            )
+            entry = {
+                "id": f"rl-{len(self.table('retainer_ledger').data) + 1}",
+                "matter_id": matter_id,
+                "fee_arrangement_id": fa.get("id"),
+                "entry_type": entry_type,
+                "amount_inr": amount,
+                "balance_after": balance,
+                "invoice_id": params.get("p_invoice_id"),
+                "note": params.get("p_note"),
+                "created_by": params.get("p_created_by"),
+            }
+            self.table("retainer_ledger").data.append(entry)
+            return MockRpcBuilder(entry)
 
         if name == "assign_free_lawyer_rpc":
             consultation_id = params.get("p_consultation_id")
@@ -538,19 +1030,30 @@ def mock_db(request, monkeypatch):
         "app.domains.identity.router.get_service_role_db",
         "app.domains.intake.router.get_db",
         "app.domains.matters.router.get_db",
+        "app.domains.matters.router.get_service_role_db",
         "app.domains.matching.router.get_db",
         "app.domains.admin.router.get_db",
+        # Note: app.domains.consultations.router is shadowed by package export
+        # of the APIRouter named `router`. Patch via sys.modules instead below.
+        "app.domains.consultations.service.get_db",
+        "app.domains.docket.services.billing.get_db",
+        "app.domains.docket.services.helpers.get_db",
         "app.shared.dependencies.get_db",
         "app.domains.legal_tools.router.get_db",
         "app.domains.legal_tools.services.draft.get_db",
         "app.domains.system.router.get_service_role_db",
-        "app.domains.consultations.router.get_db",
-        "app.domains.consultations.service.get_db",
     ):
         try:
             monkeypatch.setattr(path, lambda: client)
         except AttributeError:
             pass
+
+    # Patch the real consultations.router *module* (package attribute shadows it)
+    import sys
+
+    cns_mod = sys.modules.get("app.domains.consultations.router")
+    if cns_mod is not None and hasattr(cns_mod, "get_db"):
+        monkeypatch.setattr(cns_mod, "get_db", lambda: client)
     return client
 
 
@@ -562,14 +1065,48 @@ def mock_user():
 
 
 @pytest_asyncio.fixture
-async def client(mock_user) -> AsyncGenerator[AsyncClient, None]:
+async def client(mock_user, request) -> AsyncGenerator[AsyncClient, None]:
     # Override authentication dependency to use mock user
     app.dependency_overrides[get_current_user] = lambda: mock_user
     from app.domains.notifications.subscriber import init_subscriber
 
     init_subscriber()
+
+    headers = {}
+    is_integration = (
+        "integration" in request.node.keywords or "integration" in request.node.nodeid
+    )
+    if is_integration:
+        from app.config import settings
+        import jwt
+        import datetime
+
+        token = jwt.encode(
+            {
+                "sub": mock_user.id,
+                "role": "authenticated",
+                "aud": "authenticated",
+                "iss": f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1",
+                "exp": int(
+                    (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        + datetime.timedelta(hours=1)
+                    ).timestamp()
+                ),
+                "app_metadata": {
+                    "provider": "email",
+                    "providers": ["email"],
+                    "role": mock_user.role.value,
+                },
+                "user_metadata": {"full_name": mock_user.full_name},
+            },
+            settings.SUPABASE_JWT_SECRET,
+            algorithm="HS256",
+        )
+        headers["Authorization"] = f"Bearer {token}"
+
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test", headers=headers
     ) as ac:
         yield ac
     app.dependency_overrides.clear()

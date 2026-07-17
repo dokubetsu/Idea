@@ -36,7 +36,7 @@ async def start_intake(
     request: Request, body: StartIntakeRequest, user: Auth, response: Response
 ):
     """Step 1: Extract facts from description."""
-    result = await extract_facts(body.title, body.description)
+    result = await extract_facts(body.title, body.description, user_id=user.id)
 
     db = get_db()
     row = (
@@ -88,7 +88,8 @@ async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
     existing = session["extracted_facts"]
     existing["facts"] = [f.model_dump() for f in body.facts]
 
-    updated = (
+    # CAS: only update if still on an allowed step (prevents concurrent step races)
+    result = (
         db.table("intake_sessions")
         .update(
             {
@@ -97,9 +98,12 @@ async def update_facts(session_id: str, body: UpdateFactsRequest, user: Auth):
             }
         )
         .eq("id", session_id)
+        .in_("step", ["facts_review", "assessment"])
         .execute()
-        .data[0]
     )
+    if not result.data:
+        raise BadRequest("Session was modified concurrently. Refresh and try again.")
+    updated = result.data[0]
 
     await emit(
         EventType.INTAKE_FACTS_SAVED,
@@ -131,10 +135,12 @@ async def run_intake_assessment(
             title=facts_data.get("title", ""),
             facts=facts_dict,
             raw_description=session.get("raw_description"),
-        )
+        ),
+        user_id=user.id,
     )
 
-    updated = (
+    # CAS: only advance if still on assessment/confirm
+    result = (
         db.table("intake_sessions")
         .update(
             {
@@ -144,9 +150,12 @@ async def run_intake_assessment(
             }
         )
         .eq("id", session_id)
+        .in_("step", ["assessment", "confirm"])
         .execute()
-        .data[0]
     )
+    if not result.data:
+        raise BadRequest("Session was modified concurrently. Refresh and try again.")
+    updated = result.data[0]
 
     await emit(
         EventType.ASSESSMENT_COMPLETED,
@@ -205,27 +214,9 @@ async def commit_intake(
     category = assessment.get("category") or facts_data.get(
         "detected_category", "other"
     )
-    db_category = {
-        "cheque_bounce": "cheque_bounce",
-        "bank_fraud": "cyber",
-        "tax_dispute": "other",
-        "money_recovery": "other",
-        "other_finance": "other",
-        "product_defect": "consumer",
-        "service_deficiency": "consumer",
-        "ecommerce_dispute": "consumer",
-        "insurance_rejection": "consumer",
-        "medical_negligence": "other",
-        "delayed_possession": "rera",
-        "project_cancellation": "rera",
-        "structural_defects": "rera",
-        "amenities_misrepresentation": "rera",
-        "accident_injury": "motor_vehicles",
-        "accident_death": "motor_vehicles",
-        "mv_insurance_rejection": "motor_vehicles",
-        "hit_and_run": "motor_vehicles",
-        "license_rc_dispute": "motor_vehicles",
-    }.get(category, category)
+    from app.domains.intake.constants import INTAKE_CATEGORY_MAPPING
+
+    db_category = INTAKE_CATEGORY_MAPPING.get(category, category)
     priority = _risk_to_priority(assessment.get("risk_level", "medium"))
 
     fact_rows = []
@@ -397,13 +388,12 @@ def migrate_extracted_facts(ef: dict, row: dict) -> dict:
 
 
 def _get_session(db, session_id: str, user_id: str) -> dict:
-    r = db.table("intake_sessions").select("*").eq("id", session_id).single().execute()
-    if not r.data:
+    res = db.table("intake_sessions").select("*").eq("id", session_id).execute()
+    if not res.data:
         raise NotFound("Intake session")
-    if r.data["user_id"] != user_id:
+    row = res.data[0]
+    if row["user_id"] != user_id:
         raise Forbidden()
-
-    row = r.data
 
     # Enforce 48h expiry check on intake sessions
     expires_at = row.get("expires_at")
@@ -417,7 +407,6 @@ def _get_session(db, session_id: str, user_id: str) -> dict:
                 detail={
                     "error": "session_expired",
                     "message": "This intake session has expired. Please start a new one.",
-                    "expired_at": expires_at,
                 },
             )
 
@@ -441,6 +430,7 @@ def _session_out(row: dict) -> IntakeSessionOut:
         is_committed=row.get("is_committed", False),
         matter_id=row.get("matter_id"),
         created_at=str(row.get("created_at", "")),
+        expires_at=str(row.get("expires_at", "")),
     )
 
 
@@ -451,12 +441,18 @@ def _risk_to_priority(risk: str) -> str:
 
 
 def _format_assessment_update(a: dict) -> str:
-    # FIX E: Coerce budget values to int before using the :, format specifier.
-    # AI providers may return these as strings (e.g. "50000") which would crash
-    # with TypeError: unsupported format character.
+    # Coerce budget values to int before formatting. AI providers may return
+    # these as strings (e.g. "50000") which could cause formatting errors.
     def _fmt_money(val, default: int = 0) -> str:
+        import re
+
         try:
-            return f"{int(float(str(val))):,}"
+            if val is None:
+                return str(default)
+            clean_str = re.sub(r"[^\d.]", "", str(val))
+            if not clean_str:
+                return str(val)
+            return f"{int(float(clean_str)):,}"
         except (TypeError, ValueError):
             return str(val) if val else str(default)
 

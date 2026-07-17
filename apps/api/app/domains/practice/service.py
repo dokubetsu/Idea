@@ -413,20 +413,6 @@ class PracticeService:
         feedback = render_text(matched_choice.get("feedback", ""), facts, player_input)
         citation = matched_choice.get("citation")
 
-        # Check for double submission
-        existing_dec = (
-            db.table("practice_decisions")
-            .select("id")
-            .eq("session_id", session_id)
-            .eq("node_id", current_node_id)
-            .execute()
-        )
-        if existing_dec.data:
-            raise HTTPException(
-                status_code=409,
-                detail="Decision already submitted for this node",
-            )
-
         # Advance node
         new_status = "active"
         completed_at = None

@@ -28,18 +28,19 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = (await headers()).get("x-nonce") ?? "";
-
+  // NOTE: Next.js 15 automatically reads the 'x-nonce' header set by our middleware
+  // and propagates it to all Next.js-managed scripts (hydration, runtime, chunks) during SSR.
+  // We do not need to manually pass the nonce down to our UI component tree or standard Providers.
   return (
     <html lang="en" className={`h-full ${dmSans.variable} ${cormorantGaramond.variable} ${dmMono.variable}`}>
       <body className="min-h-full font-sans antialiased bg-base-100 text-brand-blue-dark">
-        <Providers nonce={nonce}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
 }
 
-function Providers({ children, nonce }: { children: React.ReactNode; nonce: string }) {
+function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <ToastProvider>

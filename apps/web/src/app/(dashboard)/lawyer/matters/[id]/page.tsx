@@ -21,6 +21,7 @@ import DocumentsTab from "@/features/docket/components/lawyer/DocumentsTab";
 import HearingsTab from "@/features/docket/components/lawyer/HearingsTab";
 import CommunicationsTab from "@/features/docket/components/lawyer/CommunicationsTab";
 import BillingTab from "@/features/docket/components/lawyer/BillingTab";
+import { LawyerCaseOverview } from "@/features/docket/types";
 
 export default function LawyerCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +48,7 @@ export default function LawyerCaseDetailPage() {
     );
   }
 
-  const overview = data as Record<string, any>;
+  const overview = data as LawyerCaseOverview;
   const caseFacts = overview.case_facts || {};
   const matterId = id;
 

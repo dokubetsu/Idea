@@ -50,16 +50,37 @@ async def handle_domain_event(
             m_title = m.get("title") or "Unnamed Case"
             c_id = m.get("user_id")
             try:
-                db.table("matters").update(
-                    {"lawyer_id": None, "status": "matching"}
-                ).eq("id", m_id).execute()
+                # Atomic status machine transition (active → matching, clear lawyer)
+                old_status = "active"
+                try:
+                    rpc_res = db.rpc(
+                        "return_matter_to_matching", {"p_matter_id": m_id}
+                    ).execute()
+                    rpc_data = rpc_res.data
+                    if isinstance(rpc_data, list) and rpc_data:
+                        rpc_data = rpc_data[0]
+                    if isinstance(rpc_data, dict):
+                        old_status = rpc_data.get("old_status") or old_status
+                        if not rpc_data.get("changed", True):
+                            continue
+                except Exception as rpc_exc:
+                    log.warning(
+                        "return_matter_to_matching RPC failed for %s (%s); falling back",
+                        m_id,
+                        rpc_exc,
+                    )
+                    db.table("matters").update(
+                        {"lawyer_id": None, "status": "matching"}
+                    ).eq("id", m_id).not_.in_(
+                        "status", ["resolved", "archived"]
+                    ).execute()
 
                 await emit(
                     EventType.MATTER_STATUS_CHANGED,
                     actor_id=actor_id,
                     matter_id=m_id,
                     payload={
-                        "old_status": "active",
+                        "old_status": old_status,
                         "new_status": "matching",
                         "reason": "Lawyer suspended",
                     },

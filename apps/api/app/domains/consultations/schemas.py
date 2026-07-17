@@ -9,6 +9,19 @@ ConsultationStatus = Literal[
 ]
 ConsultationPaymentStatus = Literal["unpaid", "paid", "waived"]
 
+# Package list prices (INR). Free is waived.
+PACKAGE_AMOUNTS_INR: dict[str, float] = {
+    "free": 0.0,
+    "starter": 2999.0,
+    "full": 7999.0,
+}
+
+
+class VerifyConsultationPaymentRequest(BaseModel):
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
+
 
 class ConsultationCreate(BaseModel):
     lawyer_id: str | None = None
@@ -41,6 +54,7 @@ class ConsultationOut(BaseModel):
     sessions_used: int
     status: ConsultationStatus
     payment_status: ConsultationPaymentStatus
+    amount_inr: float | None = 0
     matter_id: str | None = None
     notes: str | None = None
     scheduled_at: datetime | None = None
@@ -50,6 +64,8 @@ class ConsultationOut(BaseModel):
     user_name: str | None = None
     lawyer_name: str | None = None
     idempotency_key: str | None = None
+    payment_order_id: str | None = None
+    payment_gateway_ref: str | None = None
 
 
 class ConsultationPatch(BaseModel):

@@ -1,6 +1,6 @@
 import hmac
 from fastapi import APIRouter, HTTPException, Header
-from app.shared.database import get_service_role_db
+from app.shared import database as shared_database
 from app.config import settings
 from datetime import datetime, timezone, timedelta
 import logging
@@ -8,6 +8,11 @@ import logging
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/system", tags=["System"])
+
+
+def get_service_role_db():
+    """Indirection so tests can patch app.shared.database.get_service_role_db."""
+    return shared_database.get_service_role_db()
 
 
 def verify_cron_secret(secret: str | None) -> None:
@@ -71,8 +76,8 @@ async def process_hearing_reminders(
         if matter.get("lawyer_id"):
             recipients.append(matter["lawyer_id"])
 
-        # C4: Use create_notification() so preferences, delivery channels,
-        # and idempotency are applied (was a direct INSERT before).
+        # Route through create_notification() so that user preferences,
+        # delivery channels, and idempotency logic are applied.
         from app.domains.notifications.service import create_notification
 
         for recipient_id in recipients:
@@ -131,13 +136,12 @@ async def process_weekly_summaries(
     #    get_ai_provider() returns a real BaseAiProvider — supports .generate(system, user) -> str
     from app.shared.ai.registry import get_ai_provider
 
-    ai_provider = await get_ai_provider()
+    # System/cron budget is isolated from end-user daily limits
+    ai_provider = await get_ai_provider(user_id="system:weekly_summaries")
 
-    sent_count = 0
-
-    for m in matters:
+    async def process_matter(m):
         if not m.get("user_id"):
-            continue
+            return False
 
         # Gather non-internal updates in the past week
         updates_res = (
@@ -151,25 +155,19 @@ async def process_weekly_summaries(
 
         updates = updates_res.data or []
         if not updates:
-            continue
+            return False
 
-        # Format events into a readable block
-        events_text = "\n".join(
-            f"- {u['profiles']['full_name']} ({u['created_at'][:10]}): {u['content']}"
-            for u in updates
-            if u.get("profiles")
-        )
+        from app.shared.ai.prompt import PromptBuilder
 
-        # Build prompts and call the provider via the standard BaseAiProvider interface
-        system_prompt = (
-            "You are a helpful legal case assistant. "
-            "Write a brief, friendly 2-3 sentence summary of the case updates provided. "
-            "Address the client directly. Emphasize progress and what happens next."
-        )
-        user_prompt = (
-            f"Case: {m['title']}\n\nUpdates from the past week:\n{events_text}\n\n"
-            "Summarize these updates for the client in 2-3 friendly sentences."
-        )
+        # Build prompts via PromptBuilder with base64 encoding to prevent prompt injection
+        context = {"title": m["title"], "updates": updates}
+        try:
+            system_prompt, user_prompt = PromptBuilder.build(
+                "weekly_summary", context, version="v1"
+            )
+        except Exception as e:
+            log.error("Failed to build weekly summary prompt: %s", e)
+            return False
 
         try:
             # BaseAiProvider.generate(system_prompt, user_prompt) -> str
@@ -183,8 +181,8 @@ async def process_weekly_summaries(
                 "Please check your matter dashboard for details."
             )
 
-        # C4: Use create_notification() so preferences, delivery channels,
-        # and idempotency are applied (was a direct INSERT before).
+        # Route through create_notification() so that user preferences,
+        # delivery channels, and idempotency logic are applied.
         from app.domains.notifications.service import create_notification
 
         create_notification(
@@ -201,8 +199,13 @@ async def process_weekly_summaries(
                 "url": f"/matters/{m['id']}",
             },
         )
+        return True
 
-        sent_count += 1
+    import asyncio
+
+    tasks = [process_matter(m) for m in matters]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    sent_count = sum(1 for r in results if r is True)
 
     log.info("Weekly Summaries Cron: Processed %d summaries.", sent_count)
     return {"status": "success", "summaries_sent": sent_count}
@@ -270,15 +273,54 @@ async def retry_stale_deliveries(
     from app.domains.notifications.worker import trigger_deliveries
     import asyncio
 
-    for notification_id in notification_ids:
-        # Run trigger_deliveries in background
-        asyncio.create_task(trigger_deliveries(db, notification_id))
+    tasks = [
+        trigger_deliveries(db, notification_id) for notification_id in notification_ids
+    ]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     return {
         "status": "success",
         "retried_count": len(stale_deliveries),
         "notifications_count": len(notification_ids),
     }
+
+
+@router.post("/cron/mark-invoices-overdue", status_code=200)
+async def mark_invoices_overdue_cron(
+    x_cron_secret: str | None = Header(default=None, alias="X-Cron-Secret"),
+):
+    """
+    Flip invoices with status=sent and due_date < today to overdue.
+    Schedule daily, e.g. 0 1 * * *
+    """
+    verify_cron_secret(x_cron_secret)
+    db = get_service_role_db()
+    today = datetime.now(timezone.utc).date().isoformat()
+    try:
+        res = db.rpc("mark_invoices_overdue", {"p_as_of": today}).execute()
+        raw = res.data
+        if isinstance(raw, int):
+            count = raw
+        elif isinstance(raw, list) and raw:
+            count = int(raw[0] if not isinstance(raw[0], dict) else raw[0].get("count", 0))
+        elif isinstance(raw, dict):
+            count = int(raw.get("count", 0))
+        else:
+            count = int(raw or 0)
+    except Exception as e:
+        log.warning("mark_invoices_overdue RPC failed (%s); using fallback", e)
+        # Fallback: multi-step update
+        result = (
+            db.table("invoices")
+            .update({"status": "overdue"})
+            .eq("status", "sent")
+            .lt("due_date", today)
+            .execute()
+        )
+        count = len(result.data) if result.data else 0
+
+    log.info("Invoice overdue cron: marked %s invoice(s)", count)
+    return {"status": "success", "invoices_marked_overdue": count}
 
 
 @router.get("/features")

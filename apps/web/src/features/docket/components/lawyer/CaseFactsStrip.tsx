@@ -5,16 +5,16 @@ import { Card } from "@/shared/components/ui";
 interface Plaintiff {
   name: string;
   contact?: {
-    phone?: string;
-    city?: string;
-  };
+    phone?: string | null;
+    city?: string | null;
+  } | null;
 }
 
 interface CaseFacts {
-  case_number: string;
-  court: string;
+  case_number: string | null;
+  court: string | null;
   category: string;
-  filed_date: string;
+  filed_date: string | null;
   wip: number;
   plaintiff: Plaintiff;
 }

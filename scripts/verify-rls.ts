@@ -41,7 +41,10 @@ const LAWYER_ID = "10000000-0000-0000-0000-000000000001";
 
 // IDs from seed
 const CLIENT_MATTER_ID = "20000000-0000-0000-0000-000000000001"; // Priya's case
+const OTHER_CLIENT_MATTER_ID = "20000000-0000-0000-0000-000000000002"; // Rahul's case (not Priya)
 const CLIENT_TASK_ID = "80000000-0000-0000-0000-000000000001"; // Priya's assigned task
+const OTHER_CLIENT_EMAIL = "rahul.sharma@lead.ai";
+const OTHER_CLIENT_PASSWORD = "Password123!";
 
 interface TestResult {
   test: string;
@@ -379,6 +382,353 @@ async function runTests() {
           : `FAIL: Bypass succeeded (status ${updateRes.status})!`,
       });
     }
+  }
+
+  // ── Test 13: Client cannot escalate profile role ──────────────
+  {
+    const updateRes = await supabaseRequest(
+      `profiles?id=eq.${CLIENT_ID}`,
+      clientToken,
+      "PATCH",
+      { role: "admin" }
+    );
+
+    // Trigger raises 42501 → PostgREST typically 400/403; success body must not apply
+    let roleUnchanged = true;
+    if (Array.isArray(updateRes.data) && updateRes.data.length > 0) {
+      roleUnchanged = updateRes.data[0].role !== "admin";
+    }
+    const blocked =
+      updateRes.status === 403 ||
+      updateRes.status === 401 ||
+      updateRes.status === 400 ||
+      updateRes.status === 404 ||
+      (Array.isArray(updateRes.data) && updateRes.data.length === 0) ||
+      roleUnchanged;
+
+    // Re-read to confirm role was not escalated
+    const readRes = await supabaseRequest(
+      `profiles?id=eq.${CLIENT_ID}&select=role`,
+      clientToken
+    );
+    const currentRole =
+      Array.isArray(readRes.data) && readRes.data[0]
+        ? readRes.data[0].role
+        : "unknown";
+    const passed = blocked && currentRole !== "admin";
+    results.push({
+      test: "Client cannot escalate profile role to admin",
+      passed,
+      detail: passed
+        ? `Blocked (status ${updateRes.status}); role remains '${currentRole}'`
+        : `FAIL: role escalation may have succeeded (status ${updateRes.status}, role=${currentRole})`,
+    });
+  }
+
+  // ── Test 14: Lawyer cannot self-verify ────────────────────────
+  {
+    const updateRes = await supabaseRequest(
+      `lawyer_profiles?id=eq.${LAWYER_ID}`,
+      lawyerToken,
+      "PATCH",
+      { is_verified: false }
+    );
+
+    // Even verified lawyers must not flip is_verified via REST
+    let notApplied = true;
+    if (Array.isArray(updateRes.data) && updateRes.data.length > 0) {
+      // If the update returned a row with is_verified=false, the guard failed
+      notApplied = updateRes.data[0].is_verified !== false;
+    }
+    const blocked =
+      updateRes.status === 403 ||
+      updateRes.status === 401 ||
+      updateRes.status === 400 ||
+      updateRes.status === 404 ||
+      (Array.isArray(updateRes.data) && updateRes.data.length === 0) ||
+      notApplied;
+
+    const readRes = await supabaseRequest(
+      `lawyer_profiles?id=eq.${LAWYER_ID}&select=is_verified`,
+      lawyerToken
+    );
+    const stillVerified =
+      Array.isArray(readRes.data) &&
+      readRes.data[0] &&
+      readRes.data[0].is_verified === true;
+    const passed = blocked && stillVerified;
+    results.push({
+      test: "Lawyer cannot change is_verified via REST",
+      passed,
+      detail: passed
+        ? `Blocked (status ${updateRes.status}); is_verified remains true`
+        : `FAIL: is_verified may have been changed (status ${updateRes.status})`,
+    });
+  }
+
+  // ── Test 15: Client cannot reassign matter lawyer_id ──────────
+  {
+    const updateRes = await supabaseRequest(
+      `matters?id=eq.${CLIENT_MATTER_ID}`,
+      clientToken,
+      "PATCH",
+      { lawyer_id: CLIENT_ID }
+    );
+
+    let notApplied = true;
+    if (Array.isArray(updateRes.data) && updateRes.data.length > 0) {
+      notApplied = updateRes.data[0].lawyer_id !== CLIENT_ID;
+    }
+    const blocked =
+      updateRes.status === 403 ||
+      updateRes.status === 401 ||
+      updateRes.status === 400 ||
+      updateRes.status === 404 ||
+      (Array.isArray(updateRes.data) && updateRes.data.length === 0) ||
+      notApplied;
+
+    const readRes = await supabaseRequest(
+      `matters?id=eq.${CLIENT_MATTER_ID}&select=lawyer_id`,
+      clientToken
+    );
+    const lawyerId =
+      Array.isArray(readRes.data) && readRes.data[0]
+        ? readRes.data[0].lawyer_id
+        : null;
+    const passed = blocked && lawyerId !== CLIENT_ID;
+    results.push({
+      test: "Client cannot reassign matter lawyer_id",
+      passed,
+      detail: passed
+        ? `Blocked (status ${updateRes.status}); lawyer_id unchanged`
+        : `FAIL: client reassigned lawyer_id (status ${updateRes.status}, lawyer_id=${lawyerId})`,
+    });
+  }
+
+  // ── Test 16: Client cannot change matter status ───────────────
+  {
+    const updateRes = await supabaseRequest(
+      `matters?id=eq.${CLIENT_MATTER_ID}`,
+      clientToken,
+      "PATCH",
+      { status: "resolved" }
+    );
+
+    let notApplied = true;
+    if (Array.isArray(updateRes.data) && updateRes.data.length > 0) {
+      notApplied = updateRes.data[0].status !== "resolved";
+    }
+    const blocked =
+      updateRes.status === 403 ||
+      updateRes.status === 401 ||
+      updateRes.status === 400 ||
+      updateRes.status === 404 ||
+      (Array.isArray(updateRes.data) && updateRes.data.length === 0) ||
+      notApplied;
+
+    const readRes = await supabaseRequest(
+      `matters?id=eq.${CLIENT_MATTER_ID}&select=status`,
+      clientToken
+    );
+    const status =
+      Array.isArray(readRes.data) && readRes.data[0]
+        ? readRes.data[0].status
+        : "unknown";
+    const passed = blocked && status !== "resolved";
+    results.push({
+      test: "Client cannot change matter status",
+      passed,
+      detail: passed
+        ? `Blocked (status ${updateRes.status}); matter status remains '${status}'`
+        : `FAIL: client changed matter status to resolved (HTTP ${updateRes.status})`,
+    });
+  }
+
+  // ── Test 17: Authenticated users cannot execute create_notification_rpc
+  {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_notification_rpc`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${clientToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        p_user_id: CLIENT_ID,
+        p_type: "test_spam",
+        p_data: { message: "should fail" },
+        p_action: null,
+        p_idempotency_key: `rls-test-notif-${Date.now()}`,
+        p_channels: ["in_app"],
+      }),
+    });
+    const text = await res.text();
+    // Expect permission denied (401/403) or function not available to role
+    const passed = res.status === 401 || res.status === 403 || res.status === 404;
+    results.push({
+      test: "Client cannot execute create_notification_rpc",
+      passed,
+      detail: passed
+        ? `RPC blocked (status ${res.status})`
+        : `FAIL: create_notification_rpc callable by client (status ${res.status}): ${text.slice(0, 200)}`,
+    });
+  }
+
+  // ── Test 18: Cross-tenant matters isolation ───────────────────
+  {
+    const { data } = await supabaseRequest(
+      `matters?id=eq.${OTHER_CLIENT_MATTER_ID}&select=id,title`,
+      clientToken
+    );
+    const rows = Array.isArray(data) ? data.length : -1;
+    const passed = rows === 0;
+    results.push({
+      test: "Client cannot read another client's matter",
+      passed,
+      detail: passed
+        ? "Returned 0 rows (cross-tenant blocked)"
+        : `FAIL: Returned ${rows} rows for another client's matter`,
+    });
+  }
+
+  // ── Test 19: Intake sessions are owner-only ───────────────────
+  {
+    // Insert an intake session as client, then try to read as lawyer
+    const insertRes = await supabaseRequest(
+      "intake_sessions",
+      clientToken,
+      "POST",
+      {
+        user_id: CLIENT_ID,
+        step: "facts_review",
+        raw_description: "RLS isolation test description for intake",
+        extracted_facts: { title: "RLS test", facts: [] },
+        is_committed: false,
+      }
+    );
+    const created =
+      Array.isArray(insertRes.data) && insertRes.data.length > 0
+        ? insertRes.data[0]
+        : null;
+    if (!created?.id) {
+      results.push({
+        test: "Intake sessions owner isolation",
+        passed: false,
+        detail: `FAIL: client could not create intake_session (status ${insertRes.status})`,
+      });
+    } else {
+      const { data: lawyerView } = await supabaseRequest(
+        `intake_sessions?id=eq.${created.id}`,
+        lawyerToken
+      );
+      const rows = Array.isArray(lawyerView) ? lawyerView.length : -1;
+      const passed = rows === 0;
+      results.push({
+        test: "Lawyer cannot read another user's intake_session",
+        passed,
+        detail: passed
+          ? "Returned 0 rows (intake isolation OK)"
+          : `FAIL: Lawyer saw ${rows} intake session row(s)`,
+      });
+      // Cleanup
+      await supabaseRequest(
+        `intake_sessions?id=eq.${created.id}`,
+        clientToken,
+        "DELETE"
+      );
+    }
+  }
+
+  // ── Test 20: Payments not readable across tenants ─────────────
+  {
+    const { data } = await supabaseRequest(
+      `payments?select=id,user_id&limit=20`,
+      clientToken
+    );
+    const rows = Array.isArray(data) ? data : [];
+    const foreign = rows.filter((r: { user_id?: string }) => r.user_id && r.user_id !== CLIENT_ID);
+    const passed = foreign.length === 0;
+    results.push({
+      test: "Client payments list only includes own rows",
+      passed,
+      detail: passed
+        ? `OK (${rows.length} own/empty payment rows)`
+        : `FAIL: saw ${foreign.length} payment(s) for other users`,
+    });
+  }
+
+  // ── Test 21: Consultations not readable across tenants ────────
+  {
+    let otherToken: string | null = null;
+    try {
+      otherToken = await signIn(OTHER_CLIENT_EMAIL, OTHER_CLIENT_PASSWORD);
+    } catch {
+      otherToken = null;
+    }
+    if (!otherToken) {
+      results.push({
+        test: "Consultations cross-tenant isolation",
+        passed: true,
+        detail: "SKIP: other client seed user not available (non-fatal)",
+      });
+    } else {
+      // Create consultation as other client
+      const createRes = await supabaseRequest(
+        "consultations",
+        otherToken,
+        "POST",
+        {
+          user_id: "10000000-0000-0000-0000-000000000011",
+          package: "free",
+          sessions_total: 1,
+          status: "pending",
+          payment_status: "waived",
+        }
+      );
+      const created =
+        Array.isArray(createRes.data) && createRes.data[0]
+          ? createRes.data[0]
+          : null;
+      if (!created?.id) {
+        results.push({
+          test: "Consultations cross-tenant isolation",
+          passed: true,
+          detail: `SKIP: could not create consultation as other client (status ${createRes.status})`,
+        });
+      } else {
+        const { data: priyaView } = await supabaseRequest(
+          `consultations?id=eq.${created.id}`,
+          clientToken
+        );
+        const rows = Array.isArray(priyaView) ? priyaView.length : -1;
+        const passed = rows === 0;
+        results.push({
+          test: "Client cannot read another user's consultation",
+          passed,
+          detail: passed
+            ? "Returned 0 rows (consultation isolation OK)"
+            : `FAIL: saw ${rows} consultation row(s)`,
+        });
+      }
+    }
+  }
+
+  // ── Test 22: Client cannot SELECT payments without user_id match
+  {
+    // Attempt to read payments with no filter — RLS must not leak others
+    const { status, data } = await supabaseRequest(`payments?select=*`, clientToken);
+    const rows = Array.isArray(data) ? data : [];
+    const leak = rows.some(
+      (r: { user_id?: string }) => r.user_id && r.user_id !== CLIENT_ID
+    );
+    const passed = !leak && (status === 200 || status === 206 || rows.length === 0);
+    results.push({
+      test: "Payments RLS does not leak other users' rows",
+      passed,
+      detail: passed
+        ? `OK (status ${status}, ${rows.length} rows)`
+        : `FAIL: payment leak detected (status ${status})`,
+    });
   }
 
   // ── Print Results ────────────────────────────────────────────

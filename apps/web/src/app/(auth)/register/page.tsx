@@ -5,20 +5,17 @@ import { useRouter } from "next/navigation";
 import { Briefcase, Scale, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { createClient } from "@/shared/lib/supabase/client";
 import { apiClient } from "@/shared/lib/api/client";
 import type { UserRole } from "@/entities/types";
 import { Field } from "@/shared/components/ui";
+import {
+  registerFormSchema,
+  type RegisterFormValues,
+} from "@/shared/lib/validation/password";
 
-const schema = z.object({
-  full_name: z.string().min(2, "Name required"),
-  email:     z.string().email("Valid email required"),
-  password:  z.string().min(8, "Min 8 characters"),
-  city:      z.string().optional(),
-  state:     z.string().optional(),
-});
-type Form = z.infer<typeof schema>;
+const schema = registerFormSchema;
+type Form = RegisterFormValues;
 
 const ROLES: { value: UserRole; label: string; desc: string; icon: React.ElementType }[] = [
   { value: "user",   label: "Petitioner / Consumer", desc: "I need legal help",          icon: Scale },
@@ -93,8 +90,19 @@ export default function RegisterPage() {
         <Field label="Email" error={errors.email?.message} htmlFor="email">
           <input {...register("email")} id="email" type="email" placeholder="you@example.com" className={INPUT} />
         </Field>
-        <Field label="Password (min 8 chars)" error={errors.password?.message} htmlFor="password">
-          <input {...register("password")} id="password" type="password" placeholder="••••••••" className={INPUT} />
+        <Field
+          label="Password (10+ chars, upper, lower, number, symbol)"
+          error={errors.password?.message}
+          htmlFor="password"
+        >
+          <input
+            {...register("password")}
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            autoComplete="new-password"
+            className={INPUT}
+          />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="City" htmlFor="city">

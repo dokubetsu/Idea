@@ -20,7 +20,18 @@ class ClaudeProvider(BaseAiProvider):
         return "claude"
 
     async def health(self) -> bool:
-        return bool(settings.ANTHROPIC_API_KEY)
+        if not settings.ANTHROPIC_API_KEY:
+            return False
+        try:
+            client = self._get_client()
+            await client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1,
+                messages=[{"role": "user", "content": "ping"}],
+            )
+            return True
+        except Exception:
+            return False
 
     async def generate(
         self, system_prompt: str, user_prompt: str, temperature: float = 0.1

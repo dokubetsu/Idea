@@ -7,10 +7,10 @@ import { Card, Button, cn } from "@/shared/components/ui";
 interface Hearing {
   id: string;
   hearing_date: string;
-  days_until: number;
-  courtroom: string;
-  judge: string;
-  purpose: string;
+  days_until: number | null;
+  courtroom: string | null;
+  judge: string | null;
+  purpose: string | null;
 }
 
 interface NextHearingCardProps {
@@ -79,7 +79,7 @@ export default function NextHearingCard({ hearing, matterId }: NextHearingCardPr
     URL.revokeObjectURL(url);
   };
 
-  const isUrgent = hearing.days_until <= 7;
+  const isUrgent = hearing.days_until !== null && hearing.days_until <= 7;
   const completedCount = checked.filter(Boolean).length;
 
   const formattedDate = new Date(hearing.hearing_date).toLocaleDateString(

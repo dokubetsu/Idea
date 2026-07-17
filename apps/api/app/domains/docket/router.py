@@ -112,6 +112,61 @@ async def update_invoice(
     )
 
 
+@router.post("/matters/{matter_id}/invoices/{invoice_id}/einvoice", status_code=200)
+async def generate_einvoice(matter_id: str, invoice_id: str, user: LawyerVerifiedAuth):
+    """Generate IRP e-invoice (mock or NIC) and persist ack/QR on the invoice."""
+    from app.shared.database import get_db
+    from app.domains.docket.services.helpers import _ensure_lawyer_on_matter
+    from app.shared.einvoice import generate_einvoice_for_invoice
+    from app.shared.exceptions import NotFound
+
+    _ensure_lawyer_on_matter(matter_id, user)
+    db = get_db()
+    inv = (
+        db.table("invoices")
+        .select("*")
+        .eq("id", invoice_id)
+        .eq("matter_id", matter_id)
+        .execute()
+        .data
+    )
+    if not inv:
+        raise NotFound("Invoice")
+    return await generate_einvoice_for_invoice(db, inv[0])
+
+
+# ── Retainer / trust ledger ──────────────────────────────────────
+
+
+class RetainerEntryBody(BaseModel):
+    amount_inr: float = Field(..., gt=0)
+    note: str | None = None
+
+
+@router.get("/matters/{matter_id}/retainer")
+async def retainer_balance(matter_id: str, user: Auth):
+    return service.get_retainer_balance(matter_id, user)
+
+
+@router.get("/matters/{matter_id}/retainer/ledger")
+async def retainer_ledger(matter_id: str, user: Auth):
+    return service.list_retainer_ledger(matter_id, user)
+
+
+@router.post("/matters/{matter_id}/retainer/deposit", status_code=201)
+async def retainer_deposit(
+    matter_id: str, body: RetainerEntryBody, user: LawyerVerifiedAuth
+):
+    return service.deposit_retainer(matter_id, user, body.amount_inr, body.note)
+
+
+@router.post("/matters/{matter_id}/retainer/refund", status_code=201)
+async def retainer_refund(
+    matter_id: str, body: RetainerEntryBody, user: LawyerVerifiedAuth
+):
+    return service.refund_retainer(matter_id, user, body.amount_inr, body.note)
+
+
 # ── Internal Notes ───────────────────────────────────────────────
 
 
@@ -200,12 +255,6 @@ async def list_disbursements(matter_id: str, user: Auth):
 
 
 # ── AI Chat ──────────────────────────────────────────────────────
-
-
-class AiChatRequest(TimelineEventCreate):
-    """Reuse for now — will get its own schema."""
-
-    pass
 
 
 class AskCaseAiRequest(BaseModel):

@@ -18,6 +18,7 @@ import ClientDocumentsTab from "@/features/docket/components/client/ClientDocume
 import ClientMessagesTab from "@/features/docket/components/client/ClientMessagesTab";
 import ClientBillingTab from "@/features/docket/components/client/ClientBillingTab";
 import ClientTimelineTab from "@/features/docket/components/client/ClientTimelineTab";
+import { ClientCaseOverview } from "@/features/docket/types";
 
 function ClientCaseFactsStrip({ facts }: { facts: Record<string, any> }) {
   const filed = facts.filed_date
@@ -113,7 +114,7 @@ export default function ClientCaseDetailPage() {
     );
   }
 
-  const overview = data as Record<string, any>;
+  const overview = data as ClientCaseOverview;
   const matterId = id;
   const caseFacts = overview.case_facts || {};
 

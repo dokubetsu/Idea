@@ -38,7 +38,7 @@ LeAd is an AI-powered legal workflow platform for India. It translates plain-lan
 │       │   └── entities/     # Domain models and shared types
 │       └── package.json
 └── supabase/                 # PostgreSQL migrations and schema definitions
-    └── migrations/           # 001_schema.sql to 021_missing_infrastructure.sql
+    └── migrations/           # 001_schema.sql to 056_secure_register_profile.sql
 
 ```
 

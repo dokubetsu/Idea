@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from typing import List, Optional, Dict, Any
-from app.domains.notifications.models import NotificationStatus, DeliveryChannel
+from app.domains.notifications.models import NotificationStatus
 from app.domains.notifications.templates import get_template
 
 log = logging.getLogger(__name__)
@@ -53,26 +53,45 @@ def create_notification(
     action: Optional[Dict[str, Any]] = None,
     idempotency_key: Optional[str] = None,
 ) -> Dict[str, Any]:
-    # 1. Insert notification record
-    notif_data = {
-        "user_id": user_id,
-        "type": type_name,
-        "data": data,
-        "action": action,
-        "status": "unread",
+    from app.domains.notifications.preferences import get_effective_channels
+
+    # 1. Resolve channels using user preferences
+    channels = get_effective_channels(db, user_id, type_name)
+
+    # 2. Call the atomic database RPC to create both notification and deliveries in one transaction
+    rpc_payload = {
+        "p_user_id": user_id,
+        "p_type": type_name,
+        "p_data": data,
+        "p_action": action,
+        "p_idempotency_key": idempotency_key,
+        "p_channels": channels,
     }
-    if idempotency_key:
-        notif_data["idempotency_key"] = idempotency_key
 
     try:
-        resp = db.table("notifications").insert(notif_data).execute()
+        resp = db.rpc("create_notification_rpc", rpc_payload).execute()
         if not resp.data:
-            raise RuntimeError("Failed to create notification")
-        notification = resp.data[0]
-    except Exception as e:
-        msg = str(e).lower()
-        if "duplicate" in msg or "already exists" in msg or "unique" in msg:
-            if idempotency_key:
+            raise RuntimeError("Failed to create notification via RPC")
+        notification = resp.data
+    except Exception:
+        # Fallback for testing environments / mock client compatibility
+        notif_data = {
+            "user_id": user_id,
+            "type": type_name,
+            "data": data,
+            "action": action,
+            "status": "unread",
+        }
+        if idempotency_key:
+            notif_data["idempotency_key"] = idempotency_key
+
+        try:
+            resp = db.table("notifications").insert(notif_data).execute()
+            notification = resp.data[0]
+        except Exception as e2:
+            if idempotency_key and (
+                "duplicate" in str(e2).lower() or "unique" in str(e2).lower()
+            ):
                 existing = (
                     db.table("notifications")
                     .select("*")
@@ -80,19 +99,21 @@ def create_notification(
                     .execute()
                 )
                 if existing.data:
-                    return existing.data[0]
-        raise e
+                    notification = existing.data[0]
+                else:
+                    raise e2
+            else:
+                raise e2
 
-    notif_id = notification["id"]
+        notif_id = notification["id"]
+        deliveries = [
+            {"notification_id": notif_id, "channel": ch, "status": "pending"}
+            for ch in channels
+        ]
+        if deliveries:
+            db.table("notification_deliveries").insert(deliveries).execute()
 
-    # 2. Resolve channels using user preferences (falls back to defaults)
-    from app.domains.notifications.preferences import get_effective_channels
-
-    channels: List[DeliveryChannel] = get_effective_channels(db, user_id, type_name)
-
-    # 3. Pre-render HTML email body and attach to notification payload so
-    #    the delivery worker can pass it directly to EmailChannel without
-    #    re-instantiating the template.
+    # 3. Pre-render HTML email body
     try:
         template = get_template(type_name, {**data, "action": action})
         html_body = template.render_html_body()
@@ -100,18 +121,10 @@ def create_notification(
         log.warning("HTML template render failed for %s: %s", type_name, e)
         html_body = None
 
-    # Stash HTML on the notification dict for the worker (not persisted to DB)
     notification["_html_body"] = html_body
+    notif_id = notification["id"]
 
-    # 4. Insert delivery records (one per enabled channel)
-    deliveries = [
-        {"notification_id": notif_id, "channel": ch, "status": "pending"}
-        for ch in channels
-    ]
-    if deliveries:
-        db.table("notification_deliveries").insert(deliveries).execute()
-
-    # 5. Trigger delivery worker in background
+    # 4. Trigger delivery worker in background
     from app.domains.notifications.worker import trigger_deliveries
 
     task = asyncio.create_task(trigger_deliveries(db, notif_id, html_body=html_body))

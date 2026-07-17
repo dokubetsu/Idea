@@ -46,8 +46,8 @@ class ResponseValidator:
         try:
             data = json.loads(cleaned)
         except Exception as e:
-            # H9: Do NOT include the raw AI response in the exception message.
-            # It may contain sensitive prompt content or user data. Log it server-side only.
+            # Do NOT include the raw AI response in the exception message to prevent
+            # exposure of user data or sensitive prompt context. Log it server-side only.
             import logging
 
             logging.getLogger(__name__).debug(

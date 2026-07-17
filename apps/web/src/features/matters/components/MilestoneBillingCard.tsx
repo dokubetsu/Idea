@@ -5,12 +5,19 @@ import { useMatter, matterKeys } from "../hooks/useMatters";
 import { Button, Badge, Card, useToast } from "@/shared/components/ui";
 import { apiClient } from "@/shared/lib/api/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useFeatures } from "@/shared/hooks/useFeatures";
 
 export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string; isLawyer?: boolean }) {
   const { data: matter } = useMatter(matterId);
   const qc = useQueryClient();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const toast = useToast();
+
+  const { features } = useFeatures();
+
+  if (!features || !features.billing) {
+    return null;
+  }
 
   const milestones = matter?.milestones || [];
   const billableMilestones = milestones.filter(m => m.amount_inr && m.amount_inr > 0);
@@ -19,25 +26,108 @@ export function MilestoneBillingCard({ matterId, isLawyer }: { matterId: string;
     return null;
   }
 
-  const handlePay = async (milestoneId: string) => {
-    // Mock payment gateway flow
-    setProcessingId(milestoneId);
-    const randomSuffix = Math.random().toString(36).substring(2, 11);
-    const paymentId = "pay_" + randomSuffix;
-    
-    setTimeout(async () => {
-      try {
-        await apiClient.patch(`/matters/${matterId}/milestones/${milestoneId}`, {
-          payment_gateway_ref: paymentId
-        });
-        qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
-        toast.success("Payment initiated! Awaiting gateway confirmation.");
-      } catch (e: any) {
-        toast.error("Payment failed: " + e.message);
-      } finally {
-        setProcessingId(null);
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
       }
-    }, 1500);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePay = async (milestoneId: string) => {
+    setProcessingId(milestoneId);
+    try {
+      // 1. Create order on server
+      const orderData = await apiClient.post<any>(
+        `/matters/${matterId}/milestones/${milestoneId}/razorpay-order`,
+        {}
+      );
+
+      if (orderData.mock) {
+        // Simulated checkout for mock credentials
+        toast.info("Simulating mock payment gateway...");
+        setTimeout(async () => {
+          try {
+            const mockPaymentId = "pay_mock_" + Math.random().toString(36).substring(2, 11);
+            const mockSignature = "mock_sig_" + Math.random().toString(36).substring(2, 11);
+            
+            await apiClient.post(
+              `/matters/${matterId}/milestones/${milestoneId}/verify-payment`,
+              {
+                razorpay_payment_id: mockPaymentId,
+                razorpay_order_id: orderData.order_id,
+                razorpay_signature: mockSignature
+              }
+            );
+            qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+            toast.success("Mock payment completed and verified!");
+          } catch (err: any) {
+            toast.error("Mock verification failed: " + err.message);
+          } finally {
+            setProcessingId(null);
+          }
+        }, 1000);
+        return;
+      }
+
+      // 2. Load Razorpay script for production
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        toast.error("Failed to load Razorpay SDK. Please check your internet connection.");
+        setProcessingId(null);
+        return;
+      }
+
+      // 3. Open Razorpay Checkout modal
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "LeAd Platform",
+        description: "Milestone Case Payment",
+        order_id: orderData.order_id,
+        handler: async (response: any) => {
+          try {
+            setProcessingId(milestoneId);
+            await apiClient.post(
+              `/matters/${matterId}/milestones/${milestoneId}/verify-payment`,
+              {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              }
+            );
+            qc.invalidateQueries({ queryKey: matterKeys.detail(matterId) });
+            toast.success("Payment successful and verified!");
+          } catch (err: any) {
+            toast.error("Payment verification failed: " + err.message);
+          } finally {
+            setProcessingId(null);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setProcessingId(null);
+          }
+        },
+        theme: {
+          color: "#1E3A8A"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (e: any) {
+      toast.error("Order creation failed: " + e.message);
+      setProcessingId(null);
+    }
   };
 
   const totalBilled = billableMilestones.reduce((acc, m) => acc + (m.amount_inr || 0), 0);

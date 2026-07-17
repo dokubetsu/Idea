@@ -139,6 +139,7 @@ export interface IntakeSession {
   is_committed: boolean;
   matter_id?: string;
   created_at: string;
+  expires_at: string;
 }
 
 export interface Assessment {

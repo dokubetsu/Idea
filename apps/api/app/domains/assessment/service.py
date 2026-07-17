@@ -23,11 +23,15 @@ def get_provider():
     return LegacyProviderWrapper(chosen)
 
 
-async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
+async def run_assessment(
+    input: AssessmentInput, user_id: str | None = None
+) -> AssessmentOutput:
     """
     Primary entry point for running a legal assessment.
     Coordinates context construction, versioned prompts, provider execution,
     validation, and normalization.
+
+    Pass user_id so AI daily budgets are tracked per authenticated user.
     """
     from app.shared.ai import (
         ContextBuilder,
@@ -65,7 +69,7 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
     retries = 2
     for attempt in range(retries + 1):
         try:
-            provider = await get_ai_provider()
+            provider = await get_ai_provider(user_id=user_id)
 
             # 4. Generate raw response
             raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)
@@ -85,6 +89,11 @@ async def run_assessment(input: AssessmentInput) -> AssessmentOutput:
 
             return AssessmentOutput(**normalized)
         except Exception as e:
+            # Rate-limit and other client HTTP errors must not be retried
+            from fastapi import HTTPException
+
+            if isinstance(e, HTTPException):
+                raise
             if attempt < retries:
                 log.warning(
                     "run_assessment attempt %d failed: %s. Retrying...", attempt + 1, e

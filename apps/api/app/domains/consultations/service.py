@@ -1,9 +1,51 @@
+from fastapi import HTTPException
 from app.shared.database import get_db
+from app.shared import database as shared_database
 from app.shared.exceptions import NotFound
 
 SELECT_CONSULTATIONS = (
     "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"
 )
+
+
+def mark_consultation_paid(
+    consultation_id: str,
+    payment_id: str,
+    idemp_key: str | None,
+    amount_inr: float,
+    user_id: str,
+) -> dict:
+    """Atomically mark a consultation paid via DB RPC (service role)."""
+    db = shared_database.get_service_role_db()
+    try:
+        res = db.rpc(
+            "mark_consultation_paid",
+            {
+                "p_consultation_id": consultation_id,
+                "p_payment_id": payment_id,
+                "p_idemp_key": idemp_key,
+                "p_amount_inr": amount_inr,
+                "p_user_id": user_id,
+            },
+        ).execute()
+    except Exception as e:
+        msg = str(e)
+        if "amount does not match" in msg.lower():
+            raise HTTPException(
+                status_code=402, detail="Payment amount mismatch"
+            ) from e
+        if "already used" in msg.lower() or "idempotency" in msg.lower():
+            raise HTTPException(status_code=400, detail=msg) from e
+        if "not found" in msg.lower():
+            raise NotFound("Consultation not found") from e
+        raise HTTPException(status_code=400, detail=msg) from e
+
+    data = res.data
+    if isinstance(data, list) and data:
+        return data[0] if isinstance(data[0], dict) else {"result": data[0]}
+    if isinstance(data, dict):
+        return data
+    return {"consultation_id": consultation_id, "payment_status": "paid"}
 
 
 def enrich_consultation(row: dict) -> dict:

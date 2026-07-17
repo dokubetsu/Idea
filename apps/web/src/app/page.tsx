@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect } from "react";
+import { ScrollRevealInitializer } from "@/features/landing/components/ScrollRevealInitializer";
 import { Navbar } from "@/features/landing/components/Navbar";
 import { HeroSection } from "@/features/landing/components/HeroSection";
 import { SimulatorSection } from "@/features/landing/components/SimulatorSection";
@@ -13,27 +11,15 @@ import { StatsSection } from "@/features/landing/components/StatsSection";
 import { LandingFooter } from "@/features/landing/components/LandingFooter";
 import { LANDING_COPY } from "./landingCopy";
 
+export const metadata = {
+  title: "LeAd Platform — AI Legal Practice Automation",
+  description: "Modern case docketing, client matching, and legal office automation platform.",
+};
+
 export default function RootPage() {
-  // ─── Scroll Reveal Observer ──────────────────────────────────────
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("reveal-visible");
-          }
-        });
-      },
-      { threshold: 0.15 }
-    );
-
-    const hiddenElements = document.querySelectorAll(".reveal-hidden");
-    hiddenElements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <div className="dark-canvas min-h-screen relative font-sans selection:bg-brand-gold/30 selection:text-white overflow-x-hidden">
+      <ScrollRevealInitializer />
       {/* Background Grids & Orbs */}
       <div className="absolute inset-0 legal-grid opacity-70 pointer-events-none z-0" />
       <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] orb-gold rounded-full pointer-events-none z-0" />

@@ -5,8 +5,19 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
-  
-  const role = user.app_metadata?.role ?? "user";
+
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("role, is_active, dsr_erased_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile && (profile.is_active === false || profile.dsr_erased_at)) {
+    await sb.auth.signOut();
+    redirect("/login?notice=suspended");
+  }
+
+  const role = profile?.role ?? user.app_metadata?.role ?? "user";
   if (role !== "user") {
     if (role === "admin") redirect("/admin/dashboard");
     if (role === "lawyer") redirect("/lawyer/dashboard");

@@ -118,8 +118,182 @@ class ProviderRegistry:
 ai_registry = ProviderRegistry()
 
 
-async def get_ai_provider() -> BaseAiProvider:
+class _AiRateLimiter:
     """
-    Utility function to resolve the active AI provider based on environment config.
+    Per-user and global daily AI call counter.
+
+    Uses Redis (INCR + EXPIRE) when REDIS_URL is a real Redis instance so
+    multi-worker / multi-instance deployments share one budget. Falls back to
+    in-process counters for memory:// or when Redis is unreachable.
     """
+
+    def __init__(self):
+        from collections import defaultdict
+
+        self._day: str = ""
+        self._per_user: dict[str, int] = defaultdict(int)
+        self._global_count: int = 0
+        self._redis = None
+        self._redis_failed = False
+
+    def _maybe_reset(self, today: str) -> None:
+        if today != self._day:
+            from collections import defaultdict
+
+            self._day = today
+            self._per_user = defaultdict(int)
+            self._global_count = 0
+
+    def _get_redis(self):
+        if self._redis_failed:
+            return None
+        if self._redis is not None:
+            return self._redis
+        url = settings.REDIS_URL or ""
+        if not url or url.startswith("memory://"):
+            return None
+        try:
+            import redis
+
+            self._redis = redis.from_url(url, decode_responses=True)
+            # Validate connectivity once
+            self._redis.ping()
+            return self._redis
+        except Exception as exc:
+            log.warning(
+                "AI rate limiter: Redis unavailable (%s); using in-process counters",
+                exc,
+            )
+            self._redis_failed = True
+            self._redis = None
+            return None
+
+    def _check_and_increment_redis(
+        self, r, today: str, bucket: str, limit_user: int, limit_global: int
+    ) -> None:
+        user_key = f"ai:rl:user:{bucket}:{today}"
+        global_key = f"ai:rl:global:{today}"
+        # TTL slightly over 1 day so keys expire after the UTC day rolls
+        ttl = 60 * 60 * 26
+
+        pipe = r.pipeline()
+        pipe.incr(user_key)
+        pipe.expire(user_key, ttl, nx=True)
+        pipe.incr(global_key)
+        pipe.expire(global_key, ttl, nx=True)
+        results = pipe.execute()
+        user_count = int(results[0])
+        global_count = int(results[2])
+
+        # After increment: if over limit, we already consumed a slot. Acceptable
+        # for rate limits (slight overshoot under concurrency).
+        if limit_global > 0 and global_count > limit_global:
+            raise RuntimeError(
+                "AI global daily request limit reached. Try again tomorrow."
+            )
+        if limit_user > 0 and user_count > limit_user:
+            raise RuntimeError(
+                f"AI daily request limit of {limit_user} reached for this user. "
+                "Try again tomorrow."
+            )
+
+    def _check_and_increment_memory(
+        self, today: str, bucket: str, limit_user: int, limit_global: int
+    ) -> None:
+        self._maybe_reset(today)
+
+        if limit_global > 0 and self._global_count >= limit_global:
+            raise RuntimeError(
+                "AI global daily request limit reached. Try again tomorrow."
+            )
+
+        if limit_user > 0 and self._per_user[bucket] >= limit_user:
+            raise RuntimeError(
+                f"AI daily request limit of {limit_user} reached for this user. "
+                "Try again tomorrow."
+            )
+
+        self._per_user[bucket] += 1
+        self._global_count += 1
+
+    def check_and_increment(self, user_id: str | None) -> None:
+        """
+        Raise RuntimeError if any configured budget is exceeded;
+        otherwise record the call. user_id=None counts against a shared
+        'anonymous' bucket — always pass authenticated user ids when available.
+        """
+        from datetime import datetime, timezone
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        limit_user = settings.AI_USER_DAILY_REQUEST_LIMIT
+        limit_global = settings.AI_GLOBAL_DAILY_REQUEST_LIMIT
+        bucket = user_id or "anonymous"
+
+        if limit_user <= 0 and limit_global <= 0:
+            return
+
+        r = self._get_redis()
+        if r is not None:
+            try:
+                self._check_and_increment_redis(
+                    r, today, bucket, limit_user, limit_global
+                )
+                return
+            except RuntimeError:
+                raise
+            except Exception as exc:
+                log.warning(
+                    "AI rate limiter: Redis error (%s); falling back to in-process",
+                    exc,
+                )
+                self._redis_failed = True
+
+        self._check_and_increment_memory(today, bucket, limit_user, limit_global)
+
+    def usage(self, user_id: str | None) -> dict:
+        from datetime import datetime, timezone
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        bucket = user_id or "anonymous"
+        user_calls = 0
+        global_calls = 0
+
+        r = self._get_redis()
+        if r is not None:
+            try:
+                user_calls = int(r.get(f"ai:rl:user:{bucket}:{today}") or 0)
+                global_calls = int(r.get(f"ai:rl:global:{today}") or 0)
+            except Exception:
+                r = None
+
+        if r is None:
+            self._maybe_reset(today)
+            user_calls = self._per_user[bucket]
+            global_calls = self._global_count
+
+        return {
+            "date": today,
+            "user_calls_today": user_calls,
+            "user_limit": settings.AI_USER_DAILY_REQUEST_LIMIT,
+            "global_calls_today": global_calls,
+            "global_limit": settings.AI_GLOBAL_DAILY_REQUEST_LIMIT,
+        }
+
+
+ai_rate_limiter = _AiRateLimiter()
+
+
+async def get_ai_provider(user_id: str | None = None) -> BaseAiProvider:
+    """
+    Resolves the active AI provider based on environment config.
+    Enforces per-user and global daily request limits before returning the provider.
+    Pass user_id from the authenticated request so the circuit-breaker can track
+    per-user consumption.
+    """
+    try:
+        ai_rate_limiter.check_and_increment(user_id)
+    except RuntimeError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     return await ai_registry.resolve(settings.ai_provider)

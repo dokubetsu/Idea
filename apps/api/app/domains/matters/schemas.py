@@ -61,7 +61,7 @@ class MilestoneOut(BaseModel):
     status: str
     amount_inr: float | None = None
     is_paid: bool = False
-    # H12: payment_gateway_ref is the external gateway string (e.g. Razorpay "pay_XYZ").
+    # payment_gateway_ref is the external gateway string (e.g. Razorpay "pay_XYZ").
     # payment_record_id is the FK to our internal payments table.
     payment_gateway_ref: str | None = None  # was: payment_id
     payment_record_id: str | None = None  # FK -> payments.id (nullable until paid)

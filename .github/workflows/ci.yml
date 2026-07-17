@@ -33,29 +33,64 @@ jobs:
     - name: Run static type checking (mypy)
       run: mypy --ignore-missing-imports apps/api/app
 
+    - name: Run security SAST scanning (bandit)
+      run: bandit -r apps/api/app -ll -x apps/api/app/domains/practice/rules_engine.py
+
     - name: Run dependency security audit (pip-audit)
       run: pip-audit
 
-    - name: Set up Node.js (for Supabase CLI)
+    - name: Set up Node.js (for Supabase CLI / tsx)
       uses: actions/setup-node@v4
       with:
         node-version: "22"
 
-    - name: Setup local Supabase test database
+    - name: Setup local Supabase + apply migrations and seeds
       run: |
-        # Start Supabase services locally using Docker
+        # Start stack, then explicitly reset so migrations 001–060 and seeds load
         npx supabase start
-        # Retrieve credentials and set them to env variables for integration tests
+        npx supabase db reset --yes
         STATUS_JSON=$(npx supabase status -o json)
-        echo "SUPABASE_TEST_PROJECT_URL=$(echo "$STATUS_JSON" | jq -r 'if .api | type == "object" then .api.url else .api end')" >> $GITHUB_ENV
-        echo "SUPABASE_TEST_SERVICE_ROLE_KEY=$(echo "$STATUS_JSON" | jq -r 'if .api | type == "object" then .api.service_role_key else .service_role_key end')" >> $GITHUB_ENV
+        API_URL=$(echo "$STATUS_JSON" | jq -r 'if .API_URL then .API_URL elif .api | type == "object" then .api.url else .api end')
+        SERVICE_KEY=$(echo "$STATUS_JSON" | jq -r 'if .SERVICE_ROLE_KEY then .SERVICE_ROLE_KEY elif .api | type == "object" then .api.service_role_key else .service_role_key end')
+        ANON_KEY=$(echo "$STATUS_JSON" | jq -r 'if .ANON_KEY then .ANON_KEY elif .api | type == "object" then .api.anon_key else .anon_key end')
+        JWT_SECRET=$(echo "$STATUS_JSON" | jq -r 'if .JWT_SECRET then .JWT_SECRET elif .jwt_secret then .jwt_secret else empty end')
+        if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "null" ]; then
+          # Supabase local default JWT secret (used when status omits the field)
+          JWT_SECRET="super-secret-jwt-token-with-at-least-32-characters-long"
+        fi
+        echo "SUPABASE_TEST_PROJECT_URL=$API_URL" >> $GITHUB_ENV
+        echo "SUPABASE_TEST_SERVICE_ROLE_KEY=$SERVICE_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_TEST_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+        echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_JWT_SECRET=$JWT_SECRET" >> $GITHUB_ENV
+        echo "API_URL=$API_URL"
+
+    - name: Run RLS verification script
+      run: npx tsx scripts/verify-rls.ts
+      env:
+        SUPABASE_URL: ${{ env.SUPABASE_TEST_PROJECT_URL }}
+        SUPABASE_ANON_KEY: ${{ env.SUPABASE_TEST_ANON_KEY }}
 
     - name: Run pytest tests (Unit & Integration)
       run: |
         export PYTHONPATH=apps/api
-        pytest apps/api
+        # Unit tests first (fast), then full suite including integration markers
+        pytest apps/api/tests/unit -q
+        pytest apps/api -q --tb=short
       env:
         CRON_SECRET: ci-test-secret
+        PAYMENT_WEBHOOK_SECRET: ci-test-webhook-secret
+        SUPABASE_URL: ${{ env.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ env.SUPABASE_JWT_SECRET }}
+        SUPABASE_TEST_PROJECT_URL: ${{ env.SUPABASE_TEST_PROJECT_URL }}
+        SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ env.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+        SUPABASE_TEST_ANON_KEY: ${{ env.SUPABASE_TEST_ANON_KEY }}
+        APP_ENV: development
+        START_OUTBOX_WORKER: "false"
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -81,17 +116,125 @@ jobs:
     - name: Run linting
       run: npm --prefix apps/web run lint
 
+    - name: Run unit tests (Vitest)
+      run: npm --prefix apps/web run test:unit
+
     - name: Build web application
       run: npm --prefix apps/web run build
       env:
+        # Must be https non-localhost (apps/web client fails closed in production builds)
         NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://api.placeholder.lead.local' }}
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    # Full stack is expensive; still run on PRs/main for release confidence
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: "pip"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: "npm"
+        cache-dependency-path: apps/web/package-lock.json
+
+    - name: Install API dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r apps/api/requirements.txt
+
+    - name: Install web dependencies
+      run: npm --prefix apps/web ci
+
+    - name: Install Playwright Chromium
+      run: npx --prefix apps/web playwright install --with-deps chromium
+
+    - name: Start Supabase + seed
+      run: |
+        npx supabase start
+        npx supabase db reset --yes
+        STATUS_JSON=$(npx supabase status -o json)
+        API_URL=$(echo "$STATUS_JSON" | jq -r 'if .API_URL then .API_URL elif .api | type == "object" then .api.url else .api end')
+        SERVICE_KEY=$(echo "$STATUS_JSON" | jq -r 'if .SERVICE_ROLE_KEY then .SERVICE_ROLE_KEY elif .api | type == "object" then .api.service_role_key else .service_role_key end')
+        ANON_KEY=$(echo "$STATUS_JSON" | jq -r 'if .ANON_KEY then .ANON_KEY elif .api | type == "object" then .api.anon_key else .anon_key end')
+        JWT_SECRET=$(echo "$STATUS_JSON" | jq -r 'if .JWT_SECRET then .JWT_SECRET elif .jwt_secret then .jwt_secret else empty end')
+        if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "null" ]; then
+          JWT_SECRET="super-secret-jwt-token-with-at-least-32-characters-long"
+        fi
+        echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+        echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+        echo "SUPABASE_JWT_SECRET=$JWT_SECRET" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000" >> $GITHUB_ENV
+
+    - name: Start API server
+      working-directory: apps/api
+      env:
+        SUPABASE_URL: ${{ env.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ env.SUPABASE_JWT_SECRET }}
+        CRON_SECRET: ci-test-secret
+        PAYMENT_WEBHOOK_SECRET: ci-test-webhook-secret
+        APP_ENV: development
+        START_OUTBOX_WORKER: "false"
+        CORS_ORIGINS: '["http://127.0.0.1:3000","http://localhost:3000"]'
+      run: |
+        nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+        for i in $(seq 1 30); do
+          if curl -sf http://127.0.0.1:8000/livez >/dev/null; then
+            echo "API ready"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "API failed to start"; cat /tmp/api.log; exit 1
+
+    - name: Start web server
+      working-directory: apps/web
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+        NODE_ENV: development
+      run: |
+        nohup npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/web.log 2>&1 &
+        for i in $(seq 1 60); do
+          if curl -sf http://127.0.0.1:3000/login >/dev/null; then
+            echo "Web ready"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "Web failed to start"; cat /tmp/web.log; exit 1
+
+    - name: Run Playwright tests
+      working-directory: apps/web
+      env:
+        E2E_BASE_URL: http://127.0.0.1:3000
+        E2E_EMAIL: client@lead.ai
+        E2E_PASSWORD: "Password123!"
+        NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+      run: npx playwright test --project=chromium
 
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [backend-test, frontend-build]
+    needs: [backend-test, frontend-build, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
     - name: Trigger Render Deploy Hook

@@ -27,5 +27,5 @@ class StandaloneAssessRequest(BaseModel):
 async def run(
     request: Request, body: StandaloneAssessRequest, user: Auth, response: Response
 ):
-    result = await run_assessment(AssessmentInput(**body.model_dump()))
+    result = await run_assessment(AssessmentInput(**body.model_dump()), user_id=user.id)
     return result

@@ -1,3 +1,5 @@
+import os
+
 from pydantic import model_validator
 from pydantic_settings import (
     BaseSettings,
@@ -18,7 +20,16 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        # Prioritize local .env file over system/shell environment variables
+        # Production: process/platform env and secret files must win over a
+        # baked-in .env (containers, Render, K8s). Locally, prefer .env so
+        # developer overrides stay convenient without exporting every var.
+        if os.environ.get("APP_ENV", "").lower() == "production":
+            return (
+                init_settings,
+                env_settings,
+                file_secret_settings,
+                dotenv_settings,
+            )
         return init_settings, dotenv_settings, env_settings, file_secret_settings
 
     SUPABASE_URL: str = "http://placeholder.supabase.co"
@@ -57,6 +68,9 @@ class Settings(BaseSettings):
     # ── Payment Webhook security ──────────────────────────
     PAYMENT_WEBHOOK_SECRET: str
 
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+
     FEATURE_CONSULTATIONS: bool = True
     FEATURE_PRACTICE: bool = False
     FEATURE_BILLING: bool = False
@@ -64,8 +78,36 @@ class Settings(BaseSettings):
     FEATURE_MILESTONES: bool = False
     FEATURE_AI_SUMMARIES: bool = False
 
+    # ── Interest rates (RERA / legal tools) ─────────────────
+    # Prefer env override so ops can update monthly without redeploying code.
+    SBI_MCLR_RATE: float | None = None
+    SBI_MCLR_AS_OF: str = ""  # YYYY-MM-DD
+    # Optional JSON feed URL: {"rate": 9.0, "as_of": "2026-07-01"}
+    SBI_MCLR_FETCH_URL: str = ""
+    # Platform supplier state for GST place-of-supply defaults
+    GST_SUPPLIER_STATE: str = "Delhi"
+    GST_SUPPLIER_GSTIN: str = "07LEADG1234A1Z5"
+
+    # ── E-invoice IRP (NIC) ─────────────────────────────────
+    EINVOICE_PROVIDER: str = "mock"  # mock | nic
+    EINVOICE_NIC_BASE_URL: str = ""
+    EINVOICE_NIC_USERNAME: str = ""
+    EINVOICE_NIC_PASSWORD: str = ""
+    EINVOICE_NIC_GSTIN: str = ""
+
+    # Court holiday JSON feed (optional)
+    COURT_HOLIDAY_FEED_URL: str = ""
+
+    # ── AI cost controls ───────────────────────────────────
+    # Max AI generate() calls per user per UTC day (0 = unlimited).
+    AI_USER_DAILY_REQUEST_LIMIT: int = 20
+    # Hard circuit-breaker: if cumulative calls in this process exceed this
+    # threshold within a single UTC day, all AI calls are rejected (0 = off).
+    AI_GLOBAL_DAILY_REQUEST_LIMIT: int = 0
+
     SUPABASE_TEST_PROJECT_URL: str | None = None
     SUPABASE_TEST_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_TEST_ANON_KEY: str | None = None
 
     APP_ENV: str = "development"
     API_VERSION: str = "v1"
@@ -73,6 +115,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "memory://"
     TRUST_PROXY: bool = False
     PAYMENT_WEBHOOK_SKIP_VERIFICATION: bool = False
+    START_OUTBOX_WORKER: bool = True
+    # Expose Prometheus /metrics. Default off in production (set true only on
+    # a private scrape network). Always available in non-production for local debug.
+    EXPOSE_METRICS: bool | None = None
 
     @model_validator(mode="after")
     def validate_keys(self) -> "Settings":
@@ -122,11 +168,21 @@ class Settings(BaseSettings):
                 "PAYMENT_WEBHOOK_SKIP_VERIFICATION must be False in production. "
                 "Signature verification cannot be disabled in a live environment."
             )
+        if self.APP_ENV == "production" and not self.RAZORPAY_KEY_SECRET:
+            raise ValueError(
+                "RAZORPAY_KEY_SECRET must be set when APP_ENV is production."
+            )
         return self
 
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"
+
+    @property
+    def should_expose_metrics(self) -> bool:
+        if self.EXPOSE_METRICS is not None:
+            return self.EXPOSE_METRICS
+        return not self.is_production
 
     @property
     def ai_provider(self) -> str:

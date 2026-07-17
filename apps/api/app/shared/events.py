@@ -100,9 +100,7 @@ def _resolve_subscriber(name: str):
     return None
 
 
-# ---------------------------------------------------------------------------
-# C2 fix: atomic event + outbox write via single DB transaction RPC
-# ---------------------------------------------------------------------------
+# Atomic event and outbox write via single DB transaction RPC
 
 
 def _emit_event_with_outbox(
@@ -133,9 +131,7 @@ def _emit_event_with_outbox(
     ).execute()
 
 
-# ---------------------------------------------------------------------------
-# C1 fix: atomic outbox claim using FOR UPDATE SKIP LOCKED
-# ---------------------------------------------------------------------------
+# Atomic outbox claim using FOR UPDATE SKIP LOCKED
 
 
 async def process_pending_notifications() -> None:
@@ -280,7 +276,7 @@ async def emit(
             )
             pending_rows.append({"subscriber_name": sub_name})
 
-        # C2: single atomic write — event + outbox rows in one DB transaction
+        # Single atomic write — event + outbox rows in one DB transaction
         await asyncio.to_thread(
             _emit_event_with_outbox,
             event_str,
@@ -291,9 +287,8 @@ async def emit(
         )
 
         if pending_rows:
-            # C1: immediate processing — safe because claim_pending_notifications
-            # uses FOR UPDATE SKIP LOCKED, so concurrent polling loop cannot
-            # double-process the same row.
+            # Immediate processing: claim_pending_notifications uses FOR UPDATE SKIP LOCKED,
+            # so concurrent polling loops cannot double-process the same row.
             task = asyncio.create_task(process_pending_notifications())
             BACKGROUND_TASKS.add(task)
             task.add_done_callback(BACKGROUND_TASKS.discard)
@@ -343,13 +338,13 @@ def sync_emit(
             )
             pending_rows.append({"subscriber_name": sub_name})
 
-        # C2: single atomic write — event + outbox rows in one DB transaction
+        # Single atomic write — event + outbox rows in one DB transaction
         _emit_event_with_outbox(
             event_str, actor_id, matter_id, payload or {}, pending_rows
         )
 
         if pending_rows:
-            # C1: immediate processing with row-level locking
+            # Immediate processing with row-level locking
             _run_coroutine_in_new_loop(process_pending_notifications())
 
     except Exception as exc:

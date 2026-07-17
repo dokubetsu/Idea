@@ -60,3 +60,27 @@ def get_test_db():
     if "pytest" in sys.modules:
         return get_service_role_db()
     raise RuntimeError("get_test_db() called outside of pytest environment")
+
+
+_client_pool: dict = {}
+_pool_lock = threading.Lock()
+
+
+def get_pooled_client(url: str, key: str, token: str | None = None) -> Client:
+    """Retrieve or create an authenticated Supabase client from a thread-safe connection pool."""
+    cache_key = (key, token)
+    with _pool_lock:
+        if cache_key in _client_pool:
+            return _client_pool[cache_key]
+
+        client = create_client(url, key)
+        if token:
+            client.postgrest.auth(token)
+
+        # Evict the oldest cached client if pool size limit is exceeded (LRU approximation)
+        if len(_client_pool) >= 50:
+            oldest_key = next(iter(_client_pool))
+            _client_pool.pop(oldest_key)
+
+        _client_pool[cache_key] = client
+        return client

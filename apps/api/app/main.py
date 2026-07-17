@@ -12,12 +12,16 @@ Startup sequence:
 from contextlib import asynccontextmanager
 import logging
 from typing import Any, cast
+import os
+import sentry_sdk
+from prometheus_fastapi_instrumentator import Instrumentator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.shared.limiter import limiter
@@ -39,9 +43,31 @@ from app.domains.docket import docket_router
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
 
-# FIX N: Removed in-process asyncio.sleep(21600) cleanup loop.
-# Session cleanup is now a proper HTTP cron endpoint: POST /api/v1/system/cron/cleanup-sessions
-# Call it from Render, GitHub Actions cron, or any external scheduler every 6 hours.
+# Sentry initialization
+
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        send_default_pii=False,
+        traces_sample_rate=1.0,
+    )
+
+# Structured JSON logging in production
+if settings.APP_ENV == "production":
+    import structlog
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+    )
+
+# Session cleanup is performed via the HTTP cron endpoint: POST /api/v1/system/cron/cleanup-sessions.
+# Call this from an external scheduler every 6 hours.
 
 
 @asynccontextmanager
@@ -53,7 +79,8 @@ async def lifespan(app: FastAPI):
     from app.shared.events import start_outbox_worker
 
     init_subscriber()
-    start_outbox_worker()
+    if settings.START_OUTBOX_WORKER:
+        start_outbox_worker()
 
     log.info("Environment: %s", settings.APP_ENV)
 
@@ -103,6 +130,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Prometheus metrics instrumentation — never leave /metrics public in prod
+# unless EXPOSE_METRICS is explicitly enabled (private scrape networks only).
+_instrumentator = Instrumentator().instrument(app)
+if settings.should_expose_metrics:
+    _instrumentator.expose(app)
+else:
+    log.info("Prometheus /metrics endpoint is not exposed (production default)")
+
 # Register rate limiter instance and handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
@@ -135,6 +170,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.add_middleware(BodySizeLimitMiddleware)
+# SlowAPI after RequestTracing so rate-limit keys can use request.state.user_id
+# (Starlette runs last-added middleware outermost; RequestTracing is added after
+# SlowAPI so it wraps SlowAPI and populates state first.)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestTracingMiddleware)
 
 if settings.is_production:
@@ -174,9 +213,32 @@ app.include_router(system_router, prefix=PREFIX)
 # ── System endpoints ──────────────────────────────────────────────
 
 
-@app.get("/health", tags=["system"])
-async def health():
-    response = {"status": "ok", "version": "1.0.0"}
-    if not settings.is_production:
-        response["env"] = settings.APP_ENV
-    return response
+@app.get("/livez", tags=["system"])
+async def livez():
+    return {"status": "alive"}
+
+
+@app.get("/readyz", tags=["system"])
+async def readyz():
+    # 1. Check Supabase DB connectivity
+    try:
+        from app.shared.database import get_service_role_db
+
+        db = get_service_role_db()
+        db.table("profiles").select("id").limit(1).execute()
+    except Exception as e:
+        log.error("Readiness check failed - Supabase DB unreachable: %s", e)
+        raise HTTPException(status_code=503, detail="Database connection failed")
+
+    # 2. Check Redis connectivity (if not using mock memory://)
+    if settings.REDIS_URL and not settings.REDIS_URL.startswith("memory://"):
+        try:
+            import redis.asyncio as aioredis
+
+            r = aioredis.from_url(settings.REDIS_URL)
+            await r.ping()
+        except Exception as e:
+            log.error("Readiness check failed - Redis unreachable: %s", e)
+            raise HTTPException(status_code=503, detail="Redis connection failed")
+
+    return {"status": "ready"}

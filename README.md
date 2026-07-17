@@ -124,6 +124,21 @@ apps/web/src/
 
 ---
 
+## Product notes (Phase 4)
+
+| Feature | How |
+|---------|-----|
+| GST place of supply | Invoice uses client state → CGST/SGST (intra) or IGST (inter); env `GST_SUPPLIER_STATE` |
+| SBI MCLR / RERA | `GET /api/v1/legal-tools/rates/mclr`; set `SBI_MCLR_RATE` monthly or `SBI_MCLR_FETCH_URL` |
+| State court holidays | `GET /api/v1/legal-tools/court-calendar/working-day?day=&state=` |
+| Open for matching | `POST /api/v1/matters/{id}/open-for-matching` (client, from intake/assessment) |
+| Invoice overdue | Cron `POST /api/v1/system/cron/mark-invoices-overdue` |
+| Retainer drawdown | On invoice create when fee arrangement is `retainer` |
+| Outbox worker | `docker compose` service `worker` runs `python run_worker.py` |
+| Retainer ledger | `GET/POST /api/v1/docket/matters/{id}/retainer/*` (deposit, refund, ledger) |
+| E-invoice IRP | `POST .../invoices/{id}/einvoice` (`EINVOICE_PROVIDER=mock\|nic`) |
+| Holiday feed | `POST /api/v1/legal-tools/court-calendar/refresh` |
+
 ## Feature Flags
 
 The application uses feature flags to manage stage rollouts and hide incomplete features. They can be set in `.env` or system environment variables:
@@ -201,10 +216,22 @@ After running `supabase db reset` (which loads `seed.sql` + `seed_docket.sql`), 
 
 ```bash
 # From repo root — requires SUPABASE_URL and SUPABASE_ANON_KEY in env
+# Run after: supabase start && supabase db reset
 npx tsx scripts/verify-rls.ts
 ```
 
-The script signs in as the client and verifies that time entries, internal notes, and lawyer-only timeline events are inaccessible.
+The script signs in as seeded client/lawyer users and verifies docket isolation, privilege-column guards, cross-tenant matters, intake/payments isolation, and notification RPC lockdown.
+
+### E2E (Playwright)
+
+```bash
+# Terminals: supabase + API + web, then:
+cd apps/web
+npx playwright install chromium
+E2E_EMAIL=client@lead.ai E2E_PASSWORD='Password123!' npm run test:e2e:auth
+```
+
+See `apps/web/playwright.config.ts` and `docs/deployment_runbook.md`.
 
 API docs (dev only): http://localhost:8000/docs
 

@@ -171,6 +171,21 @@ def safe_eval(
             kwargs = {
                 kw.arg: _eval(kw.value) for kw in node.keywords if kw.arg is not None
             }
+
+            if func_name in {"timedelta", "relativedelta"}:
+                for a in args:
+                    if isinstance(a, (int, float)) and abs(a) > 365000:
+                        raise ValueError(f"Argument value too large: {a}")
+                for k, v in kwargs.items():
+                    if isinstance(v, (int, float)):
+                        if k in {"years", "months"} and abs(v) > 1000:
+                            raise ValueError(f"Argument '{k}' value too large: {v}")
+                        elif (
+                            k in {"days", "weeks", "hours", "minutes", "seconds"}
+                            and abs(v) > 365000
+                        ):
+                            raise ValueError(f"Argument '{k}' value too large: {v}")
+
             return func(*args, **kwargs)
         else:
             raise TypeError(f"AST node type {type(node).__name__} is not allowed")

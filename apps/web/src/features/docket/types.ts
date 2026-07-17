@@ -257,3 +257,123 @@ export interface AiChatResponse {
   sources: string[];
   case_id: string;
 }
+
+export interface Hearing {
+  id: string;
+  matter_id: string;
+  hearing_date: string;
+  courtroom: string | null;
+  judge: string | null;
+  purpose: string | null;
+  status: "scheduled" | "completed" | "adjourned" | "cancelled";
+  outcome: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Document {
+  id: string;
+  matter_id: string;
+  name: string;
+  path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  visibility: "public" | "lawyer_only";
+  review_status: "pending" | "approved" | "rejected";
+  lawyer_note: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface DocumentRequest {
+  id: string;
+  matter_id: string;
+  title: string;
+  description: string | null;
+  label: string;
+  status: "pending" | "fulfilled" | "cancelled";
+  document_id: string | null;
+  requested_by: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  matter_id: string;
+  sender_id: string;
+  content: string;
+  message_type: "standard" | "system";
+  attachment_path: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+// ── Case Overview ───────────────────────────────────────────────
+
+export interface LawyerCaseOverview {
+  role: "lawyer";
+  matter_id: string;
+  case_facts: {
+    case_number: string | null;
+    court: string | null;
+    category: string;
+    filed_date: string | null;
+    wip: number;
+    plaintiff: {
+      name: string;
+      contact: {
+        phone: string | null;
+        city: string | null;
+      } | null;
+    };
+  };
+  deadline_alert: string | null;
+  next_hearing: {
+    id: string;
+    hearing_date: string;
+    days_until: number | null;
+    courtroom: string | null;
+    judge: string | null;
+    purpose: string | null;
+  } | null;
+  client_uploads: Array<{ id: string; name: string; created_at: string }>;
+  client_pending_tasks: Array<{ id: string; title: string; due_date: string | null }>;
+  recent_activity: Array<{ id: string; description: string; occurred_at: string }>;
+  my_tasks: Array<{ id: string; title: string; due_date: string | null; is_completed: boolean }>;
+  internal_notes: Array<{ id: string; content: string; created_at: string }>;
+}
+
+export interface ClientCaseOverview {
+  role: "client";
+  matter_id: string;
+  stage: string;
+  status_text: string;
+  case_facts: {
+    case_number: string | null;
+    court: string | null;
+    category: string | null;
+    filed_date: string | null;
+    stage: string;
+    lawyer_name: string | null;
+  };
+  lawyer: {
+    name: string;
+    avatar: string | null;
+  } | null;
+  next_hearing: {
+    date: string;
+    description: string;
+    attend: boolean;
+  } | null;
+  pending_tasks: Array<{ id: string; title: string; due_date: string | null; is_overdue: boolean }>;
+  recent_updates: Array<{ id: string; description: string; occurred_at: string }>;
+  documents: Array<{ id: string; name: string; created_at: string }>;
+  stats: {
+    hearings_count: number;
+    documents_count: number;
+    months_running: number;
+  };
+}
+
+export type CaseOverview = LawyerCaseOverview | ClientCaseOverview;

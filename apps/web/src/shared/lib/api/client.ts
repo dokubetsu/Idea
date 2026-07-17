@@ -1,7 +1,8 @@
 import { createClient } from "@/shared/lib/supabase/client";
+import { resolveApiBase } from "@/shared/lib/api/resolveBase";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const V    = "/api/v1";
+const BASE = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
+const V = "/api/v1";
 
 export class ApiError extends Error {
   status: number;

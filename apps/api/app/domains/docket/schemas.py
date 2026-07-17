@@ -48,6 +48,10 @@ class InvoiceCreate(BaseModel):
     disbursement_ids: list[str] = Field(default_factory=list)
     work_summary: Optional[str] = None
     due_date: Optional[date] = None
+    # GST: recipient place of supply (state). Defaults from client profile.
+    place_of_supply: Optional[str] = None
+    supplier_state: Optional[str] = None
+    draw_retainer: bool = True
 
 
 class InvoiceUpdate(BaseModel):
@@ -75,6 +79,16 @@ class InvoiceOut(BaseModel):
     work_summary: Optional[str]
     created_at: datetime
     updated_at: datetime
+    gstin: Optional[str] = None
+    hsn_sac: Optional[str] = None
+    place_of_supply: Optional[str] = None
+    supplier_state: Optional[str] = None
+    cgst_amount_inr: Optional[float] = None
+    sgst_amount_inr: Optional[float] = None
+    igst_amount_inr: Optional[float] = None
+    is_inter_state: Optional[bool] = None
+    irn: Optional[str] = None
+    qr_code_data: Optional[str] = None
 
 
 # Client sees a simplified invoice view
@@ -88,6 +102,11 @@ class InvoiceClientOut(BaseModel):
     due_date: Optional[date]
     paid_at: Optional[datetime]
     work_summary: Optional[str]
+    gstin: Optional[str] = None
+    hsn_sac: Optional[str] = None
+    place_of_supply: Optional[str] = None
+    irn: Optional[str] = None
+    qr_code_data: Optional[str] = None
 
 
 # ── Disbursements ────────────────────────────────────────────────

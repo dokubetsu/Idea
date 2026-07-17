@@ -81,3 +81,4 @@ class IntakeSessionOut(BaseModel):
     is_committed: bool
     matter_id: str | None
     created_at: str
+    expires_at: str

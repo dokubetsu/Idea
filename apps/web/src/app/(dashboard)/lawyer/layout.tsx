@@ -7,7 +7,18 @@ export default async function LawyerLayout({ children }: { children: React.React
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
 
-  const role = user.app_metadata?.role;
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("role, is_active, dsr_erased_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile && (profile.is_active === false || profile.dsr_erased_at)) {
+    await sb.auth.signOut();
+    redirect("/login?notice=suspended");
+  }
+
+  const role = profile?.role ?? user.app_metadata?.role;
   if (role !== "lawyer") {
     if (role === "admin") redirect("/admin/dashboard");
     redirect("/user/dashboard");

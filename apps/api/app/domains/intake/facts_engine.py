@@ -291,17 +291,26 @@ class FactsExtractionSchema(BaseModel):
     facts: list[ExtractedFact]
 
 
-async def extract_facts(title: str, description: str) -> FactsExtractionResult:
+async def extract_facts(
+    title: str, description: str, user_id: str | None = None
+) -> FactsExtractionResult:
     """
     Primary entry point. Uses AI if available, falls back to keyword extraction.
     Assessment runs on these facts — not on the raw description.
+
+    Pass user_id so AI daily budgets are tracked per authenticated user.
     """
     from app.config import settings
 
     if settings.ai_provider != "mock":
         try:
-            return await _ai_extract(title, description)
+            return await _ai_extract(title, description, user_id=user_id)
         except Exception as e:
+            # Do not swallow rate-limit / client HTTP errors as "AI failure"
+            from fastapi import HTTPException
+
+            if isinstance(e, HTTPException):
+                raise
             log.exception(
                 "AI facts extraction failed, falling back to keyword extraction: %s", e
             )
@@ -309,7 +318,9 @@ async def extract_facts(title: str, description: str) -> FactsExtractionResult:
     return _mock_extract(title, description)
 
 
-async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
+async def _ai_extract(
+    title: str, description: str, user_id: str | None = None
+) -> FactsExtractionResult:
     from app.shared.ai import (
         ContextBuilder,
         PromptBuilder,
@@ -328,7 +339,7 @@ async def _ai_extract(title: str, description: str) -> FactsExtractionResult:
     )
 
     # 3. Resolve Provider via registry
-    provider = await get_ai_provider()
+    provider = await get_ai_provider(user_id=user_id)
 
     # 4. Generate raw text from provider
     raw = await provider.generate(system_prompt, user_prompt, temperature=0.1)

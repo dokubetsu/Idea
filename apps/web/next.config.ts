@@ -10,8 +10,9 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload"
   },
   {
+    // Prefer CSP frame-ancestors; DENY is stronger than SAMEORIGIN
     key: "X-Frame-Options",
-    value: "SAMEORIGIN"
+    value: "DENY"
   },
   {
     key: "X-Content-Type-Options",

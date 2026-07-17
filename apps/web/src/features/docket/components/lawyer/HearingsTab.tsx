@@ -370,17 +370,17 @@ export default function HearingsTab({ matterId }: Props) {
 
   const { upcoming, past, adjournmentCount } = useMemo(() => {
     const sorted = [...hearings].sort(
-      (a: Hearing, b: Hearing) =>
+      (a: any, b: any) =>
         new Date(b.hearing_date).getTime() - new Date(a.hearing_date).getTime()
     );
     const upcomingList = sorted.filter(
-      (h: Hearing) => h.status === "scheduled" || h.status === "adjourned"
+      (h: any) => h.status === "scheduled" || h.status === "adjourned"
     );
     const pastList = sorted.filter(
-      (h: Hearing) => h.status === "completed" || h.status === "cancelled"
+      (h: any) => h.status === "completed" || h.status === "cancelled"
     );
     const adjCount = hearings.filter(
-      (h: Hearing) => h.status === "adjourned"
+      (h: any) => h.status === "adjourned"
     ).length;
     return { upcoming: upcomingList, past: pastList, adjournmentCount: adjCount };
   }, [hearings]);
@@ -426,7 +426,7 @@ export default function HearingsTab({ matterId }: Props) {
           />
         ) : (
           <div className="space-y-3">
-            {upcoming.map((h: Hearing) => (
+            {upcoming.map((h: any) => (
               <UpcomingHearingCard key={h.id} hearing={h} />
             ))}
           </div>
@@ -446,7 +446,7 @@ export default function HearingsTab({ matterId }: Props) {
           />
         ) : (
           <div className="space-y-3">
-            {past.map((h: Hearing) => (
+            {past.map((h: any) => (
               <PastHearingCard key={h.id} hearing={h} />
             ))}
           </div>

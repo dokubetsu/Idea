@@ -1,18 +1,17 @@
 from __future__ import annotations
-from fastapi import APIRouter, Query, HTTPException, Request
 import asyncio
+from fastapi import APIRouter, Query, HTTPException
+import logging
 from app.shared.dependencies import (
     Auth,
     LawyerOrAdmin,
     ensure_lawyer_verified,
     UserRole,
 )
-from app.shared.database import get_db, get_service_role_db
+from app.shared.database import get_db
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound, Forbidden
 from app.config import settings
-import hmac
-import hashlib
 from datetime import datetime, timezone
 from app.domains.matters.schemas import (
     MatterOut,
@@ -37,13 +36,18 @@ from app.domains.matters.service import (
     enrich,
     get_matter_or_403,
     transition_status,
+    open_for_matching,
     SELECT,
 )
 
 from app.domains.matters.documents_router import router as documents_router
+from app.domains.matters.payments import router as payments_router
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/matters", tags=["matters"])
 router.include_router(documents_router)
+router.include_router(payments_router)
 
 
 def _matter_payload(row: dict, *, with_facts: bool = False) -> dict:
@@ -54,6 +58,19 @@ def _matter_payload(row: dict, *, with_facts: bool = False) -> dict:
     payload.setdefault("created_at", datetime.now(timezone.utc))
     payload.setdefault("updated_at", datetime.now(timezone.utc))
     return payload
+
+
+@router.post("/{matter_id}/open-for-matching")
+async def open_matter_for_matching(matter_id: str, user: Auth):
+    """
+    Move an intake/assessment matter into the matching pool so lawyers can be contacted.
+
+    Allowed for the matter owner (user) or admin.
+    """
+    if user.role not in (UserRole.USER, UserRole.ADMIN):
+        raise Forbidden("Only the client or admin can open a matter for matching")
+    db = get_db()
+    return open_for_matching(db, matter_id, user)
 
 
 @router.get("", response_model=list[MatterOut])
@@ -558,37 +575,19 @@ async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
 async def create_hearing(matter_id: str, body: HearingCreate, user: LawyerOrAdmin):
     if not settings.FEATURE_HEARINGS:
         raise HTTPException(status_code=404, detail="Hearings feature not available")
-    db = get_db()
-    get_matter_or_403(db, matter_id, user)
 
-    r = (
-        db.table("hearings")
-        .insert(
-            {
-                "matter_id": matter_id,
-                "hearing_date": body.hearing_date.isoformat(),
-                "courtroom": body.courtroom,
-                "judge": body.judge,
-                "purpose": body.purpose,
-                "notes": body.notes,
-                "status": body.status,
-            }
-        )
-        .execute()
-        .data[0]
-    )
+    from app.domains.docket.service import schedule_hearing
 
-    await emit(
-        (
-            EventType.HEARING_SCHEDULED
-            if body.status == "scheduled"
-            else EventType.HEARING_UPDATED
-        ),
-        actor_id=user.id,
-        matter_id=matter_id,
-        payload={"hearing_id": r["id"]},
-    )
-    return r
+    data = {
+        "hearing_date": body.hearing_date.isoformat(),
+        "courtroom": body.courtroom,
+        "judge": body.judge,
+        "purpose": body.purpose,
+        "notes": body.notes,
+        "status": body.status,
+    }
+    # Delegate to unified docket service to ensure next_hearing_at and timeline records are kept in sync
+    return schedule_hearing(matter_id, user, data)
 
 
 @router.patch("/{matter_id}/hearings/{hearing_id}", response_model=HearingOut)
@@ -597,30 +596,15 @@ async def update_hearing(
 ):
     if not settings.FEATURE_HEARINGS:
         raise HTTPException(status_code=404, detail="Hearings feature not available")
-    db = get_db()
-    get_matter_or_403(db, matter_id, user)
+
+    from app.domains.docket.service import update_hearing as service_update_hearing
 
     data = body.model_dump(exclude_none=True)
     if "hearing_date" in data and data["hearing_date"]:
         data["hearing_date"] = data["hearing_date"].isoformat()
 
-    r = (
-        db.table("hearings")
-        .update(data)
-        .eq("id", hearing_id)
-        .eq("matter_id", matter_id)
-        .execute()
-    )
-    if not r.data:
-        raise NotFound("Hearing")
-
-    await emit(
-        EventType.HEARING_UPDATED,
-        actor_id=user.id,
-        matter_id=matter_id,
-        payload={"hearing_id": hearing_id},
-    )
-    return r.data[0]
+    # Delegate to unified docket service
+    return service_update_hearing(matter_id, hearing_id, user, data)
 
 
 # ── Milestones ─────────────────────────────────────────────────────
@@ -659,29 +643,21 @@ async def update_milestone(
     if not settings.FEATURE_MILESTONES:
         raise HTTPException(status_code=404, detail="Milestones feature not available")
 
-    data = body.model_dump(exclude_none=True)
+    raw_data = body.model_dump(exclude_none=True)
+    if user.role.value == "user":
+        allowed_keys = {"payment_gateway_ref"}
+        if not set(raw_data.keys()).issubset(allowed_keys):
+            raise Forbidden("Clients are not permitted to modify milestone fields.")
 
-    # is_paid, payment_record_id, and payment_idempotency_key are never writable from REST API by any role
+    data = raw_data.copy()
+    # is_paid, payment_record_id, payment_idempotency_key, and payment_gateway_ref are never writable from REST API by any role
     data.pop("is_paid", None)
     data.pop("payment_record_id", None)
     data.pop("payment_idempotency_key", None)
-
-    # If client/user tries to pay bill
-    if "payment_gateway_ref" in data:
-        if not settings.FEATURE_BILLING:
-            raise HTTPException(status_code=404, detail="Billing feature not available")
+    data.pop("payment_gateway_ref", None)
 
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-
-    if user.role.value == "user":
-        # Users can only update payment_gateway_ref
-        allowed_keys = {"payment_gateway_ref"}
-        data = {k: v for k, v in data.items() if k in allowed_keys}
-        if not data:
-            raise Forbidden(
-                "Users are only permitted to update payment_gateway_ref on milestones."
-            )
 
     if "completed_at" in data and data["completed_at"]:
         data["completed_at"] = data["completed_at"].isoformat()
@@ -824,163 +800,3 @@ async def update_meeting(
         )
 
     return r.data[0]
-
-
-@router.post("/webhook/payment")
-async def payment_webhook(request: Request):
-    # Enforce body size limit of 64KB on webhook payload
-    content_length = request.headers.get("Content-Length")
-    if content_length:
-        try:
-            if int(content_length) > 64 * 1024:
-                raise HTTPException(status_code=413, detail="Payload too large")
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
-    else:
-        raise HTTPException(status_code=411, detail="Length required")
-
-    # 1. Read request body
-    body_bytes = await request.body()
-    signature = request.headers.get("X-Razorpay-Signature")
-
-    # 2. Verify signature
-    # In non-production, allow signature verification bypass if signature is "mock"
-    is_mock = settings.PAYMENT_WEBHOOK_SKIP_VERIFICATION and signature == "mock"
-
-    if not is_mock:
-        if not signature:
-            raise HTTPException(
-                status_code=400, detail="Missing X-Razorpay-Signature header"
-            )
-
-        expected_sig = hmac.new(
-            settings.PAYMENT_WEBHOOK_SECRET.encode(), body_bytes, hashlib.sha256
-        ).hexdigest()
-
-        if not hmac.compare_digest(signature, expected_sig):
-            raise HTTPException(status_code=401, detail="Invalid signature")
-
-    # 3. Parse payload
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON body")
-
-    event = payload.get("event")
-    if event != "payment.captured":
-        return {"status": "ignored", "reason": f"Unhandled event type: {event}"}
-
-    payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
-    payment_id = payment_entity.get("id")
-    notes = payment_entity.get("notes", {})
-    milestone_id = notes.get("milestone_id")
-    idemp_key = notes.get("payment_idempotency_key")
-
-    if not milestone_id:
-        raise HTTPException(status_code=400, detail="Missing milestone_id in notes")
-
-    # 4. Fetch milestone and verify existence
-    db = get_service_role_db()
-    milestone_res = (
-        db.table("matter_milestones").select("*").eq("id", milestone_id).execute()
-    )
-    if not milestone_res.data:
-        raise HTTPException(status_code=404, detail="Milestone not found")
-    milestone = milestone_res.data[0]
-
-    # Idempotency check: if already paid
-    if milestone.get("is_paid"):
-        return {
-            "status": "success",
-            "message": "Milestone already paid",
-            "milestone_id": milestone_id,
-        }
-
-    if idemp_key:
-        existing_key_res = (
-            db.table("matter_milestones")
-            .select("id", "is_paid", "payment_gateway_ref")
-            .eq("payment_idempotency_key", idemp_key)
-            .execute()
-        )
-        if existing_key_res.data:
-            existing = existing_key_res.data[0]
-            if existing["id"] == milestone_id:
-                return {
-                    "status": "success",
-                    "message": "Milestone already paid",
-                    "milestone_id": milestone_id,
-                }
-            else:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Idempotency key already used for another milestone",
-                )
-
-    # 5. Get matter and user details
-    matter_id = milestone["matter_id"]
-    matter_res = db.table("matters").select("user_id").eq("id", matter_id).execute()
-    user_id = None
-    if matter_res.data:
-        user_id = matter_res.data[0].get("user_id")
-
-    # 6. Perform database update atomically (guarded by is_paid == False)
-    update_data = {
-        "is_paid": True,
-        "payment_gateway_ref": payment_id,
-        "payment_idempotency_key": idemp_key,
-        "completed_at": datetime.utcnow().isoformat(),
-    }
-
-    result = (
-        db.table("matter_milestones")
-        .update(update_data)
-        .eq("id", milestone_id)
-        .eq("is_paid", False)
-        .execute()
-    )
-    if not result.data:
-        return {
-            "status": "success",
-            "message": "Milestone already paid or already processed",
-            "milestone_id": milestone_id,
-        }
-
-    # Check if we should insert a payment record in payments table
-    payment_record_id = None
-    milestone_amount = milestone.get("amount_inr")
-    if (
-        settings.FEATURE_BILLING
-        and milestone_amount is not None
-        and float(milestone_amount) > 0
-    ):
-        payment_data = {
-            "milestone_id": milestone_id,
-            "user_id": user_id,
-            "amount_inr": float(milestone_amount),
-            "status": "completed",
-            "payment_id": payment_id,
-            "payment_idempotency_key": idemp_key,
-        }
-        pay_res = db.table("payments").insert(payment_data).execute()
-        if pay_res.data:
-            payment_record_id = pay_res.data[0].get("id")
-            db.table("matter_milestones").update(
-                {"payment_record_id": payment_record_id}
-            ).eq("id", milestone_id).execute()
-
-    # Emit MILESTONE_UPDATED event
-    actor_id = user_id or "00000000-0000-0000-0000-000000000000"
-    await emit(
-        EventType.MILESTONE_UPDATED,
-        actor_id=actor_id,
-        matter_id=matter_id,
-        payload={"milestone_id": milestone_id},
-    )
-
-    return {
-        "status": "success",
-        "milestone_id": milestone_id,
-        "payment_gateway_ref": payment_id,
-        "payment_record_id": payment_record_id,
-    }

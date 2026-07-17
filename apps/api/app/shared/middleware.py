@@ -56,22 +56,33 @@ class RequestTracingMiddleware:
             scope["state"] = {}
         scope["state"]["user_id"] = user_id
 
-        from app.shared.database import create_client, set_request_db, clear_request_db
+        from app.shared.database import set_request_db, clear_request_db
         from app.config import settings
 
         import sys
 
         # Create request-scoped client (using anon key to respect RLS)
+        is_pooled = False
         if "pytest" in sys.modules:
             from app.shared.database import get_test_db
 
-            user_client = get_test_db()
+            t_db = get_test_db()
+            if token and not t_db.__class__.__name__.startswith("Mock"):
+                from app.shared.database import get_pooled_client
+
+                user_client = get_pooled_client(
+                    settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY or "", token
+                )
+                is_pooled = True
+            else:
+                user_client = t_db
         else:
-            user_client = create_client(
-                settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY or ""
+            from app.shared.database import get_pooled_client
+
+            user_client = get_pooled_client(
+                settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY or "", token
             )
-            if token:
-                user_client.postgrest.auth(token)
+            is_pooled = True
 
         ctx_token = set_request_db(user_client)
 
@@ -134,7 +145,7 @@ class RequestTracingMiddleware:
             )
             raise
         finally:
-            if "pytest" not in sys.modules:
+            if "pytest" not in sys.modules and not is_pooled:
                 try:
                     if hasattr(user_client, "postgrest") and hasattr(
                         user_client.postgrest, "session"

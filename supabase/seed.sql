@@ -27,13 +27,13 @@ ON CONFLICT (id) DO NOTHING;
 -- Insert corresponding profiles
 INSERT INTO public.profiles (id, role, full_name, phone, city, state, is_active)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'user', 'Test Client', '9999999999', 'New Delhi', 'Delhi', true),
-  ('00000000-0000-0000-0000-000000000002', 'lawyer', 'Test Lawyer', '8888888888', 'Mumbai', 'Maharashtra', true),
-  ('00000000-0000-0000-0000-000000000003', 'admin', 'Test Admin', '7777777777', 'Bangalore', 'Karnataka', true)
+  ('00000000-0000-0000-0000-000000000001', 'user', 'Test Client', '9876543211', 'New Delhi', 'Delhi', true),
+  ('00000000-0000-0000-0000-000000000002', 'lawyer', 'Test Lawyer', '9876543212', 'Mumbai', 'Maharashtra', true),
+  ('00000000-0000-0000-0000-000000000003', 'admin', 'Test Admin', '9876543213', 'Bangalore', 'Karnataka', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert lawyer profile
 INSERT INTO public.lawyer_profiles (id, bar_council_id, enrollment_state, specializations, court_types, languages, experience_years, bio, consultation_fee, is_verified, is_available, rating)
 VALUES
-  ('00000000-0000-0000-0000-000000000002', 'BAR-12345', 'Maharashtra', '{"property","family"}', '{"High Court","District Court"}', '{"English","Hindi"}', 10, 'Experienced legal professional specializing in property and family law.', 1500.00, true, true, 4.80)
+  ('00000000-0000-0000-0000-000000000002', 'MAH/9988/2020', 'Maharashtra', '{"property","family"}', '{"High Court","District Court"}', '{"English","Hindi"}', 10, 'Experienced legal professional specializing in property and family law.', 1500.00, true, true, 4.80)
 ON CONFLICT (id) DO NOTHING;

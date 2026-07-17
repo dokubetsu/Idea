@@ -269,7 +269,10 @@ class SummarySuitCalculator:
         from dateutil.relativedelta import relativedelta
 
         raw_limitation_expiry = due_date + relativedelta(years=3)
-        limitation_expiry = next_working_day(raw_limitation_expiry)
+        # Use state calendar when provided (High Court / district variations)
+        limitation_expiry = next_working_day(
+            raw_limitation_expiry, state=None if state == "default" else state
+        )
 
         days_left = (limitation_expiry - now).days
 

@@ -3,7 +3,7 @@ FastAPI router for Legal Tools domain.
 Exposes endpoints for calculators.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.shared.dependencies import Auth
 from app.domains.legal_tools.schemas import (
     ChequeBounceRequest,
@@ -17,8 +17,61 @@ from app.domains.legal_tools.services.calculators import (
     SummarySuitCalculator,
 )
 from app.domains.legal_tools.services.draft import DocumentDraftService
+from app.domains.legal_tools.services.interest import InterestSource
+from app.shared.court_calendar import (
+    is_court_working_day,
+    next_working_day,
+    list_supported_states,
+)
+from datetime import date
 
 router = APIRouter(prefix="/legal-tools", tags=["legal-tools"])
+
+
+@router.get("/rates/mclr")
+async def get_mclr_rate(
+    user: Auth,
+    refresh: bool = Query(default=False, description="Force re-fetch from feed URL"),
+):
+    """
+    Current SBI 1-year MCLR and derived RERA statutory rate (MCLR + 2%).
+    Ops can override via SBI_MCLR_RATE / SBI_MCLR_FETCH_URL env vars.
+    """
+    return InterestSource.get_sbi_mclr(force_refresh=refresh)
+
+
+@router.get("/court-calendar/working-day")
+async def check_court_working_day(
+    user: Auth,
+    day: date = Query(..., description="Date to check (YYYY-MM-DD)"),
+    state: str | None = Query(default=None, description="State for local holidays"),
+):
+    """Check if a date is a court working day (national + optional state holidays)."""
+    working = is_court_working_day(day, state=state)
+    nxt = next_working_day(day, state=state)
+    return {
+        "date": day.isoformat(),
+        "state": state,
+        "is_working_day": working,
+        "next_working_day": nxt.isoformat(),
+        "supported_states": list_supported_states(),
+    }
+
+
+@router.post("/court-calendar/refresh")
+async def refresh_court_holidays(
+    user: Auth,
+    url: str | None = Query(default=None, description="Override feed URL"),
+):
+    """
+    Fetch holiday JSON feed (or load DB cache) and merge into the in-process calendar.
+    Admin recommended; any authenticated user may refresh when feed URL is configured.
+    """
+    from app.shared import database as shared_database
+    from app.shared.holiday_feed import refresh_holiday_feed
+
+    db = shared_database.get_service_role_db()
+    return await refresh_holiday_feed(db, url=url)
 
 
 @router.post("/calculators/cheque-bounce")

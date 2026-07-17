@@ -35,7 +35,6 @@ function LoginForm() {
     const { data: result, error } = await sb.auth.signInWithPassword(data);
     if (error || !result.user) { setApiErr(error?.message ?? "Sign in failed"); return; }
 
-    const role = (result.user.app_metadata?.role as string) ?? "user";
     const token = result.session?.access_token;
 
     // Create profile if it doesn't exist yet (handles email-confirmation flow
@@ -49,6 +48,30 @@ function LoginForm() {
       // Intentionally not blocking on failure — profile may already exist (idempotent endpoint).
     }
 
+    // Authoritative role + is_active from DB (not JWT app_metadata alone)
+    let role = (result.user.app_metadata?.role as string) ?? "user";
+    try {
+      const me = await apiClient.get<{
+        role?: string;
+        is_active?: boolean;
+        dsr_erased_at?: string | null;
+      }>("/identity/me");
+      if (me.is_active === false || me.dsr_erased_at) {
+        await sb.auth.signOut();
+        setApiErr("This account has been suspended or closed. Contact support if you need help.");
+        return;
+      }
+      if (me.role) role = me.role;
+    } catch {
+      // If /me fails, fall back to JWT role (middleware will re-check)
+    }
+
+    if (role === "suspended") {
+      await sb.auth.signOut();
+      setApiErr("This account has been suspended. Contact support if you need help.");
+      return;
+    }
+
     const redirectUrl = params.get("redirect");
     let safeRedirect = `/${role}/dashboard`;
     if (redirectUrl) {
@@ -59,9 +82,17 @@ function LoginForm() {
           !redirectUrl.startsWith("//") &&
           !redirectUrl.startsWith("/\\")
         ) {
-          safeRedirect = parsed.pathname + parsed.search + parsed.hash;
+          // Only allow same-origin relative paths under role homes
+          const path = parsed.pathname + parsed.search + parsed.hash;
+          if (
+            path.startsWith("/user") ||
+            path.startsWith("/lawyer") ||
+            path.startsWith("/admin")
+          ) {
+            safeRedirect = path;
+          }
         }
-      } catch (e) {
+      } catch {
         // Fall back to default
       }
     }
@@ -80,6 +111,16 @@ function LoginForm() {
       {notice === "profile-incomplete" && (
         <div className="mt-4 rounded-xl border border-brand-gold/25 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           ⚠️ Your authentication account was created, but your profile setup did not complete. Please sign in here to complete setup.
+        </div>
+      )}
+      {notice === "suspended" && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          This account is suspended or closed. Contact support if you believe this is an error.
+        </div>
+      )}
+      {notice === "session-expired" && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Your session expired. Please sign in again.
         </div>
       )}
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">

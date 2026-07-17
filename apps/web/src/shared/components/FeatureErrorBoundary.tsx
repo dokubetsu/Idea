@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 interface Props {
   children: React.ReactNode;
@@ -39,12 +40,19 @@ export class FeatureErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Log to console in all envs; swap for a monitoring service (Sentry, etc.) in production
     console.error(
       `[FeatureErrorBoundary${this.props.context ? ` — ${this.props.context}` : ""}]`,
       error,
       info.componentStack,
     );
+    Sentry.captureException(error, {
+      tags: {
+        feature_context: this.props.context || "unknown",
+      },
+      extra: {
+        componentStack: info.componentStack,
+      },
+    });
   }
 
   handleReset = () => {

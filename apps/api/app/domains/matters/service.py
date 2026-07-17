@@ -30,6 +30,33 @@ def get_matter_or_403(db, matter_id: str, user: CurrentUser) -> dict:
     return m
 
 
+def open_for_matching(db, matter_id: str, user: CurrentUser) -> dict:
+    """
+    Product path: petitioner (or admin) opens an assessed matter for lawyer matching.
+
+    Valid transitions use transition_matter_status (assessment|intake → matching).
+    """
+    from app.shared.exceptions import BadRequest
+
+    matter = get_matter_or_403(db, matter_id, user)
+    if user.role == UserRole.USER and matter.get("user_id") != user.id:
+        raise Forbidden()
+    if user.role == UserRole.LAWYER:
+        raise Forbidden("Lawyers cannot open matters for matching")
+
+    current = matter.get("status")
+    if current == "matching":
+        return {"matter_id": matter_id, "status": "matching", "already_open": True}
+    if current not in ("assessment", "intake"):
+        raise BadRequest(
+            f"Cannot open for matching from status '{current}'. "
+            "Matter must be in intake or assessment."
+        )
+
+    transition_status(db, matter_id, "matching", user.id)
+    return {"matter_id": matter_id, "status": "matching", "already_open": False}
+
+
 def transition_status(db, matter_id: str, new_status: str, actor_id: str) -> None:
     try:
         res = db.rpc(

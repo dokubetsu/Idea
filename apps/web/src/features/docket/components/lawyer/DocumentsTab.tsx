@@ -116,9 +116,9 @@ export default function DocumentsTab({ matterId }: Props) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [showRequestForm, setShowRequestForm] = useState(false);
 
-  const docs: DocumentRecord[] = (documents as DocumentRecord[]) ?? [];
+  const docs: DocumentRecord[] = (documents as unknown as DocumentRecord[]) ?? [];
   const filtered = filter === "all" ? docs : docs.filter((d) => d.metadata.review_status === filter);
-  const requestList: DocumentRequestRecord[] = (requests as DocumentRequestRecord[]) ?? [];
+  const requestList: DocumentRequestRecord[] = (requests as unknown as DocumentRequestRecord[]) ?? [];
 
   // ── Handlers ────────────────────────────────────────────────
 

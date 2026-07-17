@@ -11,9 +11,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect("/login");
 
-  const role     = (user.app_metadata?.role ?? "user") as UserRole;
+  // Authoritative role + active flag from profiles (defense in depth vs JWT)
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("role, is_active, full_name, dsr_erased_at")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const fullName = user.user_metadata?.full_name ?? user.email ?? "User";
+  if (profile && (profile.is_active === false || profile.dsr_erased_at)) {
+    await sb.auth.signOut();
+    redirect("/login?notice=suspended");
+  }
+
+  const role = (profile?.role ?? user.app_metadata?.role ?? "user") as UserRole;
+  const fullName =
+    profile?.full_name ?? user.user_metadata?.full_name ?? user.email ?? "User";
 
   return (
     <div className="flex h-screen overflow-hidden bg-base-100">

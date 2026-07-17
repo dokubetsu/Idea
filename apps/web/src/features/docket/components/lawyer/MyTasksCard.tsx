@@ -6,7 +6,7 @@ import { useToggleTask } from "@/features/docket/hooks/useCaseOverview";
 interface Task {
   id: string;
   title: string;
-  due_date: string;
+  due_date: string | null;
   is_completed: boolean;
 }
 
@@ -20,11 +20,13 @@ export default function MyTasksCard({ matterId, tasks }: MyTasksCardProps) {
 
   const visibleTasks = tasks.slice(0, 5);
 
-  const isOverdue = (dueDate: string) => {
+  const isOverdue = (dueDate: string | null) => {
+    if (!dueDate) return false;
     return new Date(dueDate) < new Date() && !isToday(dueDate);
   };
 
-  const isToday = (dueDate: string) => {
+  const isToday = (dueDate: string | null) => {
+    if (!dueDate) return false;
     const today = new Date();
     const due = new Date(dueDate);
     return (
@@ -34,7 +36,8 @@ export default function MyTasksCard({ matterId, tasks }: MyTasksCardProps) {
     );
   };
 
-  const formatDueDate = (dueDate: string) => {
+  const formatDueDate = (dueDate: string | null) => {
+    if (!dueDate) return "No date";
     return new Date(dueDate).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",

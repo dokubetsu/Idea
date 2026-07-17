@@ -3,24 +3,45 @@
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from app.shared.database import get_db
-from app.shared.dependencies import Auth, LawyerAuth
+from app.shared.dependencies import Auth, LawyerAuth, UserRole
 from app.shared.events import emit, EventType
 from app.shared.exceptions import NotFound
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
-LP_SELECT = "*, profiles!inner(full_name, city, state, avatar_url)"
+# Public-facing columns only — never return bar_council_id / internal fields
+# to arbitrary authenticated users.
+LP_SELECT = (
+    "id, specializations, court_types, languages, experience_years, bio, "
+    "consultation_fee, is_verified, is_available, rating, total_matters, "
+    "profiles!inner(full_name, city, state, avatar_url)"
+)
+
+_PUBLIC_LP_KEYS = {
+    "id",
+    "specializations",
+    "court_types",
+    "languages",
+    "experience_years",
+    "bio",
+    "consultation_fee",
+    "is_verified",
+    "is_available",
+    "rating",
+    "total_matters",
+}
 
 
 def _build_lawyer_out(row: dict) -> dict:
+    """Project a lawyer_profiles row to a public DTO (no bar IDs / secrets)."""
     p = row.pop("profiles", {}) or {}
-    return {
-        **row,
-        "full_name": p.get("full_name"),
-        "city": p.get("city"),
-        "state": p.get("state"),
-        "avatar_url": p.get("avatar_url"),
-    }
+    public = {k: row.get(k) for k in _PUBLIC_LP_KEYS if k in row or k == "id"}
+    public["id"] = row.get("id") or public.get("id")
+    public["full_name"] = p.get("full_name")
+    public["city"] = p.get("city")
+    public["state"] = p.get("state")
+    public["avatar_url"] = p.get("avatar_url")
+    return public
 
 
 @router.get("/lawyers")
@@ -49,10 +70,8 @@ async def list_lawyers(
     if specialization:
         q = q.contains("specializations", [specialization])
 
-    # FIX F: PostgREST resource-embedding filters (profiles.city / profiles.state)
-    # silently no-op in many versions of the supabase-py client. Filter in Python
-    # after the join is resolved instead. Fetch a slightly larger window to
-    # compensate for rows dropped by the Python filter.
+    # Filter by city or state in Python to circumvent PostgREST resource-embedding
+    # filter limitations in the client. Fetch a slightly larger page window to compensate.
     fetch_limit = per_page * 3 if (city or state) else per_page
     rows = q.range(off, off + fetch_limit - 1).execute().data or []
 
@@ -70,6 +89,10 @@ async def list_lawyers(
 
 @router.get("/lawyers/{lawyer_id}")
 async def get_lawyer(lawyer_id: str, user: Auth):
+    """Return a verified lawyer's public profile.
+
+    Unverified profiles are only visible to admins (and the lawyer themselves).
+    """
     db = get_db()
     r = (
         db.table("lawyer_profiles")
@@ -80,7 +103,15 @@ async def get_lawyer(lawyer_id: str, user: Auth):
     )
     if not r.data:
         raise NotFound("Lawyer")
-    return _build_lawyer_out(r.data)
+
+    row = r.data
+    is_verified = bool(row.get("is_verified"))
+    is_self = str(lawyer_id) == str(user.id)
+    is_admin = user.role == UserRole.ADMIN
+    if not is_verified and not is_self and not is_admin:
+        raise NotFound("Lawyer")
+
+    return _build_lawyer_out(row)
 
 
 class ContactRequest(BaseModel):
@@ -131,9 +162,8 @@ async def contact_lawyer(lawyer_id: str, body: ContactRequest, user: Auth):
     res = db.rpc(
         "contact_lawyer_rpc",
         {
-            # C7: p_user_id removed — migration 026 rewrites contact_lawyer_rpc
-            # to derive the caller's identity from auth.uid() inside the DB function.
-            # The supabase-py client forwards the user's JWT automatically.
+            # Derive the caller's identity from auth.uid() inside the DB function.
+            # The supabase client forwards the user's JWT automatically.
             "p_lawyer_id": lawyer_id,
             "p_matter_id": matter_id,
             "p_message": body.message,
@@ -182,7 +212,63 @@ class RespondRequest(BaseModel):
 
 @router.patch("/requests/{request_id}")
 async def respond_to_request(request_id: str, body: RespondRequest, user: LawyerAuth):
+    """Accept or decline a lawyer request.
+
+    Accept uses matching_accept_rpc so request status + matter assignment are
+    atomic (no stuck 'accepted' request without a matter assign).
+    """
+    from fastapi import HTTPException
+    from app.shared.exceptions import BadRequest
+
     db = get_db()
+
+    if body.accept:
+        try:
+            res = db.rpc("matching_accept_rpc", {"p_request_id": request_id}).execute()
+            data = res.data
+            if isinstance(data, list) and data:
+                data = data[0]
+            if not isinstance(data, dict):
+                data = {}
+            matter_id = data.get("matter_id")
+            await emit(
+                EventType.LAWYER_ACCEPTED,
+                actor_id=user.id,
+                matter_id=matter_id,
+                payload={
+                    "request_id": request_id,
+                    "matter_assigned": data.get("matter_assigned"),
+                },
+            )
+            return {
+                "ok": True,
+                "status": "accepted",
+                "matter_id": matter_id,
+                "matter_assigned": data.get("matter_assigned"),
+            }
+        except Exception as e:
+            msg = str(e).lower()
+            if "does not exist" in msg or "could not find" in msg or "pgrst202" in msg:
+                # Fall through to legacy multi-step path
+                pass
+            elif "not found" in msg:
+                raise NotFound("Request") from e
+            elif "already been processed" in msg:
+                raise BadRequest("Request has already been processed") from e
+            elif "no longer in the matching" in msg:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This matter is no longer in the matching state.",
+                ) from e
+            elif "already been assigned" in msg:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This matter has already been assigned to another lawyer.",
+                ) from e
+            else:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Decline (or accept fallback when RPC missing)
     status = "accepted" if body.accept else "declined"
     r = (
         db.table("lawyer_requests")
@@ -202,15 +288,11 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
         )
         if not exists_resp.data:
             raise NotFound("Request")
-        else:
-            from app.shared.exceptions import BadRequest
-
-            raise BadRequest("Request has already been processed")
+        raise BadRequest("Request has already been processed")
     req = r.data[0]
 
     if body.accept and req.get("matter_id"):
         from datetime import datetime, timezone
-        from fastapi import HTTPException
 
         matter_row = (
             db.table("matters")
@@ -221,15 +303,15 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
             .data
         )
         if not matter_row or matter_row.get("status") != "matching":
+            # Roll back request accept to avoid stuck accepted state
+            db.table("lawyer_requests").update({"status": "pending"}).eq(
+                "id", request_id
+            ).eq("status", "accepted").execute()
             raise HTTPException(
                 status_code=409,
                 detail="This matter is no longer in the matching state.",
             )
 
-        # H2: Optimistic locking — only assign if lawyer_id is still NULL.
-        # If two lawyers accept the same pending matter concurrently, the second
-        # UPDATE finds no rows (lawyer_id already set by the first winner) and
-        # returns a 409 rather than silently overwriting the first assignment.
         update_result = (
             db.table("matters")
             .update(
@@ -241,11 +323,14 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
             )
             .eq("id", req["matter_id"])
             .eq("status", "matching")
-            .is_("lawyer_id", "null")  # optimistic lock: only update unassigned matters
+            .is_("lawyer_id", "null")
             .execute()
         )
 
         if not update_result.data:
+            db.table("lawyer_requests").update({"status": "pending"}).eq(
+                "id", request_id
+            ).eq("status", "accepted").execute()
             raise HTTPException(
                 status_code=409,
                 detail="This matter has already been assigned to another lawyer.",
