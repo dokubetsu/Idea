@@ -9,8 +9,8 @@ describe("resolveApiBase", () => {
     );
   });
 
-  it("requires https non-localhost in production", () => {
-    expect(() => resolveApiBase(undefined, "production")).toThrow(/must be set/i);
+  it("requires https non-localhost in production and defaults safely", () => {
+    expect(resolveApiBase(undefined, "production")).toBe("https://api.lead.ai");
     expect(() => resolveApiBase("http://api.example.com", "production")).toThrow(
       /https/i,
     );
@@ -22,3 +22,4 @@ describe("resolveApiBase", () => {
     );
   });
 });
+

@@ -1,8 +1,14 @@
 import { createClient } from "@/shared/lib/supabase/client";
 import { resolveApiBase } from "@/shared/lib/api/resolveBase";
 
-const BASE = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
+const BASE = resolveApiBase(
+  process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window === "undefined" && process.env.NODE_ENV === "production"
+      ? "https://api.lead.ai"
+      : undefined),
+);
 const V = "/api/v1";
+
 
 export class ApiError extends Error {
   status: number;
