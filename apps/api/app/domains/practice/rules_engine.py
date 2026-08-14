@@ -83,8 +83,8 @@ def safe_eval(
             elif isinstance(node.op, ast.Mod):
                 return left % right
             elif isinstance(node.op, ast.Pow):
-                if not isinstance(left, (int, float)) or not isinstance(
-                    right, (int, float)
+                if not isinstance(left, int | float) or not isinstance(
+                    right, int | float
                 ):
                     raise TypeError("Power operator requires numeric operands")
                 if abs(right) > 20:
@@ -149,7 +149,9 @@ def safe_eval(
             if node.attr.startswith("__"):
                 raise AttributeError("Access to private attributes is blocked")
 
-            if isinstance(value, (AttrDict, date, datetime, timedelta, relativedelta)):
+            if isinstance(
+                value, AttrDict | date | datetime | timedelta | relativedelta
+            ):
                 try:
                     return getattr(value, node.attr)
                 except AttributeError:
@@ -175,10 +177,10 @@ def safe_eval(
 
             if func_name in {"timedelta", "relativedelta"}:
                 for a in args:
-                    if isinstance(a, (int, float)) and abs(a) > 365000:
+                    if isinstance(a, int | float) and abs(a) > 365000:
                         raise ValueError(f"Argument value too large: {a}")
                 for k, v in kwargs.items():
-                    if isinstance(v, (int, float)):
+                    if isinstance(v, int | float):
                         if (
                             k in {"years", "months"}
                             and abs(v) > 1000

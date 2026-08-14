@@ -350,9 +350,10 @@ def migrate_extracted_facts(ef: dict, row: dict) -> dict:
             val_type = "text"
             if isinstance(v, bool):
                 val_type = "boolean"
-            elif isinstance(v, (int, float)):
+            elif isinstance(v, int | float):
                 val_type = "number"
             elif isinstance(v, list):
+
                 val_type = "array"
             # simple date regex guess
             elif isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}$", v):

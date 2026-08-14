@@ -13,7 +13,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC
-from enum import Enum
+from enum import Enum, StrEnum
 
 from app.shared import database
 
@@ -22,9 +22,10 @@ log = logging.getLogger(__name__)
 _event_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="events_worker")
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     # Intake
     INTAKE_STARTED = "intake.started"
+
     INTAKE_FACTS_SAVED = "intake.facts_saved"
     INTAKE_COMPLETED = "intake.completed"
 

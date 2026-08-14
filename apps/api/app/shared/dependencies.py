@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
@@ -13,7 +13,7 @@ from app.shared.jwt import decode_token
 bearer = HTTPBearer(auto_error=False)
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     USER = "user"
     LAWYER = "lawyer"
     ADMIN = "admin"

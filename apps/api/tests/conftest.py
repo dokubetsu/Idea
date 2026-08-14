@@ -408,8 +408,9 @@ class MockSupabaseResponse:
             self.count = count
         elif data is None:
             self.count = 0
-        elif isinstance(data, (list, tuple, dict, str, bytes)):
+        elif isinstance(data, list | tuple | dict | str | bytes):
             self.count = len(data)
+
         else:
             # scalar RPC results (int/bool/etc.)
             self.count = 1

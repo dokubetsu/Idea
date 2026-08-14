@@ -35,14 +35,14 @@ def render_text(
     try:
         context = {}
         for k, v in facts.items():
-            if isinstance(v, (date, datetime)):
+            if isinstance(v, date | datetime):
                 v_str = v.strftime("%Y-%m-%d")
             else:
                 v_str = str(v)
             context[f"facts.{k}"] = v_str
 
         for k, v in (player_input or {}).items():
-            if isinstance(v, (date, datetime)):
+            if isinstance(v, date | datetime):
                 v_str = v.strftime("%Y-%m-%d")
             else:
                 v_str = str(v)

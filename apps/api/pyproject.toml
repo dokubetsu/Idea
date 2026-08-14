@@ -40,7 +40,6 @@ ignore = [
     "SIM105", # use contextlib.suppress
     "SIM102", # use a single if statement instead of nested if statements
     "SIM103", # return condition directly
-    "UP038", # isinstance X | Y
 ]
 
 [tool.ruff.lint.isort]
