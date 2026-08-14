@@ -2,15 +2,15 @@
 
 import logging
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
-from pydantic import BaseModel, Field, field_validator
-from app.shared.database import get_db
-from app.shared import database as shared_database
-from app.shared.dependencies import Auth
 
+from app.shared import database as shared_database
+from app.shared.database import get_db
+from app.shared.dependencies import Auth
 from app.shared.jwt import decode_token
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/identity", tags=["identity"])
 bearer = HTTPBearer(auto_error=False)

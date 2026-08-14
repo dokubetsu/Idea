@@ -1,19 +1,20 @@
 """Matter payments — Razorpay orders, verify, webhook, apply_payment."""
 
 from __future__ import annotations
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-import logging
-import hmac
+
 import hashlib
+import hmac
+import logging
 import uuid
 from datetime import datetime, timezone
 
-from app.shared.dependencies import Auth
-from app.shared.database import get_db, get_service_role_db
-from app.shared.events import emit, EventType
 from app.config import settings
 from app.domains.matters.service import get_matter_or_403
+from app.shared.database import get_db, get_service_role_db
+from app.shared.dependencies import Auth
+from app.shared.events import EventType, emit
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["matters-payments"])
@@ -462,8 +463,8 @@ async def payment_webhook(request: Request):
 
     # ── Consultation payment path ─────────────────────────────────
     if consultation_id:
-        from app.domains.consultations.service import mark_consultation_paid
         from app.domains.consultations.schemas import PACKAGE_AMOUNTS_INR
+        from app.domains.consultations.service import mark_consultation_paid
 
         c_res = (
             db.table("consultations").select("*").eq("id", consultation_id).execute()

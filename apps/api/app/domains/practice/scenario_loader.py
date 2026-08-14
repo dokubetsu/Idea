@@ -1,7 +1,8 @@
-import os
 import glob
-import yaml  # type: ignore[import-untyped]
 import logging
+import os
+
+import yaml  # type: ignore[import-untyped]
 
 log = logging.getLogger(__name__)
 

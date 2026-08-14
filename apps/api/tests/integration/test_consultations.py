@@ -1,7 +1,8 @@
-import pytest
 import uuid
-from httpx import AsyncClient
+
+import pytest
 from app.shared.database import get_db
+from httpx import AsyncClient
 
 
 @pytest.mark.integration

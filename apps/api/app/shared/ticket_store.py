@@ -1,8 +1,9 @@
-import time
 import json
 import logging
 import threading
+import time
 import typing
+
 from app.config import settings
 
 log = logging.getLogger("app.ticket_store")

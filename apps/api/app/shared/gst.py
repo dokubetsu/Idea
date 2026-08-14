@@ -8,6 +8,7 @@ Tax split:
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 GST_RATE_PERCENT = 18.0

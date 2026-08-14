@@ -1,10 +1,11 @@
-import pytest
 import asyncio
-from httpx import AsyncClient
+
+import pytest
 from app.domains.intake.facts_engine import _mock_extract
-from app.shared.ai.validator import Normalizer
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.main import app
+from app.shared.ai.validator import Normalizer
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
@@ -345,9 +346,10 @@ def test_production_validator_enforces_redis_url():
 
 
 def test_rate_limit_key_generation_from_middleware_verified_state():
-    from fastapi import Request
-    from app.shared.limiter import get_rate_limit_key
     from unittest.mock import Mock
+
+    from app.shared.limiter import get_rate_limit_key
+    from fastapi import Request
 
     # 1. With state.user_id populated by middleware
     mock_request = Mock(spec=Request)
@@ -371,10 +373,11 @@ def test_rate_limit_key_generation_from_middleware_verified_state():
 
 @pytest.mark.asyncio
 async def test_run_assessment_fails_with_503_in_production_when_all_retries_fail():
-    from app.domains.assessment.service import run_assessment
-    from app.domains.assessment.providers.base import AssessmentInput
-    from app.config import settings
     from unittest.mock import patch
+
+    from app.config import settings
+    from app.domains.assessment.providers.base import AssessmentInput
+    from app.domains.assessment.service import run_assessment
     from fastapi import HTTPException
 
     old_env = settings.APP_ENV
@@ -536,8 +539,9 @@ async def test_request_id_log_injection_prevention(client: AsyncClient, mock_db)
 
 
 def test_rera_installment_interest():
-    from app.domains.legal_tools.services.calculators import RERACalculator
     from datetime import date
+
+    from app.domains.legal_tools.services.calculators import RERACalculator
 
     res = RERACalculator.calculate(
         total_paid_amount=None,
@@ -551,8 +555,9 @@ def test_rera_installment_interest():
 
 
 def test_court_holiday_limitation_expiry():
-    from app.domains.legal_tools.services.calculators import SummarySuitCalculator
     from datetime import date
+
+    from app.domains.legal_tools.services.calculators import SummarySuitCalculator
 
     res = SummarySuitCalculator.calculate(
         claim_amount=50000.0, due_date=date(2022, 1, 26), current_date=date(2025, 1, 20)

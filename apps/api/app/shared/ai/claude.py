@@ -1,7 +1,8 @@
 from typing import Any, cast
+
 import anthropic
-from app.shared.ai.base import BaseAiProvider
 from app.config import settings
+from app.shared.ai.base import BaseAiProvider
 
 
 class ClaudeProvider(BaseAiProvider):

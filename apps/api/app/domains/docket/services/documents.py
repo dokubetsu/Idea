@@ -1,16 +1,17 @@
 from __future__ import annotations
+
 import logging
 import os
 import uuid
-from app.shared.database import get_db
-from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import NotFound, Forbidden, BadRequest
 
 from app.domains.docket.services.helpers import (
-    _now,
-    _get_matter_for_participant,
     _ensure_lawyer_on_matter,
+    _get_matter_for_participant,
+    _now,
 )
+from app.shared.database import get_db
+from app.shared.dependencies import CurrentUser, UserRole
+from app.shared.exceptions import BadRequest, Forbidden, NotFound
 
 logger = logging.getLogger(__name__)
 

@@ -1,17 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
 from app.config import settings
-from app.shared.dependencies import Auth
-from app.domains.practice.service import PracticeService
 from app.domains.practice.schemas import (
-    StartSessionRequest,
-    DecisionRequest,
-    SessionOut,
-    DecisionResponse,
     DebriefResponse,
+    DecisionRequest,
+    DecisionResponse,
     PracticeProfileResponse,
     ScenarioListResponse,
     SessionHistoryItem,
+    SessionOut,
+    StartSessionRequest,
 )
+from app.domains.practice.service import PracticeService
+from app.shared.dependencies import Auth
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 
 def verify_practice_enabled() -> None:

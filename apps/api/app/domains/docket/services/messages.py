@@ -1,11 +1,12 @@
 from __future__ import annotations
+
+from app.domains.docket.services.helpers import (
+    _get_matter_for_participant,
+    _now,
+)
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser
 from app.shared.exceptions import BadRequest
-from app.domains.docket.services.helpers import (
-    _now,
-    _get_matter_for_participant,
-)
 
 
 def list_messages(matter_id: str, user: CurrentUser) -> list:

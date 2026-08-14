@@ -1,7 +1,8 @@
 import asyncio
+
 import google.generativeai as genai
-from app.shared.ai.base import BaseAiProvider
 from app.config import settings
+from app.shared.ai.base import BaseAiProvider
 
 
 class GeminiProvider(BaseAiProvider):

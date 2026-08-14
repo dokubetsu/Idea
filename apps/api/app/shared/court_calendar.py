@@ -7,6 +7,7 @@ for major states (best-effort; not a substitute for official court calendars).
 """
 
 from __future__ import annotations
+
 from datetime import date, timedelta
 
 NATIONAL_HOLIDAYS = {

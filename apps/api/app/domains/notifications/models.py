@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
-from typing import Literal, Dict, Any, Optional
+from typing import Any, Dict, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 NotificationStatus = Literal["unread", "read", "dismissed"]

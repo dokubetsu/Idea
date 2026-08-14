@@ -1,7 +1,8 @@
 import logging
-from app.shared import database
-from app.shared.events import subscribe, EventType, emit
+
 from app.domains.notifications.service import create_notification
+from app.shared import database
+from app.shared.events import EventType, emit, subscribe
 
 log = logging.getLogger(__name__)
 

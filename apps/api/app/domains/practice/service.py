@@ -1,28 +1,27 @@
 import logging
-from datetime import datetime, timezone
-from typing import Any
-from fastapi import HTTPException
-from postgrest.types import CountMethod
 import re
-from datetime import date
+from datetime import date, datetime, timezone
+from typing import Any
 
-from app.shared.database import get_db
-from app.shared.events import EventType
 from app.domains.practice import scenario_loader
 from app.domains.practice.rules_engine import FactsGenerator, RulesEngine
 from app.domains.practice.schemas import (
-    ScenarioSummary,
+    BlindSpotDetail,
+    DebriefDecision,
+    DebriefResponse,
+    DecisionResponse,
+    PracticeProfileResponse,
     ScenarioListResponse,
+    ScenarioSummary,
+    SessionHistoryItem,
     SessionNodeChoice,
     SessionNodeState,
     SessionOut,
-    DecisionResponse,
-    DebriefDecision,
-    DebriefResponse,
-    BlindSpotDetail,
-    PracticeProfileResponse,
-    SessionHistoryItem,
 )
+from app.shared.database import get_db
+from app.shared.events import EventType
+from fastapi import HTTPException
+from postgrest.types import CountMethod
 
 log = logging.getLogger(__name__)
 

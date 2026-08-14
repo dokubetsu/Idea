@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 import logging
-from app.shared.database import get_db
-from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import NotFound, BadRequest
 
 from app.domains.docket.services.helpers import (
-    _now,
-    _get_matter_for_participant,
     _ensure_lawyer_on_matter,
+    _get_matter_for_participant,
+    _now,
 )
+from app.shared.database import get_db
+from app.shared.dependencies import CurrentUser, UserRole
+from app.shared.exceptions import BadRequest, NotFound
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ def schedule_hearing(matter_id: str, user: CurrentUser, data: dict) -> dict:
     _ensure_lawyer_on_matter(matter_id, user)
 
     from datetime import date
+
     from app.shared.court_calendar import is_court_working_day
 
     try:
@@ -102,6 +104,7 @@ def update_hearing(
     _ensure_lawyer_on_matter(matter_id, user)
 
     from datetime import date
+
     from app.shared.court_calendar import is_court_working_day
 
     if "hearing_date" in data and data["hearing_date"]:

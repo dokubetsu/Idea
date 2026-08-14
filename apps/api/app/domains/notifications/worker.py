@@ -2,9 +2,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.domains.notifications.templates import get_template
 from app.domains.notifications.channels import get_channel
 from app.domains.notifications.service import get_recipient_info
+from app.domains.notifications.templates import get_template
 
 log = logging.getLogger(__name__)
 

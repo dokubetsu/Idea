@@ -1,13 +1,13 @@
 from app.domains.notifications.templates.base import BaseNotificationTemplate
+from app.domains.notifications.templates.comment_added import CommentAddedTemplate
 from app.domains.notifications.templates.generic import GenericTemplate
-from app.domains.notifications.templates.matter_assigned import MatterAssignedTemplate
 from app.domains.notifications.templates.hearing_scheduled import (
     HearingScheduledTemplate,
 )
+from app.domains.notifications.templates.matter_assigned import MatterAssignedTemplate
 from app.domains.notifications.templates.milestone_completed import (
     MilestoneCompletedTemplate,
 )
-from app.domains.notifications.templates.comment_added import CommentAddedTemplate
 
 _TEMPLATES = {
     "matter_assigned": MatterAssignedTemplate,

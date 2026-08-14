@@ -9,36 +9,35 @@ Startup sequence:
 5. Register lifecycle events
 """
 
-from contextlib import asynccontextmanager
 import logging
-from typing import Any, cast
 import os
+from contextlib import asynccontextmanager
+from typing import Any, cast
+
 import sentry_sdk
-from prometheus_fastapi_instrumentator import Instrumentator
-
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.middleware import SlowAPIMiddleware
-
 from app.config import settings
-from app.shared.limiter import limiter
-from app.shared.middleware import RequestTracingMiddleware, request_id_var
-from app.shared.body_size_limit import BodySizeLimitMiddleware, SizeLimitError
+from app.domains.admin.router import router as admin_router
+from app.domains.assessment.router import router as assessment_router
+from app.domains.consultations.router import router as consultations_router
+from app.domains.docket import docket_router
 from app.domains.identity.router import router as identity_router
 from app.domains.intake.router import router as intake_router
-from app.domains.matters.router import router as matters_router
-from app.domains.assessment.router import router as assessment_router
-from app.domains.matching.router import router as matching_router
-from app.domains.admin.router import router as admin_router
 from app.domains.legal_tools.router import router as legal_tools_router
+from app.domains.matching.router import router as matching_router
+from app.domains.matters.router import router as matters_router
 from app.domains.notifications.router import router as notifications_router
-from app.domains.consultations.router import router as consultations_router
-from app.domains.system.router import router as system_router
 from app.domains.practice import practice_router
-from app.domains.docket import docket_router
+from app.domains.system.router import router as system_router
+from app.shared.body_size_limit import BodySizeLimitMiddleware, SizeLimitError
+from app.shared.limiter import limiter
+from app.shared.middleware import RequestTracingMiddleware, request_id_var
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -73,9 +72,9 @@ if settings.APP_ENV == "production":
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────────
-    from app.shared.database import get_service_role_db
     from app.domains.assessment.service import get_provider
     from app.domains.notifications.subscriber import init_subscriber
+    from app.shared.database import get_service_role_db
     from app.shared.events import start_outbox_worker
 
     init_subscriber()

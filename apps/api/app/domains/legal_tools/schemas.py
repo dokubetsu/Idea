@@ -3,8 +3,9 @@ Pydantic schemas for Legal Tools Calculators.
 """
 
 from datetime import date
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class ChequeBounceRequest(BaseModel):

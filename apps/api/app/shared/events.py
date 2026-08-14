@@ -8,10 +8,12 @@ Usage:
 """
 
 from __future__ import annotations
+
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+
 from app.shared import database
 
 log = logging.getLogger(__name__)

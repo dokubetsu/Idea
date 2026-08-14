@@ -1,19 +1,19 @@
-from fastapi import APIRouter, Depends, Query, Request, HTTPException
+import asyncio
+import json
+import uuid
+from typing import List, Optional
+
+import app.domains.notifications.preferences as prefs_service
+import app.domains.notifications.service as service
+from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
+from app.domains.notifications.models import NotificationOut, NotificationStatus
+from app.shared.database import get_db
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from app.shared.ticket_store import ticket_store
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
-from typing import List, Optional
-import json
-import asyncio
-import uuid
 from sse_starlette.sse import EventSourceResponse
-
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
-from app.shared.database import get_db
-from app.domains.notifications.models import NotificationOut, NotificationStatus
-from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
-import app.domains.notifications.service as service
-import app.domains.notifications.preferences as prefs_service
-from app.shared.ticket_store import ticket_store
 
 bearer = HTTPBearer(auto_error=False)
 

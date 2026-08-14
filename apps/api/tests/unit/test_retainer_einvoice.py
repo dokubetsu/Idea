@@ -1,17 +1,17 @@
 """Retainer ledger + e-invoice mock provider tests."""
 
 from __future__ import annotations
-import pytest
-from httpx import AsyncClient
 
-from app.main import app
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
-from app.shared.einvoice import MockEinvoiceProvider, build_irp_payload
+import pytest
 from app.domains.docket.services.retainer import (
     deposit_retainer,
-    refund_retainer,
     get_retainer_balance,
+    refund_retainer,
 )
+from app.main import app
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from app.shared.einvoice import MockEinvoiceProvider, build_irp_payload
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

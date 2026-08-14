@@ -1,9 +1,11 @@
 """Docket domain — Pydantic schemas for request/response models."""
 
 from __future__ import annotations
+
 from datetime import date, datetime
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 # ── Time Entries ─────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 from app.domains.notifications.channels.base import BaseNotificationChannel
-from app.domains.notifications.channels.in_app import InAppChannel
 from app.domains.notifications.channels.email import EmailChannel
+from app.domains.notifications.channels.in_app import InAppChannel
 from app.domains.notifications.channels.sms import SMSChannel
 
 _CHANNELS = {

@@ -6,17 +6,18 @@ os.environ.setdefault(
     "SUPABASE_JWT_SECRET", "test_jwt_secret_minimum_32_characters_long"
 )
 
-import pytest  # noqa: E402
-import pytest_asyncio  # noqa: E402
 import asyncio  # noqa: E402
 from typing import AsyncGenerator  # noqa: E402
-from httpx import AsyncClient, ASGITransport  # noqa: E402
+
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
 from app.main import app  # noqa: E402
 from app.shared.dependencies import (  # noqa: E402
-    get_current_user,
     CurrentUser,
     UserRole,
+    get_current_user,
 )
+from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 
 def pytest_configure(config):
@@ -1119,9 +1120,10 @@ async def client(mock_user, request) -> AsyncGenerator[AsyncClient, None]:
         "integration" in request.node.keywords or "integration" in request.node.nodeid
     )
     if is_integration:
-        from app.config import settings
-        import jwt
         import datetime
+
+        import jwt
+        from app.config import settings
 
         token = jwt.encode(
             {

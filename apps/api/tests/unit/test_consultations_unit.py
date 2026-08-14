@@ -1,7 +1,7 @@
 import pytest
-from httpx import AsyncClient
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.main import app
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from httpx import AsyncClient
 
 
 def make_mock_consultation(overrides: dict) -> dict:
@@ -245,7 +245,7 @@ async def test_confirm_blocks_unpaid_package(client: AsyncClient, mock_db):
 
     def rpc_gate(name, params=None, *args, **kwargs):
         if name == "confirm_consultation":
-            raise Exception(
+            raise RuntimeError(
                 "Cannot confirm consultation: payment_status is unpaid for package starter"
             )
         return original_rpc(name, params, *args, **kwargs)

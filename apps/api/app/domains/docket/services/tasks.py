@@ -1,13 +1,15 @@
 from __future__ import annotations
+
 from datetime import date
-from app.shared.database import get_db
-from app.shared.dependencies import CurrentUser
-from app.shared.exceptions import NotFound, BadRequest
+
 from app.domains.docket.services.helpers import (
-    _now,
     _ensure_lawyer_on_matter,
     _get_matter_for_participant,
+    _now,
 )
+from app.shared.database import get_db
+from app.shared.dependencies import CurrentUser
+from app.shared.exceptions import BadRequest, NotFound
 
 
 def create_task(matter_id: str, user: CurrentUser, data: dict) -> dict:

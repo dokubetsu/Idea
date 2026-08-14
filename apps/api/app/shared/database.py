@@ -1,7 +1,9 @@
-import threading
 import contextvars
-from supabase import create_client, Client
+import threading
+
 from app.config import settings
+
+from supabase import Client, create_client
 
 _db_client = None
 _db_lock = threading.Lock()

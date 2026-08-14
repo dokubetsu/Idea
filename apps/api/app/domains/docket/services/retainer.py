@@ -1,14 +1,16 @@
 """Retainer / trust accounting: deposits, drawdowns, refunds, ledger."""
 
 from __future__ import annotations
+
 import logging
-from app.shared.database import get_db
-from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import BadRequest, Forbidden, NotFound
+
 from app.domains.docket.services.helpers import (
     _ensure_lawyer_on_matter,
     _get_matter_for_participant,
 )
+from app.shared.database import get_db
+from app.shared.dependencies import CurrentUser, UserRole
+from app.shared.exceptions import BadRequest, Forbidden, NotFound
 
 logger = logging.getLogger(__name__)
 

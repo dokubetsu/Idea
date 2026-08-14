@@ -1,33 +1,34 @@
-import hmac
 import hashlib
+import hmac
 import logging
 import uuid
 
-from fastapi import APIRouter, Query, HTTPException
 from app.config import settings
+from app.shared import database as shared_database
+from app.shared.database import get_db
 from app.shared.dependencies import (
     Auth,
     LawyerOrAdmin,
     UserRole,
-    ensure_lawyer_verified,
     check_consultation_ownership,
+    ensure_lawyer_verified,
 )
-from app.shared.database import get_db
-from app.shared import database as shared_database
 from app.shared.exceptions import Forbidden, NotFound
+from fastapi import APIRouter, HTTPException, Query
+
 from .schemas import (
+    PACKAGE_AMOUNTS_INR,
+    ConfirmConsultationOut,
     ConsultationCreate,
     ConsultationOut,
-    ConfirmConsultationOut,
     ConsultationPatch,
-    PACKAGE_AMOUNTS_INR,
     VerifyConsultationPaymentRequest,
 )
 from .service import (
+    SELECT_CONSULTATIONS,
+    assign_free_lawyer,
     enrich_consultation,
     get_consultation_or_404,
-    assign_free_lawyer,
-    SELECT_CONSULTATIONS,
     mark_consultation_paid,
 )
 

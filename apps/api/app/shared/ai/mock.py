@@ -3,6 +3,7 @@ Mock Provider — deterministic offline fallback for local development and tests
 """
 
 import json
+
 from app.shared.ai.base import BaseAiProvider
 
 _ASSESSMENT_TEMPLATES = {

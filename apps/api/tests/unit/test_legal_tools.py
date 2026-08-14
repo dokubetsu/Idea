@@ -2,14 +2,15 @@
 Unit tests for India Legal Tools (Calculators & Interest).
 """
 
-import pytest
 from datetime import date
-from app.domains.legal_tools.services.interest import InterestSource
+
+import pytest
 from app.domains.legal_tools.services.calculators import (
     ChequeBounceCalculator,
     RERACalculator,
     SummarySuitCalculator,
 )
+from app.domains.legal_tools.services.interest import InterestSource
 
 
 def test_interest_source():

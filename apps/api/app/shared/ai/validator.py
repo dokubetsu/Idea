@@ -3,11 +3,12 @@ Response Validator & Normalizer.
 Validates raw LLM outputs against Pydantic models, cleans up data, and appends runtime metadata.
 """
 
-import re
 import json
+import re
 from datetime import datetime, timezone
+from typing import Any, Type, TypeVar
+
 from pydantic import BaseModel
-from typing import Type, TypeVar, Any
 
 T = TypeVar("T", bound=BaseModel)
 

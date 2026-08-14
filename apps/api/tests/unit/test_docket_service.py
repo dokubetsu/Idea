@@ -1,13 +1,14 @@
-import pytest
 from datetime import date
+
+import pytest
+from app.domains.docket.schemas import InvoiceCreate
+from app.domains.docket.services.billing import (
+    create_invoice,
+    create_time_entry,
+)
+from app.domains.docket.services.helpers import _format_inr, _get_matter_for_participant
 from app.shared.dependencies import CurrentUser, UserRole
 from app.shared.exceptions import Forbidden
-from app.domains.docket.schemas import InvoiceCreate
-from app.domains.docket.services.helpers import _format_inr, _get_matter_for_participant
-from app.domains.docket.services.billing import (
-    create_time_entry,
-    create_invoice,
-)
 
 
 def test_format_inr():

@@ -1,6 +1,6 @@
 import pytest
-from httpx import AsyncClient
 from app.shared.database import get_db
+from httpx import AsyncClient
 
 
 @pytest.mark.integration

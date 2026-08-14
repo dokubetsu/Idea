@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 from datetime import date, datetime
+
+from app.domains.docket.services.helpers import (
+    _get_matter_for_participant,
+    _now,
+    _stage_to_client_text,
+    _status_to_stage,
+    _today,
+)
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
-from app.domains.docket.services.helpers import (
-    _today,
-    _now,
-    _get_matter_for_participant,
-    _status_to_stage,
-    _stage_to_client_text,
-)
 
 
 def get_case_overview(matter_id: str, user: CurrentUser) -> dict:

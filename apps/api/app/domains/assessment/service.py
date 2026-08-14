@@ -4,7 +4,9 @@ Provider-agnostic legal assessment orchestration routing through the AI Pipeline
 """
 
 from __future__ import annotations
+
 import logging
+
 from app.config import settings
 from app.domains.assessment.providers.base import AssessmentInput, AssessmentOutput
 from app.shared.ai.mock import MockProvider
@@ -35,9 +37,9 @@ async def run_assessment(
     """
     from app.shared.ai import (
         ContextBuilder,
+        Normalizer,
         PromptBuilder,
         ResponseValidator,
-        Normalizer,
         get_ai_provider,
     )
 

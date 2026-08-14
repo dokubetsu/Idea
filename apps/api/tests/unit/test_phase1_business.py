@@ -1,10 +1,10 @@
 """Phase 1 unit tests: matching accept RPC, apply_payment RPC, intake step CAS."""
 
 import pytest
-from httpx import AsyncClient
-from app.main import app
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
 from app.domains.matters.payments import apply_payment
+from app.main import app
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

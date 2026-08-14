@@ -1,18 +1,18 @@
 from __future__ import annotations
+
 import logging
 from datetime import date, datetime
 from typing import Optional
 
 from app.domains.docket.schemas import InvoiceCreate
+from app.domains.docket.services.helpers import (
+    _ensure_lawyer_on_matter,
+    _get_matter_for_participant,
+    _today,
+)
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import NotFound, BadRequest
-
-from app.domains.docket.services.helpers import (
-    _today,
-    _get_matter_for_participant,
-    _ensure_lawyer_on_matter,
-)
+from app.shared.exceptions import BadRequest, NotFound
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +241,7 @@ def delete_time_entry(matter_id: str, entry_id: str, user: CurrentUser) -> None:
 def _resolve_invoice_states(db, matter_id: str, data: InvoiceCreate) -> tuple[str, str]:
     """Return (place_of_supply, supplier_state) for GST."""
     from app.config import settings
-    from app.shared.gst import resolve_place_of_supply, normalize_state
+    from app.shared.gst import normalize_state, resolve_place_of_supply
 
     matter = (
         db.table("matters")
@@ -339,9 +339,10 @@ def create_invoice(matter_id: str, user: CurrentUser, data: InvoiceCreate) -> di
             raise BadRequest(str(e)) from e
 
     # ── Fallback (pre-migration 061) ─────────────────────────────
+    import hashlib
+
     from app.config import settings
     from app.shared.gst import compute_gst
-    import hashlib
 
     year = _today().year
     try:

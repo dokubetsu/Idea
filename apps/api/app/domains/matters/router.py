@@ -1,47 +1,48 @@
 from __future__ import annotations
+
 import asyncio
-from fastapi import APIRouter, Query, HTTPException
 import logging
+from datetime import datetime, timezone
+
+from app.config import settings
+from app.domains.matters.documents_router import router as documents_router
+from app.domains.matters.payments import router as payments_router
+from app.domains.matters.schemas import (
+    AssignLawyerRequest,
+    FactOut,
+    HearingCreate,
+    HearingOut,
+    HearingUpdate,
+    MatterCreateRequest,
+    MatterOut,
+    MatterUpdateRequest,
+    MeetingCreate,
+    MeetingOut,
+    MeetingUpdate,
+    MilestoneCreate,
+    MilestoneOut,
+    MilestoneUpdate,
+    PostUpdateRequest,
+    UpdateOut,
+    VerifyFactRequest,
+)
+from app.domains.matters.service import (
+    SELECT,
+    enrich,
+    get_matter_or_403,
+    open_for_matching,
+    transition_status,
+)
+from app.shared.database import get_db
 from app.shared.dependencies import (
     Auth,
     LawyerOrAdmin,
-    ensure_lawyer_verified,
     UserRole,
+    ensure_lawyer_verified,
 )
-from app.shared.database import get_db
-from app.shared.events import emit, EventType
-from app.shared.exceptions import NotFound, Forbidden
-from app.config import settings
-from datetime import datetime, timezone
-from app.domains.matters.schemas import (
-    MatterOut,
-    MatterUpdateRequest,
-    PostUpdateRequest,
-    UpdateOut,
-    FactOut,
-    VerifyFactRequest,
-    AssignLawyerRequest,
-    HearingOut,
-    HearingCreate,
-    HearingUpdate,
-    MilestoneOut,
-    MilestoneCreate,
-    MilestoneUpdate,
-    MatterCreateRequest,
-    MeetingOut,
-    MeetingCreate,
-    MeetingUpdate,
-)
-from app.domains.matters.service import (
-    enrich,
-    get_matter_or_403,
-    transition_status,
-    open_for_matching,
-    SELECT,
-)
-
-from app.domains.matters.documents_router import router as documents_router
-from app.domains.matters.payments import router as payments_router
+from app.shared.events import EventType, emit
+from app.shared.exceptions import Forbidden, NotFound
+from fastapi import APIRouter, HTTPException, Query
 
 log = logging.getLogger(__name__)
 
@@ -420,7 +421,7 @@ async def get_updates(matter_id: str, user: Auth):
 
 @router.post("/{matter_id}/updates", response_model=UpdateOut, status_code=201)
 async def post_update(matter_id: str, body: PostUpdateRequest, user: Auth):
-    from app.shared.exceptions import Forbidden, BadRequest
+    from app.shared.exceptions import BadRequest, Forbidden
 
     if body.is_internal and user.role == UserRole.USER:
         raise Forbidden("Only lawyers/admins can post internal notes")
@@ -498,6 +499,7 @@ async def get_events(
 @router.post("/{matter_id}/assign", status_code=201)
 async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
     from datetime import datetime, timezone
+
     from fastapi import HTTPException
 
     if user.role == UserRole.LAWYER:

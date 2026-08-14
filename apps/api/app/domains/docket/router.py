@@ -1,31 +1,30 @@
 """Docket domain — API router."""
 
 from __future__ import annotations
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
 
-from app.shared.dependencies import Auth, LawyerVerifiedAuth, UserRole
-from app.shared.exceptions import Forbidden
 from app.domains.docket import service
 from app.domains.docket.schemas import (
-    TimeEntryCreate,
-    TimeEntryUpdate,
+    DisbursementCreate,
+    DocumentRequestCreate,
+    DocumentReview,
+    DocumentUpdateNote,
+    FeeArrangementCreate,
+    FeeArrangementUpdate,
+    HearingUpdate,
     InvoiceCreate,
     InvoiceUpdate,
+    MessageCreate,
     NoteCreate,
     TaskCreate,
     TaskUpdate,
+    TimeEntryCreate,
+    TimeEntryUpdate,
     TimelineEventCreate,
-    FeeArrangementCreate,
-    FeeArrangementUpdate,
-    DisbursementCreate,
-    DocumentReview,
-    DocumentUpdateNote,
-    DocumentRequestCreate,
-    MessageCreate,
-    HearingUpdate,
 )
-from fastapi import UploadFile, File
+from app.shared.dependencies import Auth, LawyerVerifiedAuth, UserRole
+from app.shared.exceptions import Forbidden
+from fastapi import APIRouter, File, UploadFile
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/docket", tags=["docket"])
 
@@ -115,8 +114,8 @@ async def update_invoice(
 @router.post("/matters/{matter_id}/invoices/{invoice_id}/einvoice", status_code=200)
 async def generate_einvoice(matter_id: str, invoice_id: str, user: LawyerVerifiedAuth):
     """Generate IRP e-invoice (mock or NIC) and persist ack/QR on the invoice."""
-    from app.shared.database import get_db
     from app.domains.docket.services.helpers import _ensure_lawyer_on_matter
+    from app.shared.database import get_db
     from app.shared.einvoice import generate_einvoice_for_invoice
     from app.shared.exceptions import NotFound
 

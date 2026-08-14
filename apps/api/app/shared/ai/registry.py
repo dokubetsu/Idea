@@ -4,8 +4,9 @@ Manages registering, resolving, and running health checks/fallbacks for AI model
 """
 
 import logging
-from app.shared.ai.base import BaseAiProvider
+
 from app.config import settings
+from app.shared.ai.base import BaseAiProvider
 
 log = logging.getLogger(__name__)
 

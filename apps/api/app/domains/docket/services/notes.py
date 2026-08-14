@@ -1,8 +1,9 @@
 from __future__ import annotations
+
+from app.domains.docket.services.helpers import _ensure_lawyer_on_matter
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser
 from app.shared.exceptions import BadRequest
-from app.domains.docket.services.helpers import _ensure_lawyer_on_matter
 
 
 def create_note(matter_id: str, user: CurrentUser, content: str) -> dict:

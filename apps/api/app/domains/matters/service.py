@@ -1,9 +1,10 @@
 """Matter service — business logic separate from HTTP layer."""
 
 from __future__ import annotations
-from app.shared.events import sync_emit, EventType
-from app.shared.exceptions import NotFound, Forbidden
+
 from app.shared.dependencies import CurrentUser, UserRole, ensure_lawyer_verified
+from app.shared.events import EventType, sync_emit
+from app.shared.exceptions import Forbidden, NotFound
 
 SELECT = "*, " "up:profiles!user_id(full_name), " "lp:profiles!lawyer_id(full_name)"
 

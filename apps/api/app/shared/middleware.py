@@ -1,8 +1,9 @@
+import logging
 import time
 import uuid
-import logging
 from contextvars import ContextVar
-from starlette.types import ASGIApp, Scope, Receive, Send
+
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 # ContextVar to store request ID for loggers
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")
@@ -56,10 +57,10 @@ class RequestTracingMiddleware:
             scope["state"] = {}
         scope["state"]["user_id"] = user_id
 
-        from app.shared.database import set_request_db, clear_request_db
-        from app.config import settings
-
         import sys
+
+        from app.config import settings
+        from app.shared.database import clear_request_db, set_request_db
 
         # Create request-scoped client (using anon key to respect RLS)
         is_pooled = False

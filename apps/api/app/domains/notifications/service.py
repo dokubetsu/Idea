@@ -1,6 +1,7 @@
-import logging
 import asyncio
-from typing import List, Optional, Dict, Any
+import logging
+from typing import Any, Dict, List, Optional
+
 from app.domains.notifications.models import NotificationStatus
 from app.domains.notifications.templates import get_template
 

@@ -1,7 +1,7 @@
 import jwt
-from jwt import PyJWKClient
-from fastapi import HTTPException
 from app.config import settings
+from fastapi import HTTPException
+from jwt import PyJWKClient
 
 _jwk_client: PyJWKClient | None = None
 

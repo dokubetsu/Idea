@@ -5,8 +5,9 @@ Compiles matter facts into standard legal drafts (Vakalatnama, 138 Notice, RERA 
 
 from datetime import date
 from typing import Any
+
 from app.shared.database import get_db
-from app.shared.exceptions import NotFound, Forbidden
+from app.shared.exceptions import Forbidden, NotFound
 
 # ── Templates ─────────────────────────────────────────────────────────
 

@@ -1,9 +1,12 @@
-import pytest
 import asyncio
-from httpx import AsyncClient
-from app.shared.database import get_db
-from app.domains.notifications.service import create_notification
+import contextlib
+
+import pytest
+
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
+from app.domains.notifications.service import create_notification
+from app.shared.database import get_db
+from httpx import AsyncClient
 
 
 @pytest.mark.integration
@@ -73,14 +76,12 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
         # Clean up queue subscription and DB rows
         sse_broadcaster.unsubscribe(mock_user.id, queue)
         if notif_id:
-            try:
+            with contextlib.suppress(Exception):
                 db.table("notification_deliveries").delete().eq(
                     "notification_id", notif_id
                 ).execute()
                 db.table("notifications").delete().eq("id", notif_id).execute()
                 db.table("profiles").delete().eq("id", mock_user.id).execute()
-            except Exception:
-                pass
 
 
 @pytest.mark.integration
@@ -139,14 +140,10 @@ async def test_notification_idempotency(mock_user):
 
     finally:
         if notif_id1:
-            try:
+            with contextlib.suppress(Exception):
                 db.table("notification_deliveries").delete().eq(
                     "notification_id", notif_id1
                 ).execute()
                 db.table("notifications").delete().eq("id", notif_id1).execute()
-            except Exception:
-                pass
-        try:
+        with contextlib.suppress(Exception):
             db.table("profiles").delete().eq("id", mock_user.id).execute()
-        except Exception:
-            pass

@@ -3,13 +3,13 @@ FastAPI router for Legal Tools domain.
 Exposes endpoints for calculators.
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from app.shared.dependencies import Auth
+from datetime import date
+
 from app.domains.legal_tools.schemas import (
     ChequeBounceRequest,
+    DocumentDraftRequest,
     RERARequest,
     SummarySuitRequest,
-    DocumentDraftRequest,
 )
 from app.domains.legal_tools.services.calculators import (
     ChequeBounceCalculator,
@@ -20,10 +20,11 @@ from app.domains.legal_tools.services.draft import DocumentDraftService
 from app.domains.legal_tools.services.interest import InterestSource
 from app.shared.court_calendar import (
     is_court_working_day,
-    next_working_day,
     list_supported_states,
+    next_working_day,
 )
-from datetime import date
+from app.shared.dependencies import Auth
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/legal-tools", tags=["legal-tools"])
 

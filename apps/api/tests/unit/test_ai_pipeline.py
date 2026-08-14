@@ -3,11 +3,11 @@ Unit tests for AI Pipeline components.
 """
 
 import pytest
-from pydantic import BaseModel
 from app.shared.ai.context import ContextBuilder
 from app.shared.ai.prompt import PromptBuilder
-from app.shared.ai.validator import ResponseValidator, Normalizer
 from app.shared.ai.registry import ai_registry
+from app.shared.ai.validator import Normalizer, ResponseValidator
+from pydantic import BaseModel
 
 
 class DummyModel(BaseModel):

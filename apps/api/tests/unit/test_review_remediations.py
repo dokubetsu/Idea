@@ -1,16 +1,15 @@
 """Unit tests verifying code review remediations."""
 
-import pytest
+import asyncio
 import io
+
+import pytest
+from app.domains.notifications.channels.sse_broadcaster import SSEBroadcaster
+from app.main import app
+from app.shared.dependencies import CurrentUser, UserRole, get_current_user
+from app.shared.file_validation import validate_upload_stream
 from fastapi import HTTPException, UploadFile
 from httpx import AsyncClient
-
-from app.main import app
-from app.shared.dependencies import get_current_user, CurrentUser, UserRole
-from app.shared.file_validation import validate_upload_stream
-from app.domains.notifications.channels.sse_broadcaster import SSEBroadcaster
-
-import asyncio
 
 
 @pytest.mark.asyncio

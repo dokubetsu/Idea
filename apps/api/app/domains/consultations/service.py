@@ -1,7 +1,7 @@
-from fastapi import HTTPException
-from app.shared.database import get_db
 from app.shared import database as shared_database
+from app.shared.database import get_db
 from app.shared.exceptions import NotFound
+from fastapi import HTTPException
 
 SELECT_CONSULTATIONS = (
     "*, up:profiles!user_id(full_name), lp:profiles!lawyer_id(full_name)"

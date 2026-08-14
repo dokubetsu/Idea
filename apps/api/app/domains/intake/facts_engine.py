@@ -13,11 +13,12 @@ Every assessment, document draft, and CRM view is built from facts, not raw text
 """
 
 from __future__ import annotations
-import re as _re
+
 import logging
-from pydantic import BaseModel
+import re as _re
 
 from app.domains.intake.schemas import ExtractedFact, FactsExtractionResult
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -321,14 +322,14 @@ async def extract_facts(
 async def _ai_extract(
     title: str, description: str, user_id: str | None = None
 ) -> FactsExtractionResult:
+    from app.config import settings
     from app.shared.ai import (
         ContextBuilder,
+        Normalizer,
         PromptBuilder,
         ResponseValidator,
-        Normalizer,
         get_ai_provider,
     )
-    from app.config import settings
 
     # 1. Build Context
     context = ContextBuilder.build_intake_context(title, description)

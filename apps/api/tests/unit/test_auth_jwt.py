@@ -7,17 +7,17 @@ inactive (suspended) profile, role enforcement on admin routes.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 import datetime
-from typing import AsyncGenerator
+
 
 import jwt
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
 from app.config import settings
 from app.main import app
 from app.shared.dependencies import get_current_user
+from httpx import ASGITransport, AsyncClient
 
 
 def _make_token(

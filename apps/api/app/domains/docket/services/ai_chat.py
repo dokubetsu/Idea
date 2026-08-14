@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import logging
+
+from app.domains.docket.services.helpers import _get_matter_for_participant
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import Forbidden, BadRequest
-from app.domains.docket.services.helpers import _get_matter_for_participant
+from app.shared.exceptions import BadRequest, Forbidden
 
 logger = logging.getLogger(__name__)
 

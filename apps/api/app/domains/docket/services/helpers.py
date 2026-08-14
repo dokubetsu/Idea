@@ -1,9 +1,10 @@
 """Helper functions for the Docket domain services."""
 
 from datetime import date, datetime, timezone
+
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
-from app.shared.exceptions import NotFound, Forbidden
+from app.shared.exceptions import Forbidden, NotFound
 
 
 def _today() -> date:

@@ -1,9 +1,10 @@
 import hmac
-from fastapi import APIRouter, HTTPException, Header
-from app.shared import database as shared_database
-from app.config import settings
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
+
+from app.config import settings
+from app.shared import database as shared_database
+from fastapi import APIRouter, Header, HTTPException
 
 log = logging.getLogger(__name__)
 
@@ -270,8 +271,9 @@ async def retry_stale_deliveries(
     # Group by notification_id to avoid redundant fetches
     notification_ids = set(d["notification_id"] for d in stale_deliveries)
 
-    from app.domains.notifications.worker import trigger_deliveries
     import asyncio
+
+    from app.domains.notifications.worker import trigger_deliveries
 
     tasks = [
         trigger_deliveries(db, notification_id) for notification_id in notification_ids
