@@ -178,10 +178,10 @@ async def test_payment_capture_idempotency_integration(
 
     finally:
         # Cleanup
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             db.table("payments").delete().eq("milestone_id", milestone_id).execute()
             db.table("matter_milestones").delete().eq("id", milestone_id).execute()
             db.table("matters").delete().eq("id", matter_id).execute()
             db.table("profiles").delete().eq("id", mock_user.id).execute()
-        except Exception:
-            pass

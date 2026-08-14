@@ -66,7 +66,9 @@ async def test_get_lawyer_hides_unverified(client: AsyncClient, mock_db):
     ]
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="test-user-id", role=UserRole.USER, full_name="Client"
+        id="00000000-0000-0000-0000-000000000001",
+        role=UserRole.USER,
+        full_name="Client",
     )
 
     try:

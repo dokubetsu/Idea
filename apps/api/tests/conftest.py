@@ -1,4 +1,11 @@
 import os
+import sys
+from pathlib import Path
+
+# Ensure apps/api directory is on sys.path regardless of execution root
+_api_dir = Path(__file__).resolve().parent.parent
+if str(_api_dir) not in sys.path:
+    sys.path.insert(0, str(_api_dir))
 
 os.environ.setdefault("PAYMENT_WEBHOOK_SECRET", "test_webhook_secret")
 os.environ.setdefault("CRON_SECRET", "test_cron_secret")
@@ -6,9 +13,10 @@ os.environ.setdefault(
     "SUPABASE_JWT_SECRET", "test_jwt_secret_minimum_32_characters_long"
 )
 
+
 import asyncio  # noqa: E402
 from collections.abc import AsyncGenerator  # noqa: E402
-from datetime import UTC
+from datetime import UTC  # noqa: E402
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
@@ -1108,7 +1116,9 @@ def mock_db(request, monkeypatch):
 @pytest.fixture
 def mock_user():
     return CurrentUser(
-        id="test-user-id", role=UserRole.USER, full_name="Test Petitioner"
+        id="00000000-0000-0000-0000-000000000001",
+        role=UserRole.USER,
+        full_name="Test Petitioner",
     )
 
 

@@ -73,14 +73,12 @@ async def test_consultations_idempotency_integration(client: AsyncClient, mock_u
 
     finally:
         # Cleanup
+        import contextlib
+
         if consultation_id:
-            try:
+            with contextlib.suppress(Exception):
                 db.table("consultations").delete().eq("id", consultation_id).execute()
-            except Exception:
-                pass
-        try:
+        with contextlib.suppress(Exception):
             db.table("lawyer_profiles").delete().eq("id", lawyer_id).execute()
             db.table("profiles").delete().eq("id", lawyer_id).execute()
             db.table("profiles").delete().eq("id", mock_user.id).execute()
-        except Exception:
-            pass

@@ -56,7 +56,7 @@ async def test_cron_hearing_reminders_empty(client: AsyncClient, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_features_endpoint_public(client: AsyncClient):
+async def test_features_endpoint_public(client: AsyncClient, mock_db):
     # Features is intentionally unauthenticated
     app.dependency_overrides.pop(get_current_user, None)
     try:
@@ -67,5 +67,7 @@ async def test_features_endpoint_public(client: AsyncClient):
         assert "billing" in body
     finally:
         app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-            id="test-user-id", role=UserRole.USER, full_name="Test"
+            id="00000000-0000-0000-0000-000000000001",
+            role=UserRole.USER,
+            full_name="Test",
         )
