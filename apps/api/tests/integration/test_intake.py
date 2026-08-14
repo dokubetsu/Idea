@@ -76,5 +76,3 @@ async def test_intake_workflow_integration(client: AsyncClient, mock_user):
         if session_id:
             with contextlib.suppress(Exception):
                 db.table("intake_sessions").delete().eq("id", session_id).execute()
-        with contextlib.suppress(Exception):
-            db.table("profiles").delete().eq("id", mock_user.id).execute()

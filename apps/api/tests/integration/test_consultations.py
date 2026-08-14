@@ -11,31 +11,8 @@ from app.shared.database import get_db
 async def test_consultations_idempotency_integration(client: AsyncClient, mock_user):
     db = get_db()
 
-    # 1. Setup mock user and lawyer profiles in DB
-    lawyer_id = str(uuid.uuid4())
-
-    user_profile = {
-        "id": mock_user.id,
-        "full_name": mock_user.full_name,
-        "role": "user",
-        "is_active": True,
-    }
-    lawyer_profile = {
-        "id": lawyer_id,
-        "full_name": "Verified Advocate",
-        "role": "lawyer",
-        "is_active": True,
-    }
-    lawyer_detail = {
-        "id": lawyer_id,
-        "is_verified": True,
-        "is_available": True,
-        "specializations": ["labour", "rera"],
-    }
-
-    db.table("profiles").upsert(user_profile).execute()
-    db.table("profiles").upsert(lawyer_profile).execute()
-    db.table("lawyer_profiles").upsert(lawyer_detail).execute()
+    # 1. Use seeded verified lawyer in DB
+    lawyer_id = "00000000-0000-0000-0000-000000000002"
 
     # Generate a unique idempotency key
     idem_key = f"test-idem-{uuid.uuid4()}"
@@ -72,13 +49,9 @@ async def test_consultations_idempotency_integration(client: AsyncClient, mock_u
         assert len(db_res.data) == 1
 
     finally:
-        # Cleanup
+        # Cleanup created consultation record
         import contextlib
 
         if consultation_id:
             with contextlib.suppress(Exception):
                 db.table("consultations").delete().eq("id", consultation_id).execute()
-        with contextlib.suppress(Exception):
-            db.table("lawyer_profiles").delete().eq("id", lawyer_id).execute()
-            db.table("profiles").delete().eq("id", lawyer_id).execute()
-            db.table("profiles").delete().eq("id", mock_user.id).execute()

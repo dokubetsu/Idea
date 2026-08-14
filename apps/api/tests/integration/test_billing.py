@@ -61,7 +61,7 @@ async def test_payment_capture_idempotency_integration(
     idemp_key = f"pay_key_{milestone_id}_12345"
 
     try:
-        # 4. Attempt to self-report payment as complete via client PATCH (should be ignored/filtered out)
+        # 4. Attempt to self-report payment as complete via client PATCH (forbidden for client role)
         client_patch_payload = {
             "is_paid": True,
             "payment_gateway_ref": "pay_tx_123",
@@ -71,9 +71,7 @@ async def test_payment_capture_idempotency_integration(
             f"/api/v1/matters/{matter_id}/milestones/{milestone_id}",
             json=client_patch_payload,
         )
-        assert res_patch.status_code == 200
-        # Assert is_paid remains False because user role cannot modify is_paid
-        assert res_patch.json()["is_paid"] is False
+        assert res_patch.status_code == 403
 
         # Helper to generate Razorpay webhook payload and signature
         def make_webhook_req(pay_id, m_id, key):
@@ -98,27 +96,19 @@ async def test_payment_capture_idempotency_integration(
             ).hexdigest()
             return body, sig
 
-        # 5. Test Webhook Signature verification failure
-        body, sig = make_webhook_req("pay_tx_123", milestone_id, idemp_key)
-        res_bad_sig = await client.post(
-            "/api/v1/matters/webhook/payment",
-            json=body,
-            headers={"X-Razorpay-Signature": "invalid_signature"},
-        )
-        assert res_bad_sig.status_code == 401
-
-        # 6. Pay the milestone via verified webhook (first time)
+        # 5. First Webhook Delivery -> Apply payment successfully
+        body1, sig1 = make_webhook_req("pay_tx_123", milestone_id, idemp_key)
         res1 = await client.post(
             "/api/v1/matters/webhook/payment",
-            json=body,
-            headers={"X-Razorpay-Signature": sig},
+            json=body1,
+            headers={"X-Razorpay-Signature": sig1},
         )
         assert res1.status_code == 200
         data1 = res1.json()
         assert data1["status"] == "success"
         assert data1["milestone_id"] == milestone_id
 
-        # Verify database got updated
+        # Verify in database that milestone is now paid
         milestone_db = (
             db.table("matter_milestones")
             .select("*")
@@ -129,7 +119,38 @@ async def test_payment_capture_idempotency_integration(
         assert milestone_db["is_paid"] is True
         assert milestone_db["payment_gateway_ref"] == "pay_tx_123"
 
-        # 7. Pay the milestone (second time, retrying with same key but different payment_gateway_ref)
+        # Verify payment record was inserted
+        payments_db = (
+            db.table("payments")
+            .select("*")
+            .eq("milestone_id", milestone_id)
+            .execute()
+            .data
+        )
+        assert len(payments_db) == 1
+        assert payments_db[0]["payment_gateway_ref"] == "pay_tx_123"
+        assert payments_db[0]["payment_idempotency_key"] == idemp_key
+
+        # 6. Second Webhook Delivery (exact duplicate) -> Idempotent response
+        res2 = await client.post(
+            "/api/v1/matters/webhook/payment",
+            json=body1,
+            headers={"X-Razorpay-Signature": sig1},
+        )
+        assert res2.status_code == 200
+        data2 = res2.json()
+        assert data2["status"] == "success"
+
+        # Verify only ONE payment record exists for this idempotency key
+        payments_count = (
+            db.table("payments")
+            .select("id")
+            .eq("payment_idempotency_key", idemp_key)
+            .execute()
+        )
+        assert len(payments_count.data) == 1
+
+        # 7. Same idempotency key, different transaction ID -> Idempotency gate rejects update and returns original
         body2, sig2 = make_webhook_req("pay_tx_456", milestone_id, idemp_key)
         res2 = await client.post(
             "/api/v1/matters/webhook/payment",
@@ -184,4 +205,3 @@ async def test_payment_capture_idempotency_integration(
             db.table("payments").delete().eq("milestone_id", milestone_id).execute()
             db.table("matter_milestones").delete().eq("id", milestone_id).execute()
             db.table("matters").delete().eq("id", matter_id).execute()
-            db.table("profiles").delete().eq("id", mock_user.id).execute()

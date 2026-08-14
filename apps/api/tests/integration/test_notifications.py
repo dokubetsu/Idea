@@ -81,7 +81,6 @@ async def test_notifications_flow_integration(client: AsyncClient, mock_user):
                     "notification_id", notif_id
                 ).execute()
                 db.table("notifications").delete().eq("id", notif_id).execute()
-                db.table("profiles").delete().eq("id", mock_user.id).execute()
 
 
 @pytest.mark.integration
@@ -145,5 +144,3 @@ async def test_notification_idempotency(mock_user):
                     "notification_id", notif_id1
                 ).execute()
                 db.table("notifications").delete().eq("id", notif_id1).execute()
-        with contextlib.suppress(Exception):
-            db.table("profiles").delete().eq("id", mock_user.id).execute()
