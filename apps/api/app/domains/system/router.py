@@ -1,10 +1,11 @@
 import hmac
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Header, HTTPException
 
 from app.config import settings
 from app.shared import database as shared_database
-from fastapi import APIRouter, Header, HTTPException
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def process_hearing_reminders(
     db = get_service_role_db()
 
     # Calculate target time window (next 24 hours)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     target_time = now + timedelta(hours=24)
 
     # Fetch upcoming scheduled hearings that need reminders
@@ -130,7 +131,7 @@ async def process_weekly_summaries(
     )
     matters = matters_res.data or []
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     one_week_ago = now - timedelta(days=7)
 
     # 2. Resolve the active AI provider via the registry (same path used by run_assessment).
@@ -229,7 +230,7 @@ async def cleanup_intake_sessions(
     verify_cron_secret(x_cron_secret)
     db = get_service_role_db()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     result = (
         db.table("intake_sessions")
         .delete()
@@ -254,7 +255,7 @@ async def retry_stale_deliveries(
     db = get_service_role_db()
 
     # Find deliveries stuck in 'pending' status created > 5 minutes ago
-    five_minutes_ago = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    five_minutes_ago = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
 
     response = (
         db.table("notification_deliveries")
@@ -297,7 +298,7 @@ async def mark_invoices_overdue_cron(
     """
     verify_cron_secret(x_cron_secret)
     db = get_service_role_db()
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     try:
         res = db.rpc("mark_invoices_overdue", {"p_as_of": today}).execute()
         raw = res.data

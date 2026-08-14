@@ -1,16 +1,17 @@
 """Identity domain — profile creation and self-management."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field, field_validator
 
 from app.shared import database as shared_database
 from app.shared.database import get_db
 from app.shared.dependencies import Auth
 from app.shared.jwt import decode_token
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/identity", tags=["identity"])
 bearer = HTTPBearer(auto_error=False)
@@ -219,7 +220,7 @@ async def dsr_export(user: Auth):
 
     return {
         "user_id": user.id,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "profile": profile,
         "lawyer_profile": lp,
         "matters": matters,
@@ -244,7 +245,7 @@ async def dsr_erasure(user: Auth):
     Matter case files may remain under legitimate interest with identifiers scrubbed.
     """
     db = shared_database.get_service_role_db()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     scrubbed_name = "Scrubbed User (DSR)"
     deleted_email = f"dsr-deleted-{user.id.replace('-', '')[:16]}@deleted.lead.invalid"
 

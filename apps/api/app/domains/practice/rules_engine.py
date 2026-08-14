@@ -98,7 +98,7 @@ def safe_eval(
             raise TypeError(f"Unsupported binary operator: {type(node.op)}")
         elif isinstance(node, ast.Compare):
             left = _eval(node.left)
-            for op, comparator in zip(node.ops, node.comparators):
+            for op, comparator in zip(node.ops, node.comparators, strict=False):
                 right = _eval(comparator)
                 if isinstance(op, ast.Eq):
                     if left != right:
@@ -179,11 +179,13 @@ def safe_eval(
                         raise ValueError(f"Argument value too large: {a}")
                 for k, v in kwargs.items():
                     if isinstance(v, (int, float)):
-                        if k in {"years", "months"} and abs(v) > 1000:
-                            raise ValueError(f"Argument '{k}' value too large: {v}")
-                        elif (
-                            k in {"days", "weeks", "hours", "minutes", "seconds"}
-                            and abs(v) > 365000
+                        if (
+                            k in {"years", "months"}
+                            and abs(v) > 1000
+                            or (
+                                k in {"days", "weeks", "hours", "minutes", "seconds"}
+                                and abs(v) > 365000
+                            )
                         ):
                             raise ValueError(f"Argument '{k}' value too large: {v}")
 

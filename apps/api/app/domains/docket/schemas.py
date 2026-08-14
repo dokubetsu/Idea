@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,16 +12,16 @@ from pydantic import BaseModel, Field
 class TimeEntryCreate(BaseModel):
     activity: str = Field(..., min_length=1, max_length=500)
     hours: float = Field(..., gt=0, le=24)
-    rate_per_hour: Optional[float] = None
-    entry_date: Optional[date] = None
+    rate_per_hour: float | None = None
+    entry_date: date | None = None
 
 
 class TimeEntryUpdate(BaseModel):
-    activity: Optional[str] = Field(None, min_length=1, max_length=500)
-    hours: Optional[float] = Field(None, gt=0, le=24)
-    rate_per_hour: Optional[float] = None
-    entry_date: Optional[date] = None
-    status: Optional[str] = Field(None, pattern=r"^(unbilled|billed|written_off)$")
+    activity: str | None = Field(None, min_length=1, max_length=500)
+    hours: float | None = Field(None, gt=0, le=24)
+    rate_per_hour: float | None = None
+    entry_date: date | None = None
+    status: str | None = Field(None, pattern=r"^(unbilled|billed|written_off)$")
 
 
 class TimeEntryOut(BaseModel):
@@ -31,11 +30,11 @@ class TimeEntryOut(BaseModel):
     lawyer_id: str
     activity: str
     hours: float
-    rate_per_hour: Optional[float]
-    amount_inr: Optional[float]
+    rate_per_hour: float | None
+    amount_inr: float | None
     entry_date: date
     status: str
-    invoice_id: Optional[str]
+    invoice_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -44,71 +43,69 @@ class TimeEntryOut(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
-    period_start: Optional[date] = None
-    period_end: Optional[date] = None
+    period_start: date | None = None
+    period_end: date | None = None
     time_entry_ids: list[str] = Field(default_factory=list)
     disbursement_ids: list[str] = Field(default_factory=list)
-    work_summary: Optional[str] = None
-    due_date: Optional[date] = None
+    work_summary: str | None = None
+    due_date: date | None = None
     # GST: recipient place of supply (state). Defaults from client profile.
-    place_of_supply: Optional[str] = None
-    supplier_state: Optional[str] = None
+    place_of_supply: str | None = None
+    supplier_state: str | None = None
     draw_retainer: bool = True
 
 
 class InvoiceUpdate(BaseModel):
-    status: Optional[str] = Field(
-        None, pattern=r"^(draft|sent|paid|overdue|cancelled)$"
-    )
-    work_summary: Optional[str] = None
-    due_date: Optional[date] = None
-    paid_at: Optional[datetime] = None
+    status: str | None = Field(None, pattern=r"^(draft|sent|paid|overdue|cancelled)$")
+    work_summary: str | None = None
+    due_date: date | None = None
+    paid_at: datetime | None = None
 
 
 class InvoiceOut(BaseModel):
     id: str
     matter_id: str
     invoice_number: str
-    period_start: Optional[date]
-    period_end: Optional[date]
+    period_start: date | None
+    period_end: date | None
     subtotal_inr: float
     gst_percent: float
     gst_amount_inr: float
     total_inr: float
     status: str
-    due_date: Optional[date]
-    paid_at: Optional[datetime]
-    work_summary: Optional[str]
+    due_date: date | None
+    paid_at: datetime | None
+    work_summary: str | None
     created_at: datetime
     updated_at: datetime
-    gstin: Optional[str] = None
-    hsn_sac: Optional[str] = None
-    place_of_supply: Optional[str] = None
-    supplier_state: Optional[str] = None
-    cgst_amount_inr: Optional[float] = None
-    sgst_amount_inr: Optional[float] = None
-    igst_amount_inr: Optional[float] = None
-    is_inter_state: Optional[bool] = None
-    irn: Optional[str] = None
-    qr_code_data: Optional[str] = None
+    gstin: str | None = None
+    hsn_sac: str | None = None
+    place_of_supply: str | None = None
+    supplier_state: str | None = None
+    cgst_amount_inr: float | None = None
+    sgst_amount_inr: float | None = None
+    igst_amount_inr: float | None = None
+    is_inter_state: bool | None = None
+    irn: str | None = None
+    qr_code_data: str | None = None
 
 
 # Client sees a simplified invoice view
 class InvoiceClientOut(BaseModel):
     id: str
     invoice_number: str
-    period_start: Optional[date]
-    period_end: Optional[date]
+    period_start: date | None
+    period_end: date | None
     total_inr: float
     status: str
-    due_date: Optional[date]
-    paid_at: Optional[datetime]
-    work_summary: Optional[str]
-    gstin: Optional[str] = None
-    hsn_sac: Optional[str] = None
-    place_of_supply: Optional[str] = None
-    irn: Optional[str] = None
-    qr_code_data: Optional[str] = None
+    due_date: date | None
+    paid_at: datetime | None
+    work_summary: str | None
+    gstin: str | None = None
+    hsn_sac: str | None = None
+    place_of_supply: str | None = None
+    irn: str | None = None
+    qr_code_data: str | None = None
 
 
 # ── Disbursements ────────────────────────────────────────────────
@@ -117,14 +114,14 @@ class InvoiceClientOut(BaseModel):
 class DisbursementCreate(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     amount_inr: float = Field(..., ge=0)
-    incurred_on: Optional[date] = None
-    invoice_id: Optional[str] = None
+    incurred_on: date | None = None
+    invoice_id: str | None = None
 
 
 class DisbursementOut(BaseModel):
     id: str
     matter_id: str
-    invoice_id: Optional[str]
+    invoice_id: str | None
     description: str
     amount_inr: float
     incurred_on: date
@@ -136,28 +133,28 @@ class DisbursementOut(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
-    due_date: Optional[date] = None
+    description: str | None = None
+    assigned_to: str | None = None
+    due_date: date | None = None
 
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=300)
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
-    due_date: Optional[date] = None
-    is_completed: Optional[bool] = None
+    title: str | None = Field(None, min_length=1, max_length=300)
+    description: str | None = None
+    assigned_to: str | None = None
+    due_date: date | None = None
+    is_completed: bool | None = None
 
 
 class TaskOut(BaseModel):
     id: str
     matter_id: str
-    assigned_to: Optional[str]
+    assigned_to: str | None
     title: str
-    description: Optional[str]
-    due_date: Optional[date]
+    description: str | None
+    due_date: date | None
     is_completed: bool
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -168,9 +165,9 @@ class TaskOut(BaseModel):
 class TimelineEventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=100)
     lawyer_description: str = Field(..., min_length=1)
-    client_description: Optional[str] = None
-    occurred_at: Optional[datetime] = None
-    metadata: Optional[dict] = None
+    client_description: str | None = None
+    occurred_at: datetime | None = None
+    metadata: dict | None = None
 
 
 class TimelineEventOut(BaseModel):
@@ -179,7 +176,7 @@ class TimelineEventOut(BaseModel):
     event_type: str
     description: str  # role-filtered: lawyer_description or client_description
     occurred_at: datetime
-    metadata: Optional[dict]
+    metadata: dict | None
     created_at: datetime
 
 
@@ -204,33 +201,33 @@ class NoteOut(BaseModel):
 
 class FeeArrangementCreate(BaseModel):
     type: str = Field(..., pattern=r"^(hourly|fixed|retainer|contingency)$")
-    rate_per_hour: Optional[float] = None
-    fixed_amount: Optional[float] = None
-    retainer_amount: Optional[float] = None
-    description: Optional[str] = None
-    engagement_doc_path: Optional[str] = None
+    rate_per_hour: float | None = None
+    fixed_amount: float | None = None
+    retainer_amount: float | None = None
+    description: str | None = None
+    engagement_doc_path: str | None = None
 
 
 class FeeArrangementUpdate(BaseModel):
-    type: Optional[str] = Field(None, pattern=r"^(hourly|fixed|retainer|contingency)$")
-    rate_per_hour: Optional[float] = None
-    fixed_amount: Optional[float] = None
-    retainer_amount: Optional[float] = None
-    retainer_used: Optional[float] = None
-    description: Optional[str] = None
-    engagement_doc_path: Optional[str] = None
+    type: str | None = Field(None, pattern=r"^(hourly|fixed|retainer|contingency)$")
+    rate_per_hour: float | None = None
+    fixed_amount: float | None = None
+    retainer_amount: float | None = None
+    retainer_used: float | None = None
+    description: str | None = None
+    engagement_doc_path: str | None = None
 
 
 class FeeArrangementOut(BaseModel):
     id: str
     matter_id: str
     type: str
-    rate_per_hour: Optional[float]
-    fixed_amount: Optional[float]
-    retainer_amount: Optional[float]
-    retainer_used: Optional[float]
-    description: Optional[str]
-    engagement_doc_path: Optional[str]
+    rate_per_hour: float | None
+    fixed_amount: float | None
+    retainer_amount: float | None
+    retainer_used: float | None
+    description: str | None
+    engagement_doc_path: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -241,17 +238,17 @@ class FeeArrangementOut(BaseModel):
 class KpiCard(BaseModel):
     value: str
     caption: str
-    trend: Optional[str] = None  # e.g. "+2 from last week"
+    trend: str | None = None  # e.g. "+2 from last week"
 
 
 class HearingRow(BaseModel):
     id: str
     matter_id: str
     time: str
-    court: Optional[str]
+    court: str | None
     case_name: str
-    judge: Optional[str]
-    purpose: Optional[str]
+    judge: str | None
+    purpose: str | None
 
 
 class AttentionItem(BaseModel):
@@ -266,13 +263,13 @@ class CaseCardOut(BaseModel):
     id: str
     client_name: str
     case_name: str
-    case_number: Optional[str]
+    case_number: str | None
     stage: str
-    next_hearing_at: Optional[str]
-    next_hearing_countdown: Optional[str]
+    next_hearing_at: str | None
+    next_hearing_countdown: str | None
     is_urgent: bool
-    client_avatar: Optional[str]
-    matter_health: Optional[str]
+    client_avatar: str | None
+    matter_health: str | None
     category: str
 
 
@@ -292,18 +289,18 @@ class ClientCaseOut(BaseModel):
     plain_title: str
     status_text: str
     stage: str  # filed | reply | evidence | arguments | judgment
-    case_number: Optional[str]
-    lawyer_name: Optional[str]
-    lawyer_avatar: Optional[str]
-    next_hearing_date: Optional[str]
-    next_hearing_description: Optional[str]
+    case_number: str | None
+    lawyer_name: str | None
+    lawyer_avatar: str | None
+    next_hearing_date: str | None
+    next_hearing_description: str | None
     next_hearing_attend: bool
 
 
 class ClientTaskOut(BaseModel):
     id: str
     title: str
-    due_date: Optional[date]
+    due_date: date | None
     is_overdue: bool
 
 
@@ -316,7 +313,7 @@ class ClientTimelineEntry(BaseModel):
 class ClientDashboardOut(BaseModel):
     greeting: str
     date_display: str
-    case: Optional[ClientCaseOut]
+    case: ClientCaseOut | None
     pending_tasks: list[ClientTaskOut]
     recent_updates: list[ClientTimelineEntry]
     stats: dict  # hearings_count, documents_count, months_running
@@ -327,7 +324,7 @@ class ClientDashboardOut(BaseModel):
 
 class DocumentReview(BaseModel):
     status: str = Field(..., pattern=r"^(approved|rejected)$")
-    lawyer_note: Optional[str] = Field(None, max_length=2000)
+    lawyer_note: str | None = Field(None, max_length=2000)
 
 
 class DocumentUpdateNote(BaseModel):
@@ -336,7 +333,7 @@ class DocumentUpdateNote(BaseModel):
 
 class DocumentRequestCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2000)
     label: str = Field(default="other", pattern=r"^(evidence|research|other)$")
 
 
@@ -346,22 +343,22 @@ class DocumentRequestCreate(BaseModel):
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     message_type: str = Field(default="text", pattern=r"^(text|file|system)$")
-    attachment_path: Optional[str] = None
+    attachment_path: str | None = None
 
 
 # ── Hearings (expanded) ─────────────────────────────────────────
 
 
 class HearingUpdate(BaseModel):
-    courtroom: Optional[str] = None
-    judge: Optional[str] = None
-    purpose: Optional[str] = None
-    notes: Optional[str] = None
-    status: Optional[str] = Field(
+    courtroom: str | None = None
+    judge: str | None = None
+    purpose: str | None = None
+    notes: str | None = None
+    status: str | None = Field(
         None, pattern=r"^(scheduled|adjourned|completed|cancelled)$"
     )
-    outcome: Optional[str] = None
-    next_date: Optional[str] = None  # If adjourned, the new date
+    outcome: str | None = None
+    next_date: str | None = None  # If adjourned, the new date
 
 
 # ── Billing Aggregation ──────────────────────────────────────────
@@ -373,7 +370,7 @@ class LawyerBillingOut(BaseModel):
     paid_to_date: float
     trust_balance: float
     has_overdue: bool
-    fee_arrangement: Optional[FeeArrangementOut]
+    fee_arrangement: FeeArrangementOut | None
     unbilled_entries: list[TimeEntryOut]
     invoices: list[InvoiceOut]
     disbursements: list[DisbursementOut]
@@ -381,11 +378,11 @@ class LawyerBillingOut(BaseModel):
 
 class ClientBillingOut(BaseModel):
     amount_due: float
-    amount_due_invoice: Optional[str]  # invoice number
-    days_overdue: Optional[int]
-    retainer_amount: Optional[float]
-    retainer_used: Optional[float]
+    amount_due_invoice: str | None  # invoice number
+    days_overdue: int | None
+    retainer_amount: float | None
+    retainer_used: float | None
     paid_to_date: float
-    fee_description: Optional[str]
-    engagement_doc_path: Optional[str]
+    fee_description: str | None
+    engagement_doc_path: str | None
     invoices: list[InvoiceClientOut]

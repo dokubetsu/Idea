@@ -1,11 +1,12 @@
 """Assessment domain — expose provider info and standalone re-runs."""
 
+from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel
+
 from app.domains.assessment.providers.base import AssessmentInput
 from app.domains.assessment.service import get_provider, run_assessment
 from app.shared.dependencies import Auth
 from app.shared.limiter import limiter
-from fastapi import APIRouter, Request, Response
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 

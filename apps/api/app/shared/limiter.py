@@ -1,6 +1,7 @@
-from app.config import settings
 from fastapi import Request
 from slowapi import Limiter
+
+from app.config import settings
 
 
 def get_rate_limit_key(request: Request) -> str:

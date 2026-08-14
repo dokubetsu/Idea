@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from httpx import AsyncClient
+
 from app.domains.docket.services.retainer import (
     deposit_retainer,
     get_retainer_balance,
@@ -11,7 +13,6 @@ from app.domains.docket.services.retainer import (
 from app.main import app
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
 from app.shared.einvoice import MockEinvoiceProvider, build_irp_payload
-from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

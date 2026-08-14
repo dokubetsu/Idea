@@ -32,7 +32,7 @@ class ConsultationCreate(BaseModel):
     idempotency_key: str | None = None
 
     @model_validator(mode="after")
-    def lawyer_required_for_paid_packages(self) -> "ConsultationCreate":
+    def lawyer_required_for_paid_packages(self) -> ConsultationCreate:
         """
         Paid packages (starter, full) must have an explicit lawyer_id.
         Free packages auto-assign a lawyer when none is provided.

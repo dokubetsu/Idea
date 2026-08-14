@@ -1,7 +1,10 @@
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
+
+from fastapi import HTTPException
+from postgrest.types import CountMethod
 
 from app.domains.practice import scenario_loader
 from app.domains.practice.rules_engine import FactsGenerator, RulesEngine
@@ -20,8 +23,6 @@ from app.domains.practice.schemas import (
 )
 from app.shared.database import get_db
 from app.shared.events import EventType
-from fastapi import HTTPException
-from postgrest.types import CountMethod
 
 log = logging.getLogger(__name__)
 
@@ -420,7 +421,7 @@ class PracticeService:
         if not leads_to or leads_to not in nodes or not nodes[leads_to].get("choices"):
             # Terminal node reached
             new_status = "completed"
-            completed_at = datetime.now(timezone.utc).isoformat()
+            completed_at = datetime.now(UTC).isoformat()
         else:
             # Render next node state
             next_node_state = render_node_state(leads_to, scenario, facts, player_input)

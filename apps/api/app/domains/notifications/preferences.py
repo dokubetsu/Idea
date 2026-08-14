@@ -6,14 +6,13 @@ When no preference row exists, the default TYPE_CHANNELS map is used (opt-in by 
 """
 
 import logging
-from typing import Dict, List
 
 from app.domains.notifications.models import DeliveryChannel
 
 log = logging.getLogger(__name__)
 
 # Default channels per notification type (used when no preference row exists)
-DEFAULT_CHANNELS: Dict[str, List[DeliveryChannel]] = {
+DEFAULT_CHANNELS: dict[str, list[DeliveryChannel]] = {
     "matter_assigned": ["in_app", "email", "sms"],
     "hearing_scheduled": ["in_app", "email", "sms"],
     "milestone_completed": ["in_app", "email"],
@@ -22,7 +21,7 @@ DEFAULT_CHANNELS: Dict[str, List[DeliveryChannel]] = {
 }
 
 
-def get_preferences(db, user_id: str) -> List[dict]:
+def get_preferences(db, user_id: str) -> list[dict]:
     """Return all preference rows for a user."""
     resp = (
         db.table("notification_preferences")
@@ -55,7 +54,7 @@ def upsert_preference(
     return resp.data[0]
 
 
-def bulk_upsert_preferences(db, user_id: str, updates: List[Dict]) -> List[dict]:
+def bulk_upsert_preferences(db, user_id: str, updates: list[dict]) -> list[dict]:
     """
     Bulk-update preferences.
     Each entry: {"type": str, "channel": str, "enabled": bool}
@@ -77,7 +76,7 @@ def bulk_upsert_preferences(db, user_id: str, updates: List[Dict]) -> List[dict]
     return resp.data or []
 
 
-def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryChannel]:
+def get_effective_channels(db, user_id: str, type_name: str) -> list[DeliveryChannel]:
     """
     Resolve the list of channels to use for a delivery, applying user preferences.
 
@@ -99,11 +98,11 @@ def get_effective_channels(db, user_id: str, type_name: str) -> List[DeliveryCha
         .eq("type", type_name)
         .execute()
     )
-    prefs: Dict[str, bool] = {
+    prefs: dict[str, bool] = {
         row["channel"]: row["enabled"] for row in (resp.data or [])
     }
 
-    effective: List[DeliveryChannel] = []
+    effective: list[DeliveryChannel] = []
     for ch in defaults:
         if ch == "in_app":
             effective.append(ch)  # always on

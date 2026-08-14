@@ -15,6 +15,14 @@ from contextlib import asynccontextmanager
 from typing import Any, cast
 
 import sentry_sdk
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
 from app.config import settings
 from app.domains.admin.router import router as admin_router
 from app.domains.assessment.router import router as assessment_router
@@ -31,13 +39,6 @@ from app.domains.system.router import router as system_router
 from app.shared.body_size_limit import BodySizeLimitMiddleware, SizeLimitError
 from app.shared.limiter import limiter
 from app.shared.middleware import RequestTracingMiddleware, request_id_var
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from prometheus_fastapi_instrumentator import Instrumentator
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)

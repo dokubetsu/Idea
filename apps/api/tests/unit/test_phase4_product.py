@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from httpx import AsyncClient
+
 from app.domains.docket.schemas import InvoiceCreate
 from app.domains.docket.services.billing import create_invoice
 from app.domains.legal_tools.services.interest import InterestSource
@@ -12,7 +14,6 @@ from app.main import app
 from app.shared.court_calendar import is_court_working_day, next_working_day
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
 from app.shared.gst import compute_gst, normalize_state, resolve_place_of_supply
-from httpx import AsyncClient
 
 
 def test_gst_intra_state_splits_cgst_sgst():

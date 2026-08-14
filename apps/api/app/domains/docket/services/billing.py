@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from typing import Optional
 
 from app.domains.docket.schemas import InvoiceCreate
 from app.domains.docket.services.helpers import (
@@ -525,7 +524,7 @@ def update_invoice(
 # ── CRUD: Fee Arrangements ───────────────────────────────────────
 
 
-def get_fee_arrangement(matter_id: str, user: CurrentUser) -> Optional[dict]:
+def get_fee_arrangement(matter_id: str, user: CurrentUser) -> dict | None:
     _get_matter_for_participant(matter_id, user)
     db = get_db()
     result = (

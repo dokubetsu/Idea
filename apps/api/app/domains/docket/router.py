@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from fastapi import APIRouter, File, UploadFile
+from pydantic import BaseModel, Field
+
 from app.domains.docket import service
 from app.domains.docket.schemas import (
     DisbursementCreate,
@@ -23,8 +26,6 @@ from app.domains.docket.schemas import (
 )
 from app.shared.dependencies import Auth, LawyerVerifiedAuth, UserRole
 from app.shared.exceptions import Forbidden
-from fastapi import APIRouter, File, UploadFile
-from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/docket", tags=["docket"])
 

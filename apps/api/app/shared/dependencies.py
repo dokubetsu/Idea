@@ -3,11 +3,12 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated
 
-from app.shared.database import get_db
-from app.shared.jwt import decode_token
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+
+from app.shared.database import get_db
+from app.shared.jwt import decode_token
 
 bearer = HTTPBearer(auto_error=False)
 

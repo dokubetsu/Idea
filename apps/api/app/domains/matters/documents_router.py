@@ -1,11 +1,12 @@
 import logging
 import os
 
+from fastapi import APIRouter, HTTPException
+
 from app.domains.matters.documents import DocumentUploadRequest, PreSignedUrlResponse
 from app.domains.matters.service import get_matter_or_403
 from app.shared.database import get_db
 from app.shared.dependencies import Auth
-from fastapi import APIRouter, HTTPException
 
 log = logging.getLogger(__name__)
 router = APIRouter()

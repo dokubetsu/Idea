@@ -4,6 +4,7 @@ Manages registering, resolving, and running health checks/fallbacks for AI model
 """
 
 import logging
+from datetime import UTC
 
 from app.config import settings
 from app.shared.ai.base import BaseAiProvider
@@ -223,9 +224,9 @@ class _AiRateLimiter:
         otherwise record the call. user_id=None counts against a shared
         'anonymous' bucket — always pass authenticated user ids when available.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         limit_user = settings.AI_USER_DAILY_REQUEST_LIMIT
         limit_global = settings.AI_GLOBAL_DAILY_REQUEST_LIMIT
         bucket = user_id or "anonymous"
@@ -252,9 +253,9 @@ class _AiRateLimiter:
         self._check_and_increment_memory(today, bucket, limit_user, limit_global)
 
     def usage(self, user_id: str | None) -> dict:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         bucket = user_id or "anonymous"
         user_calls = 0
         global_calls = 0

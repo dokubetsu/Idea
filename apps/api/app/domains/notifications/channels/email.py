@@ -10,6 +10,7 @@ No extra SDK needed — uses httpx which is already a project dependency.
 import logging
 
 import httpx
+
 from app.config import settings
 from app.domains.notifications.channels.base import BaseNotificationChannel
 

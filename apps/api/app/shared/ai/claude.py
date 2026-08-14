@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 import anthropic
+
 from app.config import settings
 from app.shared.ai.base import BaseAiProvider
 

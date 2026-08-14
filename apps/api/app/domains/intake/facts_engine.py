@@ -17,8 +17,9 @@ from __future__ import annotations
 import logging
 import re as _re
 
-from app.domains.intake.schemas import ExtractedFact, FactsExtractionResult
 from pydantic import BaseModel
+
+from app.domains.intake.schemas import ExtractedFact, FactsExtractionResult
 
 log = logging.getLogger(__name__)
 

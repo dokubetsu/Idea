@@ -1,11 +1,12 @@
 import asyncio
 
 import pytest
+from httpx import AsyncClient
+
 from app.domains.intake.facts_engine import _mock_extract
 from app.main import app
 from app.shared.ai.validator import Normalizer
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
-from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
@@ -348,8 +349,9 @@ def test_production_validator_enforces_redis_url():
 def test_rate_limit_key_generation_from_middleware_verified_state():
     from unittest.mock import Mock
 
-    from app.shared.limiter import get_rate_limit_key
     from fastapi import Request
+
+    from app.shared.limiter import get_rate_limit_key
 
     # 1. With state.user_id populated by middleware
     mock_request = Mock(spec=Request)
@@ -375,10 +377,11 @@ def test_rate_limit_key_generation_from_middleware_verified_state():
 async def test_run_assessment_fails_with_503_in_production_when_all_retries_fail():
     from unittest.mock import patch
 
+    from fastapi import HTTPException
+
     from app.config import settings
     from app.domains.assessment.providers.base import AssessmentInput
     from app.domains.assessment.service import run_assessment
-    from fastapi import HTTPException
 
     old_env = settings.APP_ENV
     settings.APP_ENV = "production"

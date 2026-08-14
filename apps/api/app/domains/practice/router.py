@@ -1,3 +1,5 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.config import settings
 from app.domains.practice.schemas import (
     DebriefResponse,
@@ -11,7 +13,6 @@ from app.domains.practice.schemas import (
 )
 from app.domains.practice.service import PracticeService
 from app.shared.dependencies import Auth
-from fastapi import APIRouter, Depends, HTTPException, Query
 
 
 def verify_practice_enabled() -> None:

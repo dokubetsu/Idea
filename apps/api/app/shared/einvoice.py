@@ -20,7 +20,7 @@ import hashlib
 import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def build_irp_payload(invoice: dict, *, seller: dict, buyer: dict) -> dict[str, 
             "Typ": "INV",
             "No": invoice.get("invoice_number"),
             "Dt": (invoice.get("created_at") or "")[:10]
-            or datetime.now(timezone.utc).strftime("%d/%m/%Y"),
+            or datetime.now(UTC).strftime("%d/%m/%Y"),
         },
         "SellerDtls": {
             "Gstin": seller.get("gstin") or invoice.get("gstin"),
@@ -134,7 +134,7 @@ class MockEinvoiceProvider(BaseEinvoiceProvider):
         irn = hashlib.sha256(raw.encode()).hexdigest()
         ack = f"ACK{irn[:12].upper()}"
         qr = f"GST-EINVOICE-MOCK|{doc_no}|{irn[:16]}|{ack}"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         return EinvoiceResult(
             status="generated",
             irn=irn,

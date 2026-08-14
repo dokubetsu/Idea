@@ -6,15 +6,16 @@ import hashlib
 import hmac
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from app.config import settings
 from app.domains.matters.service import get_matter_or_403
 from app.shared.database import get_db, get_service_role_db
 from app.shared.dependencies import Auth
 from app.shared.events import EventType, emit
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["matters-payments"])
@@ -128,7 +129,7 @@ async def apply_payment(
         "is_paid": True,
         "payment_gateway_ref": payment_id,
         "payment_idempotency_key": idemp_key,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     result = (
@@ -288,9 +289,12 @@ async def verify_payment(
 
     is_mock_order = body.razorpay_order_id.startswith("order_mock_")
 
-    if not settings.is_production and is_mock_order:
-        pass  # mock bypass
-    elif not settings.is_production and body.razorpay_order_id == "mock":
+    if (
+        not settings.is_production
+        and is_mock_order
+        or not settings.is_production
+        and body.razorpay_order_id == "mock"
+    ):
         pass  # mock bypass
     else:
         # Require real verification

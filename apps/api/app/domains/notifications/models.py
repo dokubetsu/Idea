@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -18,20 +18,20 @@ class ActionModel(BaseModel):
 class NotificationCreate(BaseModel):
     user_id: str
     type: str
-    data: Dict[str, Any] = Field(default_factory=dict)
-    action: Optional[ActionModel] = None
-    idempotency_key: Optional[str] = None
+    data: dict[str, Any] = Field(default_factory=dict)
+    action: ActionModel | None = None
+    idempotency_key: str | None = None
 
 
 class NotificationOut(BaseModel):
     id: str
     user_id: str
     type: str
-    data: Dict[str, Any]
-    action: Optional[ActionModel] = None
+    data: dict[str, Any]
+    action: ActionModel | None = None
     status: NotificationStatus
     created_at: datetime
-    idempotency_key: Optional[str] = None
+    idempotency_key: str | None = None
 
 
 class NotificationDeliveryOut(BaseModel):
@@ -39,7 +39,7 @@ class NotificationDeliveryOut(BaseModel):
     notification_id: str
     channel: DeliveryChannel
     status: DeliveryStatus
-    error_msg: Optional[str] = None
-    delivered_at: Optional[datetime] = None
+    error_msg: str | None = None
+    delivered_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

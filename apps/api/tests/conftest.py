@@ -7,17 +7,19 @@ os.environ.setdefault(
 )
 
 import asyncio  # noqa: E402
-from typing import AsyncGenerator  # noqa: E402
+from collections.abc import AsyncGenerator  # noqa: E402
+from datetime import UTC
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+
 from app.main import app  # noqa: E402
 from app.shared.dependencies import (  # noqa: E402
     CurrentUser,
     UserRole,
     get_current_user,
 )
-from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 
 def pytest_configure(config):
@@ -105,9 +107,9 @@ class MockSupabaseTable:
         self.queries.clear()
         self.queries.append(("insert", data, args, kwargs))
         import uuid
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now_str = datetime.now(timezone.utc).isoformat()
+        now_str = datetime.now(UTC).isoformat()
         if isinstance(data, list):
             for row in data:
                 if "id" not in row:
@@ -513,9 +515,9 @@ class MockSupabaseClient:
                     break
 
             if issue_tag:
-                from datetime import datetime, timezone
+                from datetime import datetime
 
-                now_str = datetime.now(timezone.utc).isoformat()
+                now_str = datetime.now(UTC).isoformat()
                 profiles = self.table("practice_profiles").data
                 found_p = None
                 for p in profiles:
@@ -804,7 +806,7 @@ class MockSupabaseClient:
 
         if name == "create_invoice_rpc":
             import hashlib
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             matter_id = params.get("p_matter_id")
             te_ids = params.get("p_time_entry_ids") or []
@@ -864,8 +866,8 @@ class MockSupabaseClient:
                 "is_inter_state": inter,
                 "irn": irn,
                 "qr_code_data": f"GST-EINVOICE-MOCK-SIGNATURE-DATA-FOR-{inv_num}-IRN-{irn[:16]}",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             }
             self.table("invoices").data.append(invoice)
             for te in self.table("time_entries").data:
@@ -968,10 +970,12 @@ class MockSupabaseClient:
             exists = False
             for r in requests_table.data:
                 if r.get("user_id") == user_id and r.get("lawyer_id") == lawyer_id:
-                    if matter_id and r.get("matter_id") == matter_id:
-                        exists = True
-                        break
-                    elif not matter_id and not r.get("matter_id"):
+                    if (
+                        matter_id
+                        and r.get("matter_id") == matter_id
+                        or not matter_id
+                        and not r.get("matter_id")
+                    ):
                         exists = True
                         break
 
@@ -1123,6 +1127,7 @@ async def client(mock_user, request) -> AsyncGenerator[AsyncClient, None]:
         import datetime
 
         import jwt
+
         from app.config import settings
 
         token = jwt.encode(
@@ -1133,7 +1138,7 @@ async def client(mock_user, request) -> AsyncGenerator[AsyncClient, None]:
                 "iss": f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1",
                 "exp": int(
                     (
-                        datetime.datetime.now(datetime.timezone.utc)
+                        datetime.datetime.now(datetime.UTC)
                         + datetime.timedelta(hours=1)
                     ).timestamp()
                 ),

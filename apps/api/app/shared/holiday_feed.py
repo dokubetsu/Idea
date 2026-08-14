@@ -13,7 +13,7 @@ Expected feed JSON:
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from app.shared.court_calendar import STATE_HOLIDAYS, _normalize_state_key
 
@@ -62,7 +62,7 @@ def cache_feed_to_db(db, data: dict, source_url: str | None = None) -> dict:
         "year": year,
         "holidays": holidays,
         "source_url": source_url,
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
     }
     # upsert by unique (state_key, year)
     existing = (

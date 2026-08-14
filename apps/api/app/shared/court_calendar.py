@@ -141,4 +141,4 @@ def next_working_day(d: date, state: str | None = None) -> date:
 
 
 def list_supported_states() -> list[str]:
-    return sorted({k.title() for k in STATE_HOLIDAYS.keys()} | {"National"})
+    return sorted({k.title() for k in STATE_HOLIDAYS} | {"National"})

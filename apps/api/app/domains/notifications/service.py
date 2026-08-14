@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.domains.notifications.models import NotificationStatus
 from app.domains.notifications.templates import get_template
@@ -50,10 +50,10 @@ def create_notification(
     db,
     user_id: str,
     type_name: str,
-    data: Dict[str, Any],
-    action: Optional[Dict[str, Any]] = None,
-    idempotency_key: Optional[str] = None,
-) -> Dict[str, Any]:
+    data: dict[str, Any],
+    action: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
+) -> dict[str, Any]:
     from app.domains.notifications.preferences import get_effective_channels
 
     # 1. Resolve channels using user preferences
@@ -138,10 +138,10 @@ def create_notification(
 def get_notifications(
     db,
     user_id: str,
-    status: Optional[NotificationStatus] = None,
+    status: NotificationStatus | None = None,
     limit: int = 20,
     offset: int = 0,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     query = db.table("notifications").select("*").eq("user_id", user_id)
     if status:
         query = query.eq("status", status)
@@ -151,7 +151,7 @@ def get_notifications(
     return resp.data or []
 
 
-def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
+def mark_as_read(db, notification_id: str, user_id: str) -> dict[str, Any]:
     resp = (
         db.table("notifications")
         .update({"status": "read"})
@@ -166,7 +166,7 @@ def mark_as_read(db, notification_id: str, user_id: str) -> Dict[str, Any]:
     return resp.data[0]
 
 
-def mark_all_as_read(db, user_id: str) -> List[Dict[str, Any]]:
+def mark_all_as_read(db, user_id: str) -> list[dict[str, Any]]:
     resp = (
         db.table("notifications")
         .update({"status": "read"})

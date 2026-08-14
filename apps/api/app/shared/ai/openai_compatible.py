@@ -1,6 +1,7 @@
+from openai import AsyncOpenAI
+
 from app.config import settings
 from app.shared.ai.base import BaseAiProvider
-from openai import AsyncOpenAI
 
 
 class OpenAiCompatibleProvider(BaseAiProvider):

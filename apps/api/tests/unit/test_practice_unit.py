@@ -1,12 +1,13 @@
 from datetime import date
 
 import pytest
+from httpx import AsyncClient
+
 from app.domains.practice.rules_engine import RulesEngine, parse_dates_in_dict
 from app.domains.practice.scenario_loader import _scenarios_cache, _validate_graph
 from app.domains.practice.service import PracticeService
 from app.main import app
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
-from httpx import AsyncClient
 
 
 def test_rules_engine_dates_and_evaluation():

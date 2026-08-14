@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +115,7 @@ class InterestSource:
         log.info("MCLR cache updated: %s%% as of %s", rate_f, as_of)
 
     @classmethod
-    def get_rera_rate(cls, custom_rate: Optional[float] = None) -> float:
+    def get_rera_rate(cls, custom_rate: float | None = None) -> float:
         """
         Statutory RERA interest: SBI MCLR + 2.0% p.a. (or custom override).
         """

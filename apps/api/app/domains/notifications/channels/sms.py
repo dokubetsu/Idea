@@ -10,6 +10,7 @@ When blank → logs a formatted preview to the console (mock mode).
 import logging
 
 import httpx
+
 from app.config import settings
 from app.domains.notifications.channels.base import BaseNotificationChannel
 

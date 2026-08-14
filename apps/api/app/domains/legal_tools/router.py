@@ -5,6 +5,8 @@ Exposes endpoints for calculators.
 
 from datetime import date
 
+from fastapi import APIRouter, HTTPException, Query
+
 from app.domains.legal_tools.schemas import (
     ChequeBounceRequest,
     DocumentDraftRequest,
@@ -24,7 +26,6 @@ from app.shared.court_calendar import (
     next_working_day,
 )
 from app.shared.dependencies import Auth
-from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/legal-tools", tags=["legal-tools"])
 

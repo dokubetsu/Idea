@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC
 from enum import Enum
 
 from app.shared import database
@@ -159,10 +160,10 @@ async def process_pending_notifications() -> None:
     if not rows:
         return
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     for row in rows:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         attempts = row["attempts"]
         sub_name = row["subscriber_name"]
         sub = _resolve_subscriber(sub_name)
@@ -210,7 +211,7 @@ async def process_pending_notifications() -> None:
             db.table("pending_notifications").update(
                 {
                     "status": "completed",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 }
             ).eq("id", row["id"]).execute()
 
@@ -235,7 +236,7 @@ async def process_pending_notifications() -> None:
                     {
                         "status": next_status,
                         "error_message": error_msg,
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(UTC).isoformat(),
                     }
                 ).eq("id", row["id"]).execute()
             except Exception:

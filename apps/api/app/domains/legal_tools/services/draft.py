@@ -37,8 +37,9 @@ I/We hereby ratify and confirm all acts done by the said Advocate as if done by 
 
 **Signed and Delivered on this {day} day of {month}, {year}.**
 
-**Signature of Complainant(s):** 
+**Signature of Complainant(s):**
 ___________________________
+
 ({client_name})
 
 **Accepted by me:**

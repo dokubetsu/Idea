@@ -5,8 +5,8 @@ Validates raw LLM outputs against Pydantic models, cleans up data, and appends r
 
 import json
 import re
-from datetime import datetime, timezone
-from typing import Any, Type, TypeVar
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ T = TypeVar("T", bound=BaseModel)
 
 class ResponseValidator:
     @staticmethod
-    def validate(raw: str, response_model: Type[T]) -> T:
+    def validate(raw: str, response_model: type[T]) -> T:
         """
         Strips markdown wrappers, parses JSON, and validates it against the Pydantic schema.
         """
@@ -127,7 +127,7 @@ class Normalizer:
         data["model"] = model_name
         data["prompt_version"] = prompt_version
         data["temperature"] = temperature
-        data["created_at"] = datetime.now(timezone.utc).isoformat()
+        data["created_at"] = datetime.now(UTC).isoformat()
 
         return data
 
@@ -154,7 +154,7 @@ class Normalizer:
             "model": model_name,
             "prompt_version": prompt_version,
             "temperature": temperature,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         return data

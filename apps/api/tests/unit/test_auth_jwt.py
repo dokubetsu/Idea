@@ -7,17 +7,17 @@ inactive (suspended) profile, role enforcement on admin routes.
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 import datetime
-
+from collections.abc import AsyncGenerator
 
 import jwt
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+
 from app.config import settings
 from app.main import app
 from app.shared.dependencies import get_current_user
-from httpx import ASGITransport, AsyncClient
 
 
 def _make_token(
@@ -28,7 +28,7 @@ def _make_token(
     audience: str = "authenticated",
     alg: str = "HS256",
 ) -> str:
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     exp = (
         now - datetime.timedelta(hours=1)
         if expired
@@ -230,7 +230,7 @@ async def test_alg_none_rejected(raw_client: AsyncClient, mock_db):
                     "iss": f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1",
                     "exp": int(
                         (
-                            datetime.datetime.now(datetime.timezone.utc)
+                            datetime.datetime.now(datetime.UTC)
                             + datetime.timedelta(hours=1)
                         ).timestamp()
                     ),

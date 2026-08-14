@@ -1,7 +1,11 @@
 import asyncio
 import json
 import uuid
-from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 import app.domains.notifications.preferences as prefs_service
 import app.domains.notifications.service as service
@@ -10,10 +14,6 @@ from app.domains.notifications.models import NotificationOut, NotificationStatus
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
 from app.shared.ticket_store import ticket_store
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.security import HTTPBearer
-from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -22,7 +22,7 @@ TICKET_EXPIRY_SECONDS = 30
 
 # ── SSE auth helper (native EventSource with short-lived tickets) ─────────────
 async def get_sse_user(
-    ticket: Optional[str] = Query(None),
+    ticket: str | None = Query(None),
 ) -> CurrentUser:
     if not ticket:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -69,9 +69,9 @@ class PreferenceOut(BaseModel):
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("", response_model=List[NotificationOut])
+@router.get("", response_model=list[NotificationOut])
 def get_notifications(
-    status: Optional[NotificationStatus] = None,
+    status: NotificationStatus | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: CurrentUser = Depends(get_current_user),
@@ -89,7 +89,7 @@ def mark_read(
     return service.mark_as_read(db, id, user.id)
 
 
-@router.post("/read-all", response_model=List[NotificationOut])
+@router.post("/read-all", response_model=list[NotificationOut])
 def mark_all_read(
     user: CurrentUser = Depends(get_current_user),
     db=Depends(get_db),
@@ -98,7 +98,7 @@ def mark_all_read(
 
 
 # ── Preferences endpoints ─────────────────────────────────────────────────────
-@router.get("/preferences", response_model=List[PreferenceOut])
+@router.get("/preferences", response_model=list[PreferenceOut])
 def get_preferences(
     user: CurrentUser = Depends(get_current_user),
     db=Depends(get_db),
@@ -107,9 +107,9 @@ def get_preferences(
     return prefs_service.get_preferences(db, user.id)
 
 
-@router.patch("/preferences", response_model=List[PreferenceOut])
+@router.patch("/preferences", response_model=list[PreferenceOut])
 def update_preferences(
-    updates: List[PreferenceItem],
+    updates: list[PreferenceItem],
     user: CurrentUser = Depends(get_current_user),
     db=Depends(get_db),
 ):
@@ -155,7 +155,7 @@ async def stream_notifications(
                 try:
                     notification = await asyncio.wait_for(queue.get(), timeout=20.0)
                     yield {"event": "notification", "data": json.dumps(notification)}
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield {"comment": "keep-alive"}
         finally:
             sse_broadcaster.unsubscribe(user_id, queue)

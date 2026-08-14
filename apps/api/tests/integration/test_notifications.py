@@ -2,11 +2,11 @@ import asyncio
 import contextlib
 
 import pytest
+from httpx import AsyncClient
 
 from app.domains.notifications.channels.sse_broadcaster import sse_broadcaster
 from app.domains.notifications.service import create_notification
 from app.shared.database import get_db
-from httpx import AsyncClient
 
 
 @pytest.mark.integration

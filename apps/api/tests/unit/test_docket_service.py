@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+
 from app.domains.docket.schemas import InvoiceCreate
 from app.domains.docket.services.billing import (
     create_invoice,

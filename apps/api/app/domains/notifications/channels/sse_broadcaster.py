@@ -1,9 +1,9 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Set
 
 import redis.asyncio as aioredis
+
 from app.config import settings
 
 log = logging.getLogger(__name__)
@@ -12,11 +12,11 @@ log = logging.getLogger(__name__)
 class SSEBroadcaster:
     def __init__(self):
         # Maps user_id -> Set[asyncio.Queue]
-        self._queues: Dict[str, Set[asyncio.Queue]] = {}
+        self._queues: dict[str, set[asyncio.Queue]] = {}
         self._redis_client = None
         self._redis_pubsub = None
         self._listener_task = None
-        self._background_tasks: Set[asyncio.Task] = set()
+        self._background_tasks: set[asyncio.Task] = set()
         self._use_redis = settings.REDIS_URL and not settings.REDIS_URL.startswith(
             "memory://"
         )

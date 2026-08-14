@@ -2,6 +2,9 @@ import hashlib
 import hmac
 import logging
 import uuid
+from datetime import UTC
+
+from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
 from app.shared import database as shared_database
@@ -14,7 +17,6 @@ from app.shared.dependencies import (
     ensure_lawyer_verified,
 )
 from app.shared.exceptions import Forbidden, NotFound
-from fastapi import APIRouter, HTTPException, Query
 
 from .schemas import (
     PACKAGE_AMOUNTS_INR,
@@ -305,9 +307,12 @@ async def verify_consultation_payment(
     key_secret = settings.RAZORPAY_KEY_SECRET
     is_mock_order = body.razorpay_order_id.startswith("order_mock_")
 
-    if not settings.is_production and is_mock_order:
-        pass
-    elif not settings.is_production and body.razorpay_order_id == "mock":
+    if (
+        not settings.is_production
+        and is_mock_order
+        or not settings.is_production
+        and body.razorpay_order_id == "mock"
+    ):
         pass
     else:
         if not key_secret:
@@ -436,10 +441,10 @@ async def cancel_consultation(consultation_id: str, user: Auth):
 
     scheduled_at_str = row.get("scheduled_at")
     if scheduled_at_str:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         scheduled = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if (scheduled - now).total_seconds() < 24 * 3600:
             raise HTTPException(
                 status_code=400,

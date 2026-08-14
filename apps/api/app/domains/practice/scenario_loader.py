@@ -70,7 +70,7 @@ def load_all_scenarios() -> None:
 
     for file_path in files:
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if not data or "meta" not in data or "nodes" not in data:

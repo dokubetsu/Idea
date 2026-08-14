@@ -1,6 +1,7 @@
 import asyncio
 
 import google.generativeai as genai
+
 from app.config import settings
 from app.shared.ai.base import BaseAiProvider
 
@@ -55,5 +56,5 @@ class GeminiProvider(BaseAiProvider):
                 timeout=30.0,
             )
             return response.text.strip()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise TimeoutError("Gemini generation timed out after 30 seconds")

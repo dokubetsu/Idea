@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from httpx import AsyncClient
+
 from app.config import settings
 from app.main import app
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
-from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 """Helper functions for the Docket domain services."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from app.shared.database import get_db
 from app.shared.dependencies import CurrentUser, UserRole
@@ -8,11 +8,11 @@ from app.shared.exceptions import Forbidden, NotFound
 
 
 def _today() -> date:
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _get_matter_for_participant(matter_id: str, user: CurrentUser) -> dict:

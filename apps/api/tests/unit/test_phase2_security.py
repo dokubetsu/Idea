@@ -1,10 +1,11 @@
 """Phase 2 unit tests: case chat prompts, public lawyer DTO, DSR erasure."""
 
 import pytest
+from httpx import AsyncClient
+
 from app.main import app
 from app.shared.ai.prompt import PromptBuilder, sanitize_user_input
 from app.shared.dependencies import CurrentUser, UserRole, get_current_user
-from httpx import AsyncClient
 
 
 def test_case_chat_prompt_isolates_injection():

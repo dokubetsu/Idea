@@ -1,10 +1,10 @@
-from typing import Any, Dict
+from typing import Any
 
 from app.config import settings
 
 
 class BaseNotificationTemplate:
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.data = data
 
     def escape(self, val: Any) -> str:

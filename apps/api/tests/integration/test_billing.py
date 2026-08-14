@@ -4,8 +4,9 @@ import json
 import uuid
 
 import pytest
-from app.shared.database import get_db
 from httpx import AsyncClient
+
+from app.shared.database import get_db
 
 
 @pytest.mark.integration
@@ -93,7 +94,7 @@ async def test_payment_capture_idempotency_integration(
             }
             body_bytes = json.dumps(body).encode()
             sig = hmac.new(
-                "test_webhook_secret".encode(), body_bytes, hashlib.sha256
+                b"test_webhook_secret", body_bytes, hashlib.sha256
             ).hexdigest()
             return body, sig
 

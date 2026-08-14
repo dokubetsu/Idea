@@ -9,6 +9,9 @@ The intake workflow — 4 steps:
 """
 
 import logging
+from datetime import UTC
+
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.domains.assessment.providers.base import AssessmentInput
 from app.domains.assessment.service import run_assessment
@@ -24,7 +27,6 @@ from app.shared.dependencies import Auth
 from app.shared.events import EventType, emit
 from app.shared.exceptions import BadRequest, Forbidden, NotFound
 from app.shared.limiter import limiter
-from fastapi import APIRouter, HTTPException, Request, Response
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/intake", tags=["intake"])
@@ -398,10 +400,10 @@ def _get_session(db, session_id: str, user_id: str) -> dict:
     # Enforce 48h expiry check on intake sessions
     expires_at = row.get("expires_at")
     if expires_at:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-        if expiry < datetime.now(timezone.utc):
+        if expiry < datetime.now(UTC):
             raise HTTPException(
                 status_code=410,
                 detail={

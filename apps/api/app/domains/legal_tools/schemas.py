@@ -3,7 +3,6 @@ Pydantic schemas for Legal Tools Calculators.
 """
 
 from datetime import date
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,16 +10,16 @@ from pydantic import BaseModel, Field
 class ChequeBounceRequest(BaseModel):
     cheque_date: date = Field(..., description="Date written on the cheque")
     dishonour_date: date = Field(..., description="Date on bank Cheque Return Memo")
-    notice_date: Optional[date] = Field(
+    notice_date: date | None = Field(
         None, description="Date notice was sent to the drawer"
     )
-    notice_receipt_date: Optional[date] = Field(
+    notice_receipt_date: date | None = Field(
         None, description="Date notice was received by the drawer"
     )
-    complaint_filed_date: Optional[date] = Field(
+    complaint_filed_date: date | None = Field(
         None, description="Date complaint was filed in court"
     )
-    current_date: Optional[date] = Field(
+    current_date: date | None = Field(
         None, description="Optional baseline date (defaults to today)"
     )
 
@@ -31,22 +30,22 @@ class RERAInstallment(BaseModel):
 
 
 class RERARequest(BaseModel):
-    total_paid_amount: Optional[float] = Field(
+    total_paid_amount: float | None = Field(
         None, description="Total amount paid to developer in INR (lump sum)"
     )
     promised_possession_date: date = Field(
         ..., description="Possession date promised in sale agreement"
     )
-    actual_possession_date: Optional[date] = Field(
+    actual_possession_date: date | None = Field(
         None, description="Actual date possession was offered (if any)"
     )
-    custom_interest_rate: Optional[float] = Field(
+    custom_interest_rate: float | None = Field(
         None, ge=0, description="Optional custom rate override"
     )
-    current_date: Optional[date] = Field(
+    current_date: date | None = Field(
         None, description="Optional baseline date (defaults to today)"
     )
-    installments: Optional[list[RERAInstallment]] = Field(
+    installments: list[RERAInstallment] | None = Field(
         None, description="List of individual installments"
     )
 
@@ -58,7 +57,7 @@ class SummarySuitRequest(BaseModel):
         "default",
         description="Indian state for court fee lookup (e.g. 'delhi', 'maharashtra')",
     )
-    current_date: Optional[date] = Field(
+    current_date: date | None = Field(
         None, description="Optional baseline date (defaults to today)"
     )
 

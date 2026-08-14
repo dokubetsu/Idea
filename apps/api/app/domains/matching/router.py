@@ -1,11 +1,14 @@
 """Matching domain — lawyer discovery and contact requests."""
 
+from datetime import UTC
+
+from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
+
 from app.shared.database import get_db
 from app.shared.dependencies import Auth, LawyerAuth, UserRole
 from app.shared.events import EventType, emit
 from app.shared.exceptions import NotFound
-from fastapi import APIRouter, Query
-from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
@@ -219,8 +222,9 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
     Accept uses matching_accept_rpc so request status + matter assignment are
     atomic (no stuck 'accepted' request without a matter assign).
     """
-    from app.shared.exceptions import BadRequest
     from fastapi import HTTPException
+
+    from app.shared.exceptions import BadRequest
 
     db = get_db()
 
@@ -294,7 +298,7 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
     req = r.data[0]
 
     if body.accept and req.get("matter_id"):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         matter_row = (
             db.table("matters")
@@ -320,7 +324,7 @@ async def respond_to_request(request_id: str, body: RespondRequest, user: Lawyer
                 {
                     "lawyer_id": user.id,
                     "status": "active",
-                    "assigned_at": datetime.now(timezone.utc).isoformat(),
+                    "assigned_at": datetime.now(UTC).isoformat(),
                 }
             )
             .eq("id", req["matter_id"])

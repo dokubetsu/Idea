@@ -1,6 +1,5 @@
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from app.domains.notifications.channels import get_channel
 from app.domains.notifications.service import get_recipient_info
@@ -9,7 +8,7 @@ from app.domains.notifications.templates import get_template
 log = logging.getLogger(__name__)
 
 
-async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] = None):
+async def trigger_deliveries(db, notification_id: str, html_body: str | None = None):
     """
     Background worker that processes pending deliveries for a specific notification.
 
@@ -94,7 +93,7 @@ async def trigger_deliveries(db, notification_id: str, html_body: Optional[str] 
                 db.table("notification_deliveries").update(
                     {
                         "status": "sent",
-                        "delivered_at": datetime.now(timezone.utc).isoformat(),
+                        "delivered_at": datetime.now(UTC).isoformat(),
                     }
                 ).eq("id", deliv["id"]).execute()
             else:

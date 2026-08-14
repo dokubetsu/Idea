@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
 from app.domains.matters.documents_router import router as documents_router
@@ -42,7 +44,6 @@ from app.shared.dependencies import (
 )
 from app.shared.events import EventType, emit
 from app.shared.exceptions import Forbidden, NotFound
-from fastapi import APIRouter, HTTPException, Query
 
 log = logging.getLogger(__name__)
 
@@ -56,8 +57,8 @@ def _matter_payload(row: dict, *, with_facts: bool = False) -> dict:
     payload.setdefault("lawyer_id", row.get("lawyer_id"))
     payload.setdefault("assigned_at", None)
     payload.setdefault("resolved_at", None)
-    payload.setdefault("created_at", datetime.now(timezone.utc))
-    payload.setdefault("updated_at", datetime.now(timezone.utc))
+    payload.setdefault("created_at", datetime.now(UTC))
+    payload.setdefault("updated_at", datetime.now(UTC))
     return payload
 
 
@@ -325,12 +326,11 @@ async def verify_fact(
     """Lawyer or admin verifies (and optionally corrects) a fact."""
     db = get_db()
     get_matter_or_403(db, matter_id, user)
-    from datetime import timezone
 
     update: dict = {
         "is_verified": body.is_verified,
         "source": "lawyer",
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
     if body.value is not None:
         update["value"] = body.value
@@ -354,7 +354,7 @@ async def verify_fact(
             db_dt = parse(existing["updated_at"])
             client_dt = body.updated_at
             if client_dt.tzinfo is None:
-                client_dt = client_dt.replace(tzinfo=timezone.utc)
+                client_dt = client_dt.replace(tzinfo=UTC)
             if db_dt != client_dt:
                 raise HTTPException(
                     status_code=409, detail="Fact was modified by another request"
@@ -498,7 +498,7 @@ async def get_events(
 
 @router.post("/{matter_id}/assign", status_code=201)
 async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from fastapi import HTTPException
 
@@ -554,7 +554,7 @@ async def assign_lawyer(matter_id: str, body: AssignLawyerRequest, user: Auth):
         db.table("matters").update(
             {
                 "lawyer_id": body.lawyer_id,
-                "assigned_at": datetime.now(timezone.utc).isoformat(),
+                "assigned_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", matter_id).execute()
 

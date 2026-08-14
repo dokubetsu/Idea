@@ -5,7 +5,7 @@ Contains separate calculator services for Cheque Bounce, RERA delays, and Summar
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from app.domains.legal_tools.services.interest import InterestSource
 from app.shared.court_calendar import next_working_day
@@ -16,10 +16,10 @@ class ChequeBounceCalculator:
     def calculate(
         cheque_date: date,
         dishonour_date: date,
-        notice_date: Optional[date] = None,
-        notice_receipt_date: Optional[date] = None,
-        complaint_filed_date: Optional[date] = None,
-        current_date: Optional[date] = None,
+        notice_date: date | None = None,
+        notice_receipt_date: date | None = None,
+        complaint_filed_date: date | None = None,
+        current_date: date | None = None,
     ) -> dict[str, Any]:
         """
         Calculates timelines and limitation periods under Section 138 of the Negotiable Instruments Act.
@@ -169,12 +169,12 @@ class ChequeBounceCalculator:
 class RERACalculator:
     @staticmethod
     def calculate(
-        total_paid_amount: Optional[float],
+        total_paid_amount: float | None,
         promised_possession_date: date,
-        actual_possession_date: Optional[date] = None,
-        custom_interest_rate: Optional[float] = None,
-        current_date: Optional[date] = None,
-        installments: Optional[list[dict]] = None,
+        actual_possession_date: date | None = None,
+        custom_interest_rate: float | None = None,
+        current_date: date | None = None,
+        installments: list[dict] | None = None,
     ) -> dict[str, Any]:
         """
         Calculates delayed possession interest (SBI MCLR + 2% per annum) under RERA 2016.
@@ -256,7 +256,7 @@ class SummarySuitCalculator:
         claim_amount: float,
         due_date: date,
         state: str = "default",
-        current_date: Optional[date] = None,
+        current_date: date | None = None,
     ) -> dict[str, Any]:
         """
         Checks 3-year civil recovery limitations and estimates court fees under Order 37 CPC.
