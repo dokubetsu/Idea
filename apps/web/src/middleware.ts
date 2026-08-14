@@ -11,6 +11,10 @@ export async function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const isDev = process.env.NODE_ENV === "development";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
   const supabaseWssUrl = supabaseUrl ? supabaseUrl.replace(/^http/, "ws") : "";
   const sentryHost = process.env.NEXT_PUBLIC_SENTRY_DSN
@@ -47,88 +51,105 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("x-pathname", pathname);
 
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
   response.headers.set("Content-Security-Policy", cspHeader);
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (s: { name: string; value: string; options?: Record<string, unknown> }[]) =>
-          s.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          }),
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response;
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (
+        cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[],
+      ) => {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          request.cookies.set(name, value);
+          response.cookies.set(name, value, options);
+        });
       },
     },
-  );
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  // Fast Edge Auth with 2500ms safety timeout to prevent Vercel MIDDLEWARE_INVOCATION_TIMEOUT
+  let user = null;
+  try {
+    const authPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: { user: null }, error: new Error("Auth timeout") }), 2500),
+    );
+    const result = await Promise.race([authPromise, timeoutPromise]);
+    user = result?.data?.user ?? null;
+  } catch {
+    user = null;
+  }
 
   if (!user) {
     if (["/user", "/lawyer", "/admin"].some((p) => pathname.startsWith(p))) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(url);
+      const redirect = NextResponse.redirect(url);
+      redirect.headers.set("Content-Security-Policy", cspHeader);
+      response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
+      return redirect;
     }
     return response;
   }
 
-  // Prefer DB profile (authoritative) over JWT app_metadata for role + is_active
-  let role = (user.app_metadata?.role as string) ?? "user";
-  let isActive = true;
-  try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, is_active, dsr_erased_at")
-      .eq("id", user.id)
-      .maybeSingle();
+  const role =
+    (user.app_metadata?.role as string) ??
+    (user.user_metadata?.role as string) ??
+    "user";
 
-    if (profile) {
-      if (profile.is_active === false || profile.dsr_erased_at) {
-        isActive = false;
-      }
-      if (profile.role) {
-        role = profile.role as string;
-      }
+  if (role === "suspended") {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore error during sign out
     }
-  } catch {
-    // Fall back to JWT claims if profile read fails
-  }
-
-  if (!isActive || role === "suspended") {
-    // Clear session and force re-login
-    await supabase.auth.signOut();
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("notice", "suspended");
     const redirect = NextResponse.redirect(url);
-    // Preserve CSP on redirect response
     redirect.headers.set("Content-Security-Policy", cspHeader);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
     return redirect;
   }
 
   const home = ROLE_HOME[role] ?? "/user/dashboard";
 
-  if (["/login", "/register"].includes(pathname) || pathname === "/")
-    return NextResponse.redirect(new URL(home, request.url));
+  if (["/login", "/register"].includes(pathname) || pathname === "/") {
+    const redirect = NextResponse.redirect(new URL(home, request.url));
+    redirect.headers.set("Content-Security-Policy", cspHeader);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
+    return redirect;
+  }
 
-  if (pathname.startsWith("/admin") && role !== "admin")
-    return NextResponse.redirect(new URL(home, request.url));
-  if (pathname.startsWith("/lawyer") && role !== "lawyer")
-    return NextResponse.redirect(new URL(home, request.url));
-  if (pathname.startsWith("/user") && role !== "user")
-    return NextResponse.redirect(new URL(home, request.url));
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    const redirect = NextResponse.redirect(new URL(home, request.url));
+    redirect.headers.set("Content-Security-Policy", cspHeader);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
+    return redirect;
+  }
+  if (pathname.startsWith("/lawyer") && role !== "lawyer") {
+    const redirect = NextResponse.redirect(new URL(home, request.url));
+    redirect.headers.set("Content-Security-Policy", cspHeader);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
+    return redirect;
+  }
+  if (pathname.startsWith("/user") && role !== "user") {
+    const redirect = NextResponse.redirect(new URL(home, request.url));
+    redirect.headers.set("Content-Security-Policy", cspHeader);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value, c));
+    return redirect;
+  }
 
   response.headers.set("x-user-role", role);
   response.headers.set("x-user-id", user.id);
@@ -141,3 +162,4 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
+
