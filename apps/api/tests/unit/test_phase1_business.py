@@ -52,9 +52,7 @@ async def test_matching_accept_atomic(client: AsyncClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_matching_accept_already_assigned(client: AsyncClient, mock_db):
-    mock_db.table("lawyer_profiles").data = [
-        {"id": "lawyer-1", "is_verified": True}
-    ]
+    mock_db.table("lawyer_profiles").data = [{"id": "lawyer-1", "is_verified": True}]
     mock_db.table("lawyer_requests").data = [
         {
             "id": "req-1",

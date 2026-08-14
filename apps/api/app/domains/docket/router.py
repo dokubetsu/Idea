@@ -376,7 +376,6 @@ async def fulfill_document_request(
     )
 
 
-
 # ── Messages ────────────────────────────────────────────────────
 
 

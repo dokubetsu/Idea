@@ -38,7 +38,11 @@ def sniff_mime_type(header_bytes: bytes, filename: str = "") -> str | None:
         return "image/jpeg"
 
     # WEBP: RIFF....WEBP
-    if len(header_bytes) >= 12 and header_bytes.startswith(b"RIFF") and header_bytes[8:12] == b"WEBP":
+    if (
+        len(header_bytes) >= 12
+        and header_bytes.startswith(b"RIFF")
+        and header_bytes[8:12] == b"WEBP"
+    ):
         return "image/webp"
 
     # Legacy MS Word (OLE2 Compound Document)
@@ -46,7 +50,11 @@ def sniff_mime_type(header_bytes: bytes, filename: str = "") -> str | None:
         return "application/msword"
 
     # DOCX (ZIP container)
-    if header_bytes.startswith(b"PK\x03\x04") or header_bytes.startswith(b"PK\x05\x06") or header_bytes.startswith(b"PK\x07\x08"):
+    if (
+        header_bytes.startswith(b"PK\x03\x04")
+        or header_bytes.startswith(b"PK\x05\x06")
+        or header_bytes.startswith(b"PK\x07\x08")
+    ):
         ext = os.path.splitext(filename)[1].lower()
         if ext in (".docx", ".dotx", ".docm"):
             return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

@@ -92,4 +92,3 @@ def get_pooled_client(url: str, key: str, token: str | None = None) -> Client:
 
         _client_pool[cache_key] = client
         return client
-

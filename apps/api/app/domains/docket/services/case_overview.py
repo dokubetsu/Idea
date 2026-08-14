@@ -6,7 +6,6 @@ from app.domains.docket.services.helpers import (
     _today,
     _now,
     _get_matter_for_participant,
-    _format_inr,
     _status_to_stage,
     _stage_to_client_text,
 )

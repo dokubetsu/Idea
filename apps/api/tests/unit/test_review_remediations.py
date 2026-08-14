@@ -7,8 +7,9 @@ from httpx import AsyncClient
 
 from app.main import app
 from app.shared.dependencies import get_current_user, CurrentUser, UserRole
-from app.shared.file_validation import validate_upload_stream, sniff_mime_type
+from app.shared.file_validation import validate_upload_stream
 from app.domains.notifications.channels.sse_broadcaster import SSEBroadcaster
+
 import asyncio
 
 
@@ -149,7 +150,11 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
             "specializations": ["property"],
             "experience_years": 5,
             "consultation_fee": 1000,
-            "profiles": {"full_name": "Lawyer Mum 1", "city": "Mumbai", "state": "Maharashtra"},
+            "profiles": {
+                "full_name": "Lawyer Mum 1",
+                "city": "Mumbai",
+                "state": "Maharashtra",
+            },
         },
         {
             "id": "l-mum-2",
@@ -158,7 +163,11 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
             "specializations": ["property"],
             "experience_years": 6,
             "consultation_fee": 1200,
-            "profiles": {"full_name": "Lawyer Mum 2", "city": "Mumbai", "state": "Maharashtra"},
+            "profiles": {
+                "full_name": "Lawyer Mum 2",
+                "city": "Mumbai",
+                "state": "Maharashtra",
+            },
         },
         {
             "id": "l-mum-3",
@@ -167,7 +176,11 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
             "specializations": ["property"],
             "experience_years": 7,
             "consultation_fee": 1500,
-            "profiles": {"full_name": "Lawyer Mum 3", "city": "Mumbai", "state": "Maharashtra"},
+            "profiles": {
+                "full_name": "Lawyer Mum 3",
+                "city": "Mumbai",
+                "state": "Maharashtra",
+            },
         },
         {
             "id": "l-del-1",
@@ -176,7 +189,11 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
             "specializations": ["property"],
             "experience_years": 8,
             "consultation_fee": 2000,
-            "profiles": {"full_name": "Lawyer Del 1", "city": "Delhi", "state": "Delhi"},
+            "profiles": {
+                "full_name": "Lawyer Del 1",
+                "city": "Delhi",
+                "state": "Delhi",
+            },
         },
         {
             "id": "l-del-2",
@@ -185,7 +202,11 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
             "specializations": ["property"],
             "experience_years": 9,
             "consultation_fee": 2500,
-            "profiles": {"full_name": "Lawyer Del 2", "city": "Delhi", "state": "Delhi"},
+            "profiles": {
+                "full_name": "Lawyer Del 2",
+                "city": "Delhi",
+                "state": "Delhi",
+            },
         },
     ]
 
@@ -194,14 +215,18 @@ async def test_matching_lawyer_pagination_with_filters(client: AsyncClient, mock
     )
     try:
         # Page 1 of Mumbai lawyers (per_page=2)
-        res_p1 = await client.get("/api/v1/matching/lawyers?city=Mumbai&page=1&per_page=2")
+        res_p1 = await client.get(
+            "/api/v1/matching/lawyers?city=Mumbai&page=1&per_page=2"
+        )
         assert res_p1.status_code == 200
         p1_data = res_p1.json()
         assert len(p1_data) == 2
         assert p1_data[0]["city"] == "Mumbai"
 
         # Page 2 of Mumbai lawyers (per_page=2) -> should return the 3rd Mumbai lawyer
-        res_p2 = await client.get("/api/v1/matching/lawyers?city=Mumbai&page=2&per_page=2")
+        res_p2 = await client.get(
+            "/api/v1/matching/lawyers?city=Mumbai&page=2&per_page=2"
+        )
         assert res_p2.status_code == 200
         p2_data = res_p2.json()
         assert len(p2_data) == 1

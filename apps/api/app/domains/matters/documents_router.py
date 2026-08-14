@@ -130,4 +130,3 @@ async def list_documents(matter_id: str, user: Auth):
     except Exception:
         # If the directory doesn't exist yet, return empty list
         return []
-

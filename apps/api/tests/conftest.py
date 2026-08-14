@@ -426,10 +426,14 @@ class MockStorageBucket:
         self.files_dict = files_dict
 
     def create_signed_upload_url(self, path: str):
-        return {"signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_upload"}
+        return {
+            "signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_upload"
+        }
 
     def create_signed_url(self, path: str, expires_in: int = 60):
-        return {"signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_download"}
+        return {
+            "signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_download"
+        }
 
     def list(self, path: str = ""):
         return self.files_dict.get(path, [])
@@ -872,7 +876,10 @@ class MockSupabaseClient:
                     d["invoice_id"] = invoice["id"]
             if draw_retainer and total > 0:
                 for fa in self.table("fee_arrangements").data:
-                    if fa.get("matter_id") == matter_id and fa.get("type") == "retainer":
+                    if (
+                        fa.get("matter_id") == matter_id
+                        and fa.get("type") == "retainer"
+                    ):
                         remaining = float(fa.get("retainer_amount") or 0) - float(
                             fa.get("retainer_used") or 0
                         )

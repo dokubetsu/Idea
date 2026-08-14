@@ -85,9 +85,7 @@ class SSEBroadcaster:
             if not self._queues[user_id]:
                 del self._queues[user_id]
                 if self._use_redis and self._redis_pubsub:
-                    self._track_task(
-                        self._redis_pubsub.unsubscribe(f"user:{user_id}")
-                    )
+                    self._track_task(self._redis_pubsub.unsubscribe(f"user:{user_id}"))
 
     def broadcast(self, user_id: str, notification: dict):
         if self._use_redis and self._redis_client:
@@ -103,4 +101,3 @@ class SSEBroadcaster:
 
 
 sse_broadcaster = SSEBroadcaster()
-

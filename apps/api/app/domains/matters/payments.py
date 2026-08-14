@@ -208,7 +208,6 @@ async def create_razorpay_order(matter_id: str, milestone_id: str, user: Auth):
     key_id = settings.RAZORPAY_KEY_ID
     key_secret = settings.RAZORPAY_KEY_SECRET
 
-
     receipt_id = f"rcpt_{uuid.uuid4().hex[:12]}"
 
     if key_id and key_secret:
@@ -257,6 +256,7 @@ async def create_razorpay_order(matter_id: str, milestone_id: str, user: Auth):
             "key_id": "rzp_test_mockkey123",
             "mock": True,
         }
+
 
 @router.post("/{matter_id}/milestones/{milestone_id}/verify-payment")
 async def verify_payment(

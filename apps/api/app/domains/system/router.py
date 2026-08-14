@@ -302,7 +302,9 @@ async def mark_invoices_overdue_cron(
         if isinstance(raw, int):
             count = raw
         elif isinstance(raw, list) and raw:
-            count = int(raw[0] if not isinstance(raw[0], dict) else raw[0].get("count", 0))
+            count = int(
+                raw[0] if not isinstance(raw[0], dict) else raw[0].get("count", 0)
+            )
         elif isinstance(raw, dict):
             count = int(raw.get("count", 0))
         else:

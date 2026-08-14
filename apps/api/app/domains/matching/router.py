@@ -44,7 +44,6 @@ def _build_lawyer_out(row: dict) -> dict:
     return public
 
 
-
 @router.get("/lawyers")
 async def list_lawyers(
     user: Auth,
@@ -88,7 +87,6 @@ async def list_lawyers(
             or []
         )
         return [_build_lawyer_out(r) for r in rows]
-
 
 
 @router.get("/lawyers/{lawyer_id}")
