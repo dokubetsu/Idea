@@ -131,39 +131,31 @@ async def create_consultation(body: ConsultationCreate, user: Auth):
         payload["idempotency_key"] = body.idempotency_key
 
     try:
-        res = (
-            db.table("consultations")
-            .insert(payload)
-            .select(SELECT_CONSULTATIONS)
-            .execute()
-        )
-        consultation = res.data[0]
+        res = db.table("consultations").insert(payload).execute()
+        consultation_id = res.data[0]["id"]
 
         if needs_auto_assign:
-            assigned_lawyer_id = assign_free_lawyer(consultation["id"])
+            assigned_lawyer_id = assign_free_lawyer(consultation_id)
             if not assigned_lawyer_id:
-                db.table("consultations").delete().eq(
-                    "id", consultation["id"]
-                ).execute()
+                db.table("consultations").delete().eq("id", consultation_id).execute()
                 raise HTTPException(
                     status_code=400,
                     detail="No lawyers currently available for free consultations",
                 )
-            consultation = get_consultation_or_404(consultation["id"])
 
-        return enrich_consultation(consultation)
+        return get_consultation_or_404(consultation_id)
     except Exception as e:
         msg = str(e).lower()
         if "duplicate" in msg or "already exists" in msg or "unique" in msg:
             if body.idempotency_key:
                 existing = (
                     db.table("consultations")
-                    .select(SELECT_CONSULTATIONS)
+                    .select("id")
                     .eq("idempotency_key", body.idempotency_key)
                     .execute()
                 )
                 if existing.data:
-                    return enrich_consultation(existing.data[0])
+                    return get_consultation_or_404(existing.data[0]["id"])
         raise e
 
 

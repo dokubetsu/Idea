@@ -74,14 +74,15 @@ async def test_payment_capture_idempotency_integration(
         assert res_patch.status_code == 403
 
         # Helper to generate Razorpay webhook payload and signature
-        def make_webhook_req(pay_id, m_id, key):
+        def make_webhook_req(pay_id, m_id, key, amount: int = 2500000):
             body = {
                 "event": "payment.captured",
                 "payload": {
                     "payment": {
                         "entity": {
                             "id": pay_id,
-                            "amount": 2500000,
+                            "amount": amount,
+                            "currency": "INR",
                             "notes": {
                                 "milestone_id": m_id,
                                 "payment_idempotency_key": key,
@@ -186,7 +187,9 @@ async def test_payment_capture_idempotency_integration(
         db.table("matter_milestones").insert(milestone_data2).execute()
 
         try:
-            body3, sig3 = make_webhook_req("pay_tx_789", milestone_id2, idemp_key)
+            body3, sig3 = make_webhook_req(
+                "pay_tx_789", milestone_id2, idemp_key, amount=500000
+            )
             res3 = await client.post(
                 "/api/v1/matters/webhook/payment",
                 json=body3,
