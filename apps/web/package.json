@@ -36,9 +36,18 @@
     "@types/react-dom": "^19",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.1.0",
-    "postcss": "^8",
+    "postcss": "^8.5.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "rollup": "^4.34.8",
+    "sharp": "^0.35.0",
+    "uuid": "^11.1.1",
+    "@opentelemetry/core": "^2.8.0",
+    "brace-expansion": "^2.1.4"
   }
 }
+
