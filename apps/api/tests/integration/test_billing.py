@@ -129,7 +129,7 @@ async def test_payment_capture_idempotency_integration(
             .data
         )
         assert len(payments_db) == 1
-        assert payments_db[0]["payment_gateway_ref"] == "pay_tx_123"
+        assert payments_db[0]["payment_id"] == "pay_tx_123"
         assert payments_db[0]["payment_idempotency_key"] == idemp_key
 
         # 6. Second Webhook Delivery (exact duplicate) -> Idempotent response
