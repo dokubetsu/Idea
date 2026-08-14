@@ -363,15 +363,18 @@ async def fulfill_document_request(
     user: Auth,
     file: UploadFile = File(...),
 ):
-    file_bytes = await file.read()
+    from app.shared.file_validation import validate_upload_stream
+
+    file_bytes, content_type = await validate_upload_stream(file)
     return service.fulfill_document_request(
         matter_id,
         request_id,
         user,
         filename=file.filename or "document",
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type,
         file_bytes=file_bytes,
     )
+
 
 
 # ── Messages ────────────────────────────────────────────────────

@@ -34,7 +34,7 @@ _PUBLIC_LP_KEYS = {
 
 def _build_lawyer_out(row: dict) -> dict:
     """Project a lawyer_profiles row to a public DTO (no bar IDs / secrets)."""
-    p = row.pop("profiles", {}) or {}
+    p = row.get("profiles", {}) or {}
     public = {k: row.get(k) for k in _PUBLIC_LP_KEYS if k in row or k == "id"}
     public["id"] = row.get("id") or public.get("id")
     public["full_name"] = p.get("full_name")
@@ -42,6 +42,7 @@ def _build_lawyer_out(row: dict) -> dict:
     public["state"] = p.get("state")
     public["avatar_url"] = p.get("avatar_url")
     return public
+
 
 
 @router.get("/lawyers")
@@ -67,24 +68,27 @@ async def list_lawyers(
     if max_fee is not None:
         q = q.lte("consultation_fee", max_fee)
 
-    if specialization:
-        q = q.contains("specializations", [specialization])
+    # Order and page accurately
+    if city or state:
+        rows = q.order("created_at", desc=True).execute().data or []
+        out = [_build_lawyer_out(r) for r in rows]
+        if city:
+            city_lower = city.strip().lower()
+            out = [r for r in out if (r.get("city") or "").lower() == city_lower]
+        if state:
+            state_lower = state.strip().lower()
+            out = [r for r in out if (r.get("state") or "").lower() == state_lower]
+        return out[off : off + per_page]
+    else:
+        rows = (
+            q.order("created_at", desc=True)
+            .range(off, off + per_page - 1)
+            .execute()
+            .data
+            or []
+        )
+        return [_build_lawyer_out(r) for r in rows]
 
-    # Filter by city or state in Python to circumvent PostgREST resource-embedding
-    # filter limitations in the client. Fetch a slightly larger page window to compensate.
-    fetch_limit = per_page * 3 if (city or state) else per_page
-    rows = q.range(off, off + fetch_limit - 1).execute().data or []
-
-    out = [_build_lawyer_out(r) for r in rows]
-
-    if city:
-        city_lower = city.strip().lower()
-        out = [r for r in out if (r.get("city") or "").lower() == city_lower]
-    if state:
-        state_lower = state.strip().lower()
-        out = [r for r in out if (r.get("state") or "").lower() == state_lower]
-
-    return out[:per_page]
 
 
 @router.get("/lawyers/{lawyer_id}")

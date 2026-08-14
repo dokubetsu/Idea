@@ -80,7 +80,16 @@ def get_pooled_client(url: str, key: str, token: str | None = None) -> Client:
         # Evict the oldest cached client if pool size limit is exceeded (LRU approximation)
         if len(_client_pool) >= 50:
             oldest_key = next(iter(_client_pool))
-            _client_pool.pop(oldest_key)
+            evicted = _client_pool.pop(oldest_key, None)
+            if evicted:
+                try:
+                    if hasattr(evicted, "postgrest") and hasattr(
+                        evicted.postgrest, "session"
+                    ):
+                        evicted.postgrest.session.close()
+                except Exception:
+                    pass
 
         _client_pool[cache_key] = client
         return client
+

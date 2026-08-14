@@ -380,7 +380,7 @@ class MockSupabaseTable:
                 for row in data:
                     any_match = False
                     for part in parts:
-                        subparts = part.split(".")
+                        subparts = part.split(".", 2)
                         if len(subparts) == 3 and subparts[1] == "eq":
                             col, _, val = subparts[0], subparts[1], subparts[2]
                             if str(row.get(col)) == val:
@@ -420,10 +420,44 @@ class MockRpcBuilder:
         return MockSupabaseResponse(self.data)
 
 
+class MockStorageBucket:
+    def __init__(self, name: str, files_dict: dict):
+        self.name = name
+        self.files_dict = files_dict
+
+    def create_signed_upload_url(self, path: str):
+        return {"signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_upload"}
+
+    def create_signed_url(self, path: str, expires_in: int = 60):
+        return {"signedUrl": f"https://mock.storage/{self.name}/{path}?token=mock_download"}
+
+    def list(self, path: str = ""):
+        return self.files_dict.get(path, [])
+
+    def upload(self, path: str, file_bytes: bytes, file_options: dict = None):
+        import os
+
+        dir_name = os.path.dirname(path)
+        base_name = os.path.basename(path)
+        if dir_name not in self.files_dict:
+            self.files_dict[dir_name] = []
+        self.files_dict[dir_name].append({"name": base_name, "size": len(file_bytes)})
+        return {"Key": path}
+
+
+class MockStorage:
+    def __init__(self):
+        self.files = {}
+
+    def from_(self, bucket_name: str):
+        return MockStorageBucket(bucket_name, self.files)
+
+
 class MockSupabaseClient:
     def __init__(self):
         self.tables = {}
         self.auth = MockAuth()
+        self.storage = MockStorage()
         self.rpc_calls = []
 
     def table(self, name: str):
@@ -433,6 +467,7 @@ class MockSupabaseClient:
 
     def rpc(self, name: str, params: dict = None):
         self.rpc_calls.append((name, params))
+
         if params is None:
             params = {}
         if name == "submit_practice_decision":

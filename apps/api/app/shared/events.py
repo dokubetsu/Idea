@@ -297,6 +297,11 @@ async def emit(
         log.error("Event emit failed [%s]: %s", event_type, exc)
 
 
+from concurrent.futures import ThreadPoolExecutor
+
+_event_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="events_worker")
+
+
 def _run_coroutine_in_new_loop(coro):
     try:
         loop = asyncio.get_running_loop()
@@ -307,15 +312,14 @@ def _run_coroutine_in_new_loop(coro):
     except RuntimeError:
         pass
 
-    import threading
-
     def run_in_thread():
         try:
             asyncio.run(coro)
         except Exception as e:
             log.error("Failed to run coroutine in background thread: %s", e)
 
-    threading.Thread(target=run_in_thread, daemon=True).start()
+    _event_executor.submit(run_in_thread)
+
 
 
 def sync_emit(

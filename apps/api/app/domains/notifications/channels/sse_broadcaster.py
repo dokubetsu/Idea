@@ -15,16 +15,23 @@ class SSEBroadcaster:
         self._redis_client = None
         self._redis_pubsub = None
         self._listener_task = None
+        self._background_tasks: Set[asyncio.Task] = set()
         self._use_redis = settings.REDIS_URL and not settings.REDIS_URL.startswith(
             "memory://"
         )
+
+    def _track_task(self, coro) -> asyncio.Task:
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
 
     def init_redis(self):
         if self._use_redis and self._redis_client is None:
             try:
                 self._redis_client = aioredis.from_url(settings.REDIS_URL)
                 self._redis_pubsub = self._redis_client.pubsub()
-                self._listener_task = asyncio.create_task(self._listen_redis())
+                self._listener_task = self._track_task(self._listen_redis())
                 log.info("SSEBroadcaster: initialized Redis Pub/Sub")
             except Exception:
                 log.exception("SSEBroadcaster: failed to initialize Redis")
@@ -68,7 +75,7 @@ class SSEBroadcaster:
         if user_id not in self._queues:
             self._queues[user_id] = set()
             if self._use_redis and self._redis_pubsub:
-                asyncio.create_task(self._redis_pubsub.subscribe(f"user:{user_id}"))
+                self._track_task(self._redis_pubsub.subscribe(f"user:{user_id}"))
         self._queues[user_id].add(queue)
         return queue
 
@@ -78,14 +85,14 @@ class SSEBroadcaster:
             if not self._queues[user_id]:
                 del self._queues[user_id]
                 if self._use_redis and self._redis_pubsub:
-                    asyncio.create_task(
+                    self._track_task(
                         self._redis_pubsub.unsubscribe(f"user:{user_id}")
                     )
 
     def broadcast(self, user_id: str, notification: dict):
         if self._use_redis and self._redis_client:
-            # Publish to Redis channel
-            asyncio.create_task(
+            # Publish to Redis channel with strong reference tracking
+            self._track_task(
                 self._redis_client.publish(f"user:{user_id}", json.dumps(notification))
             )
         else:
@@ -96,3 +103,4 @@ class SSEBroadcaster:
 
 
 sse_broadcaster = SSEBroadcaster()
+
