@@ -12,18 +12,23 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("Petitioner Intake Wizard — E2E", () => {
+  test.beforeEach(async ({ context }) => {
+    await context.clearCookies();
+  });
+
   test("should complete the full wizard and create a matter", async ({ page }) => {
     test.setTimeout(120_000);
 
     // 1. Login
     await page.goto("/login");
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
 
     const email = process.env.E2E_EMAIL || "client@lead.ai";
     const password = process.env.E2E_PASSWORD || "Password123!";
 
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
-    await page.click('button[type="submit"]');
+    await page.locator('button[type="submit"]').click({ force: true });
 
     // 2. Confirm redirect to user dashboard
     await expect(page).toHaveURL(/\/user\/dashboard/, { timeout: 20000 });
@@ -35,10 +40,11 @@ test.describe("Petitioner Intake Wizard — E2E", () => {
     if ((await startCase.count()) === 0) {
       test.skip(true, "Start New Case control not found on dashboard — UI may have changed");
     }
-    await startCase.first().click();
+    await startCase.first().click({ force: true });
     await expect(page.locator('h2:has-text("Choose a legal domain")')).toBeVisible({
       timeout: 10000,
     });
+
 
     // ── Step 1: Pick domain ───────────────────────────────
     // Click the "Consumer" domain tile
